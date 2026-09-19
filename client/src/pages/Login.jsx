@@ -1,31 +1,64 @@
 import { useState } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { supabase } from '../lib/supabaseClient'
+import { loginDestination } from '../lib/authRoles'
 
-export default function Login() {
-  const { session, loading, error: authError } = useAuth()
+export default function Login({ signup = false }) {
+  const { session, loading, error: authError, signIn, signUp, configured } = useAuth()
   const location = useLocation()
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
-  const from = location.state?.from
+
   if (loading) return <p className="loading" role="status">Restoring your session…</p>
-  if (session) return <Navigate to={from?.startsWith('/') && !from.startsWith('//') && from !== '/login' ? from : '/'} replace />
-  async function login(event) {
-    event.preventDefault(); setBusy(true); setError('')
-    const data = new FormData(event.currentTarget)
+  if (session) return <Navigate to={loginDestination(session.user, location.state?.from)} replace />
+
+  async function submit(event) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    setNotice('')
+    const form = event.currentTarget
+    const data = new FormData(form)
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email: data.get('email').trim(), password: data.get('password') })
-      if (error) throw error
+      if (signup) {
+        if (!data.get('full_name').trim()) throw new Error('Please enter your full name.')
+        if (data.get('password') !== data.get('confirm_password')) throw new Error('Passwords do not match.')
+        const result = await signUp(data.get('email'), data.get('password'), data.get('full_name'))
+        if (!result.session) {
+          setNotice('Check your email for a confirmation link before signing in. If you already have an account, sign in with your existing password.')
+          form.reset()
+        }
+      } else {
+        await signIn(data.get('email'), data.get('password'))
+      }
     } catch (error) { setError(error.message) }
     finally { setBusy(false) }
   }
-  return <div className="login-page"><section className="login-story"><img src="/images/logo.jpg" alt="Royal Square Financial" /><p className="eyebrow">PERSONAL ADVICE. LASTING IMPACT.</p><h1>A clearer picture.<br />A stronger financial future.</h1><p>Bring your clients, their priorities, and their financial plans together in one place.</p></section>
-    <section className="login-panel"><form className="card" onSubmit={login}><p className="eyebrow">YOUR ADVISOR WORKSPACE</p><h2>Welcome back</h2><p>Sign in to support your clients’ next chapter.</p>
-      {!supabase && <p className="error" role="alert">Connect Supabase to get started. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in client/.env.local, then restart the app.</p>}
-      <label>Email address<input name="email" type="email" autoComplete="username" required disabled={!supabase} /></label>
-      <label>Password<input name="password" type="password" autoComplete="current-password" required disabled={!supabase} /></label>
-      {(error || authError) && <p className="error" role="alert">{error || authError}</p>}
-      <button className="primary" disabled={busy || !supabase}>{busy ? 'Signing in…' : 'Sign in'}</button><small>Use the advisor account provided by your administrator.</small>
-    </form></section></div>
+
+  return <div className="login-page">
+    <section className="login-story">
+      <img className="login-slogan" src="/images/slogan.png" alt="Royal Square Financial" />
+      <p className="eyebrow">PERSONAL ADVICE. LASTING IMPACT.</p>
+      <h1>A clearer picture.<br />A stronger financial future.</h1>
+      <p>Your financial journey, connected in one place.</p>
+    </section>
+    <section className="login-panel">
+      <form className="card" onSubmit={submit}>
+        <p className="eyebrow">{signup ? 'CLIENT REGISTRATION' : 'ROYAL SQUARE FINANCIAL'}</p>
+        <h2>{signup ? 'Create your client account' : 'Welcome back'}</h2>
+        <p>{signup ? 'Start by creating your secure client login.' : 'Clients, providers, and brokers can sign in here.'}</p>
+        {!configured && <p className="error" role="alert">Sign-in is currently unavailable. Please contact your administrator.</p>}
+        {signup && <label>Full name<input name="full_name" autoComplete="name" required disabled={busy || !configured} /></label>}
+        <label>Email address<input name="email" type="email" autoComplete="username" required disabled={busy || !configured} /></label>
+        <label>Password<input name="password" type="password" autoComplete={signup ? 'new-password' : 'current-password'} minLength={signup ? 8 : undefined} required disabled={busy || !configured} />{signup && <small>Use at least 8 characters.</small>}</label>
+        {signup && <label>Confirm password<input name="confirm_password" type="password" autoComplete="new-password" minLength={8} required disabled={busy || !configured} /></label>}
+        {(error || authError) && <p className="error" role="alert">{error || authError}</p>}
+        {notice && <p className="auth-notice" role="status">{notice}</p>}
+        <button className="primary" disabled={busy || !configured}>{busy ? (signup ? 'Creating account…' : 'Signing in…') : (signup ? 'Create client account' : 'Sign in')}</button>
+        <p className="auth-switch">{signup ? <>Already have an account? <Link to="/login">Sign in</Link></> : <>New client? <Link to="/signup">Create an account</Link></>}</p>
+        <small>Providers and brokers: sign in with your administrator-provided account. Registration is for clients only.</small>
+      </form>
+    </section>
+  </div>
 }
