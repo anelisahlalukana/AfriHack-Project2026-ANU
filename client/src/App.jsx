@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
 import { Bell, HeartPulse, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
+import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
@@ -35,7 +36,7 @@ import ProviderInbox from './pages/provider/ProviderInbox'
 import ProviderTaskDetail from './pages/provider/ProviderTaskDetail'
 import './App.css'
 
-function SignOutBlock({ onSignOut }) {
+function SignOutBlock({ onSignOut, name, role }) {
   const [error, setError] = useState('')
   const [signingOut, setSigningOut] = useState(false)
   async function logout() {
@@ -45,6 +46,10 @@ function SignOutBlock({ onSignOut }) {
     finally { setSigningOut(false) }
   }
   return <div className="advisor">
+    <div className="side-user">
+      <span className="side-avatar" aria-hidden="true">{initialsOf(name)}</span>
+      <span className="side-user-text"><strong title={name}>{name}</strong><small>{role}</small></span>
+    </div>
     <button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
     {error && <p role="alert" className="error">{error}</p>}
   </div>
@@ -56,7 +61,6 @@ function WorkspaceLayout() {
   return <div className="app-shell">
     <aside>
       <Link className="side-logo" to="/"><img src="/images/slogan.png" alt="Royal Square Financial" /></Link>
-      <p className="side-name">{name}</p>
       <p className="eyebrow">ADVISOR WORKSPACE</p>
       <hr className="side-divider" />
       <nav>
@@ -67,7 +71,7 @@ function WorkspaceLayout() {
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
       </nav>
-      <SignOutBlock onSignOut={signOut} />
+      <SignOutBlock onSignOut={signOut} name={name} role="Adviser" />
     </aside>
     <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
   </div>
@@ -79,14 +83,13 @@ function AdminLayout() {
   return <div className="app-shell">
     <aside>
       <Link className="side-logo" to="/admin"><img src="/images/slogan.png" alt="Royal Square Financial" /></Link>
-      <p className="side-name">{name}</p>
       <p className="eyebrow">ADMIN</p>
       <hr className="side-divider" />
       <nav>
         <NavLink to="/admin" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/admin/users"><Users size={18} /> User management</NavLink>
       </nav>
-      <SignOutBlock onSignOut={signOut} />
+      <SignOutBlock onSignOut={signOut} name={name} role="Administrator" />
     </aside>
     <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Admin</span></div><Outlet /></main>
   </div>

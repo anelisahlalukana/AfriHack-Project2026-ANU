@@ -18,6 +18,9 @@ function createComplianceService({ db = supabaseAdmin, now = () => new Date(), l
     const { data, error } = await query;
     if (error) {
       logger.error("[Compliance] Database operation failed:", error.code || "unknown");
+      if (["PGRST205", "PGRST202", "PGRST204", "42P01", "42703", "42883"].includes(error.code)) {
+        throw new HttpError(503, "Compliance database setup is incomplete. Run 202609190012_compliance.sql in this Supabase project's SQL Editor, then refresh.");
+      }
       throw new HttpError(503, "Compliance data is unavailable. Check the compliance migration and try again.");
     }
     return data;

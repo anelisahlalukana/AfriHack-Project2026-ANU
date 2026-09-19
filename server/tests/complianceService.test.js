@@ -26,6 +26,12 @@ test("consent gate authorizes, blocks, attributes actor and does not audit ordin
   assert.equal((await api.checkFinancialPullConsent("client", actor)).valid, false);
   assert.equal(db.tables.compliance_audit_log.at(-1).event_type, "financial_pull_blocked");
 });
+test("missing compliance tables identify the required migration without displaying database internals", async () => {
+  const db = fakeDatabase();
+  db.failures.client_screenings = { code: "PGRST205", message: "Internal database details" };
+  await assert.rejects(service(db).getSummary(), error => error.status === 503 &&
+    error.message.includes("202609190012_compliance.sql") && !error.message.includes("Internal database details"));
+});
 test("consent lookup and audit failures fail closed in the real reminders service", async () => {
   const normalized = { id: actor.id, role: "adviser", name: "Verified Adviser" };
   for (const failure of ["documents", "compliance_audit_log", "expired", "duplicate"]) {
