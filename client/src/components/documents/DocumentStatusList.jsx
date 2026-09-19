@@ -24,10 +24,10 @@ const ACKNOWLEDGE_TYPE = 'fais_disclosure'
 
 // `onlySent` hides documents that haven't been sent yet (used on the client's own
 // account page, where only what's actually been sent to them should show).
-// `emptyMessage` is shown when there is nothing to list.
+// `emptyMessage` is shown when there is nothing to list. `onChanged` runs after a document is signed.
 // Advisers (staff) only send documents; the client is the signer. So advisers get a "Send to
 // client" action and never the sign/upload options, and clients never get "Send".
-export function DocumentStatusList({ clientId, onlySent = false, emptyMessage }) {
+export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, onChanged }) {
   const { user } = useAuth()
   const isAdviser = isStaff(user)
   const [sendingType, setSendingType] = useState(null)
@@ -114,6 +114,7 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage })
         onSigned={() => {
           setOpenType(null)
           setReloadKey(key => key + 1)
+          onChanged?.()
         }}
       />
     )}

@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
+    "lint": "eslint .",
     "dev": "nodemon server.js",
     "create-admin": "node scripts/create-admin.js",
     "dev:demo": "node server.js --demo",
-    "test": "node --test src/reminders/*.test.js tests/*.test.js",
+    "test": "node --test tests/*.test.js __tests__/*.test.js",
     "push:keys": "web-push generate-vapid-keys --json"
   },
   "keywords": [],
@@ -25,6 +26,9 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
     "nodemon": "^3.1.14"
   }
 }

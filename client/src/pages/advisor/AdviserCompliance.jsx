@@ -8,6 +8,6 @@ export default function AdviserCompliance() {
     <header className="page-heading">
       <div><p className="eyebrow">COMPLIANCE</p><h1>Adviser compliance</h1></div>
     </header>
-    <ComplianceTracker adviserId={adviserId} />
+    <ComplianceTracker key={adviserId} adviserId={adviserId} />
   </>
 }

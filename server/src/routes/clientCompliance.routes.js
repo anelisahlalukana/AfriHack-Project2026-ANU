@@ -1,0 +1,11 @@
+const express = require("express");
+const { requireAuth, requireRole } = require("../middleware/auth");
+const { ADVISOR_ROLE } = require("../constants/roles");
+const { validateComplianceIds, validateScreening, validateAuditLimit } = require("../middleware/validate");
+const controller = require("../controllers/compliance.controller");
+const router = express.Router({ mergeParams: true });
+router.use(requireAuth, requireRole([ADVISOR_ROLE]), validateComplianceIds);
+router.get("/", controller.getClientCompliance);
+router.get("/audit", validateAuditLimit, controller.getAudit);
+router.post("/screenings", validateScreening, controller.runScreening);
+module.exports = router;

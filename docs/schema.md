@@ -282,3 +282,47 @@ CREATE TABLE public.request_types (
 -- Related person UI retains the spouseOrParent JSON key for existing profiles.
 -- spouseOrParent.relationship: spouse, partner, parent, or legal_guardian (optional).
 -- workAllocation values describe percentages of a typical working week.
+
+
+-- Compliance tracking (migration 202609190012). New tables are server-only.
+CREATE TABLE IF NOT EXISTS public.client_screenings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL REFERENCES public.users(id),
+  screening_type text NOT NULL CHECK (screening_type IN ('pep', 'terrorism_financing')),
+  result text NOT NULL CHECK (result IN ('clear', 'flagged')),
+  provider text NOT NULL,
+  simulated boolean NOT NULL DEFAULT true,
+  simulated_flag boolean NOT NULL DEFAULT false,
+  actor_id uuid NOT NULL REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.adviser_cpd_records (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  adviser_id uuid NOT NULL REFERENCES auth.users(id),
+  activity text NOT NULL CHECK (length(btrim(activity)) BETWEEN 1 AND 200),
+  hours numeric NOT NULL CHECK (hours > 0 AND hours <= 100 AND hours = round(hours, 2)),
+  completed_on date NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS public.compliance_audit_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type text NOT NULL CHECK (event_type IN ('screening_performed', 'consent_signed', 'consent_renewed',
+    'adviser_compliance_updated', 'cpd_record_added', 'financial_pull_allowed', 'financial_pull_blocked')),
+  summary text NOT NULL,
+  result text NOT NULL,
+  actor_id uuid REFERENCES auth.users(id),
+  actor_name text NOT NULL,
+  client_id uuid REFERENCES public.users(id),
+  adviser_id uuid REFERENCES auth.users(id),
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(metadata) = 'object'),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- adviser_id and actor_id reference auth.users; client_id references users, role_id=1.
+-- RLS is enabled on all three tables. PUBLIC/anon/authenticated have no table access.
+-- service_role has SELECT/INSERT only on compliance_audit_log; UPDATE/DELETE/TRUNCATE
+-- are rejected by triggers. No cascading audit FKs. Other tables are service-only CRUD.
+-- adviser_compliance browser grants are revoked; writes use advisor/self-gated API.
+-- compliance_record_change(text,uuid,jsonb,uuid,text,jsonb) is service-role-only and
+-- atomically writes screenings/adviser changes/CPD and their audit entry. CPD writes
+-- serialize per adviser, recalculate cached cpd_status, and retain past-cycle records.

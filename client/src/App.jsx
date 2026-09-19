@@ -18,6 +18,7 @@ import Reminders from './pages/advisor/Reminders'
 import ClientProfile from './pages/advisor/ClientProfile'
 import ClientForm from './pages/advisor/ClientForm'
 import AdviserCompliance from './pages/advisor/AdviserCompliance'
+import Compliance from './pages/advisor/Compliance'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
@@ -27,6 +28,9 @@ import MyRequests from './pages/claims/MyRequests'
 import NewRequest from './pages/claims/NewRequest'
 import ReportClaim from './pages/claims/ReportClaim'
 import ClientClaimsArea from './pages/client/ClientClaimsArea'
+import ProviderLayout from './pages/provider/ProviderLayout'
+import ProviderInbox from './pages/provider/ProviderInbox'
+import ProviderTaskDetail from './pages/provider/ProviderTaskDetail'
 import './App.css'
 
 function SignOutBlock({ onSignOut }) {
@@ -54,11 +58,11 @@ function WorkspaceLayout() {
       <p className="eyebrow">ADVISOR WORKSPACE</p>
       <hr className="side-divider" />
       <nav>
-        <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
+        <NavLink to="/" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
-        <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
+        <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />
     </aside>
@@ -107,6 +111,13 @@ export default function App() {
       </Route>
     </Route>
 
+    <Route element={<ProtectedRoute providerOnly />}>
+      <Route element={<ProviderLayout />}>
+        <Route path="provider" element={<ProviderInbox />} />
+        <Route path="provider/tasks/:taskId" element={<ProviderTaskDetail />} />
+      </Route>
+    </Route>
+
     <Route element={<ProtectedRoute staffOnly adminOnly />}>
       <Route element={<AdminLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
@@ -123,6 +134,7 @@ export default function App() {
       <Route path="clients/new" element={<Navigate to="/clients?add=1" replace />} />
       <Route path="clients/:id" element={<ClientProfile />} />
       <Route path="clients/:id/edit" element={<ClientForm />} />
+      <Route path="compliance" element={<Compliance />} />
       <Route path="compliance/:adviserId" element={<AdviserCompliance />} />
       <Route path="tasks" element={<Tasks />} />
       <Route path="tasks/new" element={<NewRequest staff />} />

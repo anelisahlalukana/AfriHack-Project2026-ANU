@@ -24,6 +24,7 @@ export function statusTone(status) {
 
 export function waitingLabel(waitingOn, providerName, viewer = 'staff') {
   if (!waitingOn) return ''
+  if (viewer === 'provider') return { client: 'Waiting on the client', provider: 'Waiting on you', us: 'With Royal Square' }[waitingOn] || ''
   if (waitingOn === 'client') return viewer === 'client' ? 'Waiting on you' : 'Waiting on client'
   if (waitingOn === 'provider') return `Waiting on ${providerName || 'the provider'}`
   return viewer === 'client' ? 'With your adviser' : 'Waiting on us'

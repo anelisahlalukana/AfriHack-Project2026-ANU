@@ -144,7 +144,7 @@ function createSharedService({ db, checkConsent, push, pushPublicKey = "" }) {
     async financialPull(user, clientId) {
       await clientFor(user, clientId);
       let consent;
-      try { consent = await checkConsent(clientId); } catch { fail(503, "Consent verification is unavailable. No financial data was pulled."); }
+      try { consent = await checkConsent(clientId, user); } catch { fail(503, "Consent verification is unavailable. No financial data was pulled."); }
       if (consent?.valid !== true || !consent.expiresAt || !(Date.parse(consent.expiresAt) > Date.now())) fail(403, "Valid, unexpired client consent is required.");
       // The insurer remains mocked as requested by Royal Square; storage and consent are real.
       const snapshot = { id: randomUUID(), clientId, source: "Ubuntu Demo Financial (fictional provider)", simulated: true, currency: "ZAR", assets: [{ name: "Mock savings", amount: 85000 }, { name: "Mock retirement fund", amount: 420000 }], liabilities: [{ name: "Mock vehicle finance", amount: 95000 }], netWorth: 410000, pulledAt: new Date().toISOString() };

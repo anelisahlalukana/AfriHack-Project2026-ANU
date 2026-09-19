@@ -222,6 +222,8 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .rs-check .rs-tick:has(input:checked){background:var(--rs-ok);border-color:var(--rs-ok);color:#fff}
 .rs-check .rs-tick:has(input:focus-visible){outline:2px solid var(--rs-red-text);outline-offset:2px}
 .rs-portal-top img{width:190px;height:auto}
+/* provider portal */
+.rs-form.rs-needs label{flex:none}
 /* === end claims & requests === */
 /* Client claims: header with the "Log a claim" dropdown, and claim pages fitted to the phone-width client area. */
 .claims-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -265,3 +267,33 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .claims-head .col-menu>button{white-space:nowrap}
 .client-top .signout{position:absolute;right:12px;top:50%;transform:translateY(-50%);min-height:40px;padding:6px 12px;font-size:13px}
 @media(max-width:359px){.client-top .signout span{display:none}.client-top .signout{padding:6px 10px}}
+
+/* Compliance follows the existing cards, badges and form styling. */
+.stats.compliance-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
+.compliance-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0}
+.compliance-table{overflow-x:auto;width:100%}
+.compliance-table table{width:100%;border-collapse:collapse;min-width:780px}
+.compliance-table th,.compliance-table td{text-align:left;padding:12px 8px;border-bottom:1px solid #dfd6cf}
+.compliance-table th{font-size:12px;color:#62554c}
+.compliance-table a{font-weight:600}
+.compliance-cpd{border-top:1px solid #dfd6cf;padding-top:16px;margin-top:16px}
+.compliance-cpd progress{width:100%;height:12px;accent-color:#a30b14}
+.compliance-fields{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
+.compliance-fields legend{font-weight:600;margin-bottom:12px}
+.compliance-fields button{align-self:flex-start}
+.compliance-activities{list-style:none;padding:0;max-height:320px;overflow:auto}
+.compliance-activities li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #dfd6cf}
+.compliance-activities small{display:block;color:#74645a;margin-top:4px}
+.compliance-audit ol{padding-left:20px;max-height:380px;overflow:auto}
+.compliance-audit li{padding:8px 0;line-height:1.6;overflow-wrap:anywhere}
+.compliance-audit time{font-weight:600}
+@media(max-width:900px){.stats.compliance-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.stats.compliance-stats{grid-template-columns:1fr}}
+.stats .metric{color:inherit;text-decoration:none}
+.stats a.metric:hover{border-color:#cfc4bd}
+.stats .metric small{color:#70635a;font-size:12px}
+.live{display:inline-flex;align-items:center;gap:6px;color:#3c7650;font-size:12px;white-space:nowrap}
+.live i{width:8px;height:8px;border-radius:50%;background:currentColor;animation:live-pulse 2s infinite}
+.live-stale{color:#8f5f0d}.live-stale i{animation:none}
+@keyframes live-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.live i{animation:none}}

@@ -24,8 +24,9 @@ Based on the brief, the transcript, and Vusi's Q&A follow-up — note there are 
 - Communicate with any client (not siloed to "their own" clients only, per the transcript)
 - Secure, POPIA-compliant storage for ID documents, banking details, photos, voice notes — encrypted and backed up
 
-**Provider / integration layer (not a logged-in user — mocked for the hackathon)**
+**Provider / integration layer (mocked insurers, with a provider portal login)**
 - Receives claims, returns claim number and handler (simulated; Royal Square confirmed no real sandbox APIs will be given — mock everything against a fake company)
+- Provider portal (`/provider`): each insurer's login sees only the claims and requests sent to it, completes its own steps, posts progress updates, declines with a reason, reassigns the claims handler, uploads documents and messages Royal Square
 - Receives document/data pass-through (API, direct integration, or file transfer) — the brief's stated "more automatic pass-through, more useful" principle
 - Client Consent-driven data pull (aggregator/bank/pension/insurer) feeding the net-worth dashboard
 

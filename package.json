@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\""
-},
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anelisahlalukana/AfriHack-Project2026-ANU.git"
@@ -19,6 +21,7 @@
   },
   "homepage": "https://github.com/anelisahlalukana/AfriHack-Project2026-ANU#readme",
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "concurrently": "^10.0.5",
+    "vite": "^8.3.0"
   }
 }

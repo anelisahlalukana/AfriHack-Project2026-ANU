@@ -49,3 +49,10 @@ test('form defaults and blank answers', () => {
   assert.deepEqual(dynamicDefaults(fields, { a: 'saved' }), { a: 'saved', b: false, items: [{ category: 'asset', item_type: '', amount: '' }] })
   assert.deepEqual(compactForm({ a: '', b: false, c: 'x', d: null }), { b: false, c: 'x' })
 })
+
+test('waiting labels for the provider portal', () => {
+  assert.equal(waitingLabel('provider', 'Old Mutual', 'provider'), 'Waiting on you')
+  assert.equal(waitingLabel('us', 'Old Mutual', 'provider'), 'With Royal Square')
+  assert.equal(waitingLabel('client', 'Old Mutual', 'provider'), 'Waiting on the client')
+  assert.equal(waitingLabel(null, 'Old Mutual', 'provider'), '')
+})

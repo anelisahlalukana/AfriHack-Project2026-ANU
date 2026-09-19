@@ -1,0 +1,104 @@
+name: CI
+
+# Runs on every pull request into development or main, and is reused by deploy.yml so that
+# nothing reaches production without passing the same checks.
+on:
+  pull_request:
+    branches: [main, development]
+  workflow_call:
+
+permissions:
+  contents: read
+
+# Superseded pushes to a PR cancel the older run. The group is prefixed with the event so it can
+# never collide with the caller's own concurrency group when this runs as a reusable workflow.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  client:
+    name: Client (lint, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Component tests
+        run: npm run test:components
+      - name: Build
+        run: npm run build
+
+  server:
+    name: Server (lint, test, boot)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tests
+        run: npm test
+      - name: Boot smoke test
+        # Starts the real server.js (demo mode, so it never touches Supabase) and checks it answers.
+        # This catches start-up crashes that unit tests can miss, such as a route importing
+        # something that no longer exists.
+        env:
+          PORT: 5099
+        run: |
+          node server.js --demo > server.log 2>&1 &
+          server_pid=$!
+          for attempt in $(seq 1 20); do
+            if curl --silent --fail http://127.0.0.1:5099/api/health; then
+              echo
+              kill "$server_pid"
+              exit 0
+            fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          echo "::error::Server did not become healthy"
+          cat server.log
+          kill "$server_pid" 2>/dev/null || true
+          exit 1
+
+  # A single, stable check name to require in branch protection, so the required-checks list
+  # doesn't need updating whenever jobs above are added or renamed.
+  ci-passed:
+    name: CI passed
+    if: always()
+    needs: [client, server]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail unless every job succeeded
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for result in $RESULTS; do
+            if [ "$result" != "success" ]; then exit 1; fi
+          done

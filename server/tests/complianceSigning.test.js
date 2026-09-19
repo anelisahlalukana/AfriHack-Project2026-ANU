@@ -1,0 +1,25 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { PDFDocument } = require("pdf-lib");
+const { fakeDatabase } = require("./helpers/complianceDb");
+const db = fakeDatabase({ documents: [{ id: "doc", client_id: "client", document_type: "client_consent", status: "sent", filled_file_url: "filled.pdf" }] });
+let template;
+db.storage = { from: () => ({ download: async () => ({ data: new Blob([template]), error: null }), upload: async () => ({ error: null }) }) };
+const config = require.resolve("../src/config/supabaseClient");
+require.cache[config] = { id: config, filename: config, loaded: true, exports: { supabaseAdmin: db } };
+const { signDocument } = require("../src/services/documents.service");
+test("real signing service preserves successful PDF/row signing when the audit insert fails", async () => {
+  const pdf = await PDFDocument.create(); pdf.addPage(); template = await pdf.save();
+  db.failures.compliance_audit_log = { code: "OFFLINE" };
+  const actor = { id: "verified-client", user_metadata: { full_name: "Verified Client" } };
+  const signed = await signDocument("client", "client_consent", { signerName: "Submitted name" }, actor);
+  assert.equal(signed.status, "signed");
+  assert.ok(signed.expiresAt);
+  const attemptedAudit = db.calls.find(c => c.table === "compliance_audit_log");
+  assert.equal(attemptedAudit.insert.actor_id, actor.id);
+  assert.equal(attemptedAudit.insert.actor_name, "Verified Client");
+  assert.equal(attemptedAudit.insert.event_type, "consent_signed");
+  delete db.failures.compliance_audit_log;
+  await signDocument("client", "client_consent", { signerName: "Submitted name" }, actor);
+  assert.equal(db.tables.compliance_audit_log.at(-1).event_type, "consent_renewed");
+});

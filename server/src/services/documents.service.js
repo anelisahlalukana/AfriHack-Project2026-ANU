@@ -1,21 +1,22 @@
 const { supabaseAdmin } = require("../config/supabaseClient");
 const { fillTemplate, embedSignature } = require("../utils/pdfFiller");
-const { DOCUMENT_TYPES, DOCUMENT_TYPE_VALUES } = require("../constants/documentTypes");
+const {
+  DOCUMENT_TYPES,
+  DOCUMENT_TYPE_VALUES,
+  ACKNOWLEDGE_ONLY_TYPES,
+} = require("../constants/documentTypes");
 const { ONBOARDING_STATUS, ACTIVE_STATUS } = require("../constants/clientStatuses");
+const { notifyClient, notifyAdviser } = require("./notifications.service");
 
 const TEMPLATES_BUCKET = process.env.DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 const DOCUMENTS_BUCKET = process.env.CLIENT_DOCUMENTS_BUCKET || "client-documents";
-const CONSENT_VALIDITY_MONTHS = 12;
+const { addConsentMonths } = require("../utils/complianceRules");
+const { getConsentStatus } = require("./consent.service");
+const { logConsentSigning } = require("./complianceAudit.service");
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
 
 function docMeta(type) {
   return DOCUMENT_TYPES.find((d) => d.type === type);
-}
-
-function addMonths(isoDate, months) {
-  const date = new Date(isoDate);
-  date.setMonth(date.getMonth() + months);
-  return date.toISOString();
 }
 
 // Excludes signature_data (base64 image data) — nothing consumes it and
@@ -89,9 +90,13 @@ async function listDocuments(clientId) {
   });
 }
 
+function fullName(client) {
+  return [client.first_name, client.second_name, client.surname].filter(Boolean).join(" ");
+}
+
 function clientFillFields(client) {
   return {
-    full_name: [client.first_name, client.second_name, client.surname].filter(Boolean).join(" "),
+    full_name: fullName(client),
     first_name: client.first_name,
     surname: client.surname,
     id_number: client.id_number,
@@ -156,12 +161,17 @@ async function sendDocument(clientId, type) {
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
+
+  await notifyClient(clientId, {
+    title: `${docMeta(type).label} is ready for you to review and sign.`,
+    body: "Open your Documents to review and sign it.",
+  });
   return toCamelDocument(data);
 }
 
 // Bakes the captured signature into the filled PDF (generating it first if
 // the document was never explicitly sent) and stores it as the signed copy.
-async function signDocument(clientId, type, { signature, signerName }) {
+async function signDocument(clientId, type, { signature, signerName }, actor) {
   let row = await getDocumentRow(clientId, type);
   let filledBytes;
 
@@ -183,12 +193,12 @@ async function signDocument(clientId, type, { signature, signerName }) {
     signedAt,
   });
 
-  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt });
+  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt, actor });
 }
 
 // A client signed outside the app (print/scan or a PDF editor) and uploaded the result, so
 // there is nothing to embed: the uploaded file is stored as-is as the signed copy.
-async function uploadSignedDocument(clientId, type, fileBytes) {
+async function uploadSignedDocument(clientId, type, fileBytes, actor) {
   const row = await getDocumentRow(clientId, type);
   return saveSignedCopy({
     clientId,
@@ -197,12 +207,13 @@ async function uploadSignedDocument(clientId, type, fileBytes) {
     bytes: fileBytes,
     signature: null,
     signedAt: new Date().toISOString(),
+    actor,
   });
 }
 
 // Shared by every route to 'signed': stores the signed PDF, marks the document signed, and
 // then checks whether that completes the client's onboarding documents.
-async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt }) {
+async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt, actor }) {
   const signedPath = `${clientId}/${type}/signed.pdf`;
   const { error: uploadError } = await supabaseAdmin.storage
     .from(DOCUMENTS_BUCKET)
@@ -217,7 +228,7 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt 
     signed_file_url: signedPath,
     signature_data: signature || null,
     signed_at: signedAt,
-    expires_at: type === "client_consent" ? addMonths(signedAt, CONSENT_VALIDITY_MONTHS) : null,
+    expires_at: type === "client_consent" ? addConsentMonths(signedAt) : null,
   };
 
   const { data, error } = row
@@ -225,16 +236,65 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt 
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
+  if (type === "client_consent") await logConsentSigning(clientId, data, row, actor);
 
-  await activateClientIfAllSigned(clientId);
+  const allSigned = await activateClientIfAllSigned(clientId);
+  // Re-signing a document that was already signed (e.g. renewing an expired consent) doesn't
+  // complete anything new, so only a first signing can be the one that finishes onboarding.
+  const completedOnboarding = allSigned && row?.status !== "signed";
+  await notifyDocumentSigned(clientId, type, { completedOnboarding });
   return toCamelDocument(data);
+}
+
+async function getNotificationTarget(clientId) {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("first_name, second_name, surname, advisor_id")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Tells the client's adviser that a document was signed or acknowledged and, when this was
+// the one that completed all 5, tells both sides that onboarding paperwork is done. Best
+// effort: nothing here may fail the signature that has already been saved.
+async function notifyDocumentSigned(clientId, type, { completedOnboarding }) {
+  try {
+    const client = await getNotificationTarget(clientId);
+    if (!client) return;
+
+    const name = fullName(client);
+    const { label } = docMeta(type);
+    const verb = ACKNOWLEDGE_ONLY_TYPES.includes(type) ? "acknowledged" : "signed";
+
+    await notifyAdviser(client.advisor_id, clientId, {
+      title: `${name} ${verb} ${label}.`,
+      body: "Open their profile to view it.",
+    });
+
+    if (completedOnboarding) {
+      await notifyClient(clientId, {
+        title: "All onboarding documents complete",
+        body: "You've signed all 5 of your onboarding documents. Thank you.",
+      });
+      await notifyAdviser(client.advisor_id, clientId, {
+        title: `${name}: all onboarding documents complete`,
+        body: "All 5 onboarding documents are now signed.",
+      });
+    }
+  } catch (err) {
+    console.error(`[documents.service] could not notify about ${type} for client ${clientId}:`, err.message);
+  }
 }
 
 // Once all 5 document types are signed, an 'onboarding' client becomes 'active'. The update
 // is conditional on status = 'onboarding', so an already 'active' or 'inactive' client is
 // never touched. The document is already saved by now, so a failure here is logged rather
-// than failing the signature.
+// than failing the signature. Returns whether all 5 documents are signed.
 async function activateClientIfAllSigned(clientId) {
+  let allSigned = false;
   try {
     const { data, error } = await supabaseAdmin
       .from("documents")
@@ -246,7 +306,8 @@ async function activateClientIfAllSigned(clientId) {
     if (error) throw new Error(error.message);
 
     const signed = new Set((data || []).map((row) => row.document_type));
-    if (!DOCUMENT_TYPE_VALUES.every((type) => signed.has(type))) return;
+    if (!DOCUMENT_TYPE_VALUES.every((type) => signed.has(type))) return false;
+    allSigned = true;
 
     const { error: updateError } = await supabaseAdmin
       .from("users")
@@ -258,6 +319,7 @@ async function activateClientIfAllSigned(clientId) {
   } catch (err) {
     console.error(`[documents.service] could not update status for client ${clientId}:`, err.message);
   }
+  return allSigned;
 }
 
 async function getDownloadUrl(clientId, type) {
@@ -280,25 +342,6 @@ async function signStorageUrl(bucket, path) {
 
   if (error) throw new Error(error.message);
   return data.signedUrl;
-}
-
-async function getConsentStatus(clientId) {
-  const row = await getDocumentRow(clientId, "client_consent");
-
-  if (!row || row.status !== "signed" || !row.signed_at) {
-    return { signed: false, expired: null, valid: false, signedAt: null, expiresAt: null };
-  }
-
-  const expiresAt = row.expires_at || addMonths(row.signed_at, CONSENT_VALIDITY_MONTHS);
-  const expired = Date.now() > new Date(expiresAt).getTime();
-
-  return {
-    signed: true,
-    expired,
-    valid: !expired,
-    signedAt: row.signed_at,
-    expiresAt,
-  };
 }
 
 module.exports = {

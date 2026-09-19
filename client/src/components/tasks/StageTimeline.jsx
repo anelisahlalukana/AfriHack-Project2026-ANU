@@ -2,6 +2,10 @@ import { Check } from 'lucide-react'
 import { actorName, formatDateTime } from '../../lib/taskFormat'
 
 const ACTOR_HINT = { client: 'You', adviser: 'Royal Square', provider: 'Insurer or provider' }
+const VIEWER_HINTS = {
+  staff: { ...ACTOR_HINT, client: 'Client' },
+  provider: { client: 'Client', adviser: 'Royal Square', provider: 'You' },
+}
 
 // The workflow's steps with done / current / upcoming state, and when each step was reached.
 export function StageTimeline({ task, viewer = 'client' }) {
@@ -16,7 +20,7 @@ export function StageTimeline({ task, viewer = 'client' }) {
     {task.stages.map((stage, index) => {
       const state = finished || index < currentIndex ? 'done' : index === currentIndex && task.status !== 'declined' ? 'current' : 'upcoming'
       const update = reached[stage.key]
-      const whose = viewer === 'staff' ? { ...ACTOR_HINT, client: 'Client' }[stage.actor] : ACTOR_HINT[stage.actor]
+      const whose = (VIEWER_HINTS[viewer] || ACTOR_HINT)[stage.actor]
       return <li key={stage.key} className={state} aria-current={state === 'current' ? 'step' : undefined}>
         <span className="rs-dot">{state === 'done' ? <Check size={12} /> : index + 1}</span>
         <div>

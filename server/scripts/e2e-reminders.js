@@ -162,7 +162,7 @@ async function main() {
         // The friendly 503 hides the cause, so ask the database directly (the due reminder is still waiting).
         const raw = await db.rpc("reminders_run_reminders");
         const cause = raw.error ? `${raw.error.code}: ${raw.error.message}` : tickError;
-        throw new Error(/client_user_id/.test(cause) ? `the database still has the broken reminder functions (${cause}). Apply supabase/migrations/202609190011_reminders_fix_client_link.sql, then re-run.` : cause);
+        throw new Error(/client_user_id/.test(cause) ? `the database still has the broken reminder functions (${cause}). Apply supabase/migrations/202609190011_reminders_fix_client_link.sql, then re-run.` : cause, { cause: error });
       }
     });
     await step("advisor receives the notification (with the reminder's title and due date)", async () => {
