@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { BrowserRouter, Outlet, Route, Routes, Link } from 'react-router-dom'
-import { LayoutDashboard, LogOut, Plus, ShieldCheck, ShieldEllipsis, Users } from 'lucide-react'
+import { BrowserRouter, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
+import { LayoutDashboard, LogOut, Plus, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -15,25 +15,36 @@ import AdminDashboard from './pages/AdminDashboard'
 import AdminUsers from './pages/AdminUsers'
 import './App.css'
 
-function WorkspaceLayout() {
-  const { session, signOut } = useAuth()
+function SignOutBlock({ onSignOut }) {
   const [error, setError] = useState('')
   const [signingOut, setSigningOut] = useState(false)
   async function logout() {
     setSigningOut(true); setError('')
-    try { await signOut() }
+    try { await onSignOut() }
     catch (error) { setError(error.message) }
     finally { setSigningOut(false) }
   }
+  return <div className="advisor">
+    <button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
+    {error && <p role="alert" className="error">{error}</p>}
+  </div>
+}
+
+function WorkspaceLayout() {
+  const { session, signOut } = useAuth()
+  const name = session.user.user_metadata?.full_name || session.user.email
   return <div className="app-shell">
-    <aside><Link className="brand" to="/"><img src="/images/logo.jpg" alt="Royal Square Financial" /></Link>
+    <aside>
+      <Link className="side-logo" to="/"><img src="/images/slogan.png" alt="Royal Square Financial" /></Link>
+      <p className="side-name">{name}</p>
       <p className="eyebrow">ADVISOR WORKSPACE</p>
+      <hr className="side-divider" />
       <nav>
-        <Link to="/"><LayoutDashboard size={18} /> Client overview</Link>
-        <Link to="/clients/new"><Plus size={18} /> Onboard a client</Link>
-        <Link to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</Link>
+        <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
+        <NavLink to="/clients/new"><Plus size={18} /> Onboard a client</NavLink>
+        <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
       </nav>
-      <div className="advisor"><ShieldCheck size={22} /><span>{session.user.email}</span><button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>{error && <p role="alert" className="error">{error}</p>}</div>
+      <SignOutBlock onSignOut={signOut} />
     </aside>
     <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
   </div>
@@ -41,22 +52,18 @@ function WorkspaceLayout() {
 
 function AdminLayout() {
   const { session, signOut } = useAuth()
-  const [error, setError] = useState('')
-  const [signingOut, setSigningOut] = useState(false)
-  async function logout() {
-    setSigningOut(true); setError('')
-    try { await signOut() }
-    catch (error) { setError(error.message) }
-    finally { setSigningOut(false) }
-  }
+  const name = session.user.user_metadata?.full_name || session.user.email
   return <div className="app-shell">
-    <aside><Link className="brand" to="/admin"><img src="/images/logo.jpg" alt="Royal Square Financial" /></Link>
+    <aside>
+      <Link className="side-logo" to="/admin"><img src="/images/slogan.png" alt="Royal Square Financial" /></Link>
+      <p className="side-name">{name}</p>
       <p className="eyebrow">ADMIN</p>
+      <hr className="side-divider" />
       <nav>
-        <Link to="/admin"><LayoutDashboard size={18} /> Dashboard</Link>
-        <Link to="/admin/users"><Users size={18} /> User management</Link>
+        <NavLink to="/admin" end><LayoutDashboard size={18} /> Dashboard</NavLink>
+        <NavLink to="/admin/users"><Users size={18} /> User management</NavLink>
       </nav>
-      <div className="advisor"><ShieldCheck size={22} /><span>{session.user.email}</span><button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>{error && <p role="alert" className="error">{error}</p>}</div>
+      <SignOutBlock onSignOut={signOut} />
     </aside>
     <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Admin</span></div><Outlet /></main>
   </div>
