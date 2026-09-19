@@ -1,11 +1,11 @@
+import ExtendedProfile from '../../components/clients/ExtendedProfile'
 import { useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { LogOut } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 
-// Read-only for now: the client's details as their adviser recorded them, plus sign out.
 export default function MyProfile() {
-  const { user, client, clientError } = useOutletContext()
+  const { client, clientError, setClient } = useOutletContext()
   const { signOut } = useAuth()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -17,17 +17,6 @@ export default function MyProfile() {
     catch (error) { setError(error.message); setBusy(false) }
   }
 
-  const fullName = client
-    ? [client.first_name, client.second_name, client.surname].filter(Boolean).join(' ')
-    : user.user_metadata?.full_name
-  const details = [
-    ['Name', fullName],
-    ['ID number', client?.id_number],
-    ['Email', client?.contact_email || user.email],
-    ['Mobile', client?.contact_mobile],
-    ['Address', client?.physical_address],
-  ]
-
   return <>
     <header>
       <p className="eyebrow">YOUR PROFILE</p>
@@ -37,11 +26,9 @@ export default function MyProfile() {
     {clientError && <p className="error card" role="alert">{clientError}</p>}
     {client === undefined && <p role="status">Loading…</p>}
 
-    {client !== undefined && <section className="card">
-      <h2>Your details</h2>
-      <dl>{details.map(([label, value]) => <div className="detail-row" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl>
-      <small>To change any of these, contact your adviser.</small>
-    </section>}
+    {client === null && !clientError && <p className="card">No client profile is linked to your account. Please contact your adviser.</p>}
+
+    {client && <ExtendedProfile key={client.id} client={client} onSaved={setClient} />}
 
     <section className="card">
       {error && <p className="error" role="alert">{error}</p>}

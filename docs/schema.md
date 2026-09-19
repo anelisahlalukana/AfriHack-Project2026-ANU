@@ -44,6 +44,7 @@ CREATE TABLE public.users (
   bank_account_number text,
   bank_account_type text,
   debit_order_day integer,
+  extended_profile jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(extended_profile) = 'object'),
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
   CONSTRAINT users_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id),
@@ -210,3 +211,13 @@ CREATE TABLE public.provider_events (
   CONSTRAINT provider_events_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
   CONSTRAINT provider_events_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id)
 );
+-- users.extended_profile (migration 006): additional personal details, work allocation,
+-- rewards programmes, referral, employment/HR, doctor, salary branch code, alternate
+-- banking, extra contact/address information, spouseOrParent, and goals.immediate /
+-- goals.longTerm (arrays of text). Existing scalar users columns are authoritative
+-- for mapped fields; dependantsBeneficiaries remains in client_dependants. Existing
+-- monetary targets/progress remain in client_goals.
+
+-- Related person UI retains the spouseOrParent JSON key for existing profiles.
+-- spouseOrParent.relationship: spouse, partner, parent, or legal_guardian (optional).
+-- workAllocation values describe percentages of a typical working week.
