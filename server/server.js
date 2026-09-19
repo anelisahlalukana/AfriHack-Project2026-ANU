@@ -16,6 +16,7 @@ const usersRoutes = require("./src/routes/users.routes");
 const clientsRoutes = require("./src/routes/clients.routes");
 const providerRoutes = require("./src/routes/provider.routes");
 const dashboardRoutes = require("./src/routes/dashboard.routes");
+const reportsRoutes = require("./src/routes/reports.routes");
 const { createReminders } = require("./src/reminders");
 const webpush = require("web-push");
 
@@ -72,6 +73,7 @@ app.use("/api/clients/:clientId/compliance", clientComplianceRoutes);
 app.use("/api/compliance", complianceDashboardRoutes);
 app.use("/api/tasks", tasksRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportsRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api/admin/users", usersRoutes);
 app.use("/api/provider", providerRoutes);
