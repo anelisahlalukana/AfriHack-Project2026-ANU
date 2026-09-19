@@ -1,8 +1,8 @@
 import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Target } from 'lucide-react'
-import { useClients } from '../hooks/useClients'
-import { money, totals, goalProgress } from '../lib/financials'
-import { DocumentStatusList } from '../components/documents/DocumentStatusList'
+import { useClients } from '../../hooks/useClients'
+import { money, totals, goalProgress } from '../../lib/financials'
+import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
 export default function ClientProfile() {
   const { id } = useParams()
   const { data: client, loading, error, retry } = useClients(id)

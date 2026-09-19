@@ -21,31 +21,36 @@ async function fillTemplate(templateBytes, fields = {}) {
 }
 
 // Draws the captured signature image and signer name/date onto the last page
-// of a filled PDF and returns the signed PDF bytes.
+// of a filled PDF and returns the signed PDF bytes. Without a signature image
+// (documents that are acknowledged with a typed name) only the name and date
+// are stamped, labelled "Acknowledged by".
 async function embedSignature(filledPdfBytes, { signatureDataUrl, signerName, signedAt }) {
   const pdfDoc = await PDFDocument.load(filledPdfBytes);
   const pages = pdfDoc.getPages();
   const page = pages[pages.length - 1];
 
-  const isPng = signatureDataUrl.startsWith("data:image/png");
-  const base64 = signatureDataUrl.split(",")[1];
-  const imageBytes = Buffer.from(base64, "base64");
-  const image = isPng ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
-
-  const sigWidth = 160;
-  const sigHeight = (image.height / image.width) * sigWidth;
   const marginX = 50;
   const marginY = 60;
 
-  page.drawImage(image, {
-    x: marginX,
-    y: marginY,
-    width: sigWidth,
-    height: sigHeight,
-  });
+  if (signatureDataUrl) {
+    const isPng = signatureDataUrl.startsWith("data:image/png");
+    const base64 = signatureDataUrl.split(",")[1];
+    const imageBytes = Buffer.from(base64, "base64");
+    const image = isPng ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
+
+    const sigWidth = 160;
+    const sigHeight = (image.height / image.width) * sigWidth;
+
+    page.drawImage(image, {
+      x: marginX,
+      y: marginY,
+      width: sigWidth,
+      height: sigHeight,
+    });
+  }
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  page.drawText(`Signed by: ${signerName}`, {
+  page.drawText(`${signatureDataUrl ? "Signed" : "Acknowledged"} by: ${signerName}`, {
     x: marginX,
     y: marginY - 14,
     size: 9,

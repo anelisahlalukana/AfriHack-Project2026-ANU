@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { completeRegistration } from '../api/clients'
-import { supabase } from '../lib/supabaseClient'
-import { loginDestination } from '../lib/authRoles'
+import { completeRegistration, finishRegistration } from '../../api/clients'
+import { supabase } from '../../lib/supabaseClient'
+import { loginDestination } from '../../lib/authRoles'
 
 // Reached from the invitation email an adviser triggers when adding a client.
 // Step A: ID number + new password (server saves them and emails a code).
@@ -56,6 +56,9 @@ export default function CompleteRegistration() {
       })
       if (error) throw error
       if (!result.session) throw new Error('Verification did not return a session. Please try again.')
+      // Their day-one documents are sent now. If that fails they still get in; an adviser
+      // can send the documents later, so this must never block the redirect.
+      await finishRegistration().catch(() => {})
       navigate(loginDestination(result.session.user), { replace: true })
     } catch (error) {
       setError(error.message)
@@ -92,7 +95,7 @@ export default function CompleteRegistration() {
         <p>We emailed a code to <b>{email}</b>.</p>
         <label>Verification code<input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6,10}" minLength={6} maxLength={10} required disabled={busy} autoFocus /></label>
         {error && <p className="error" role="alert">{error}</p>}
-        <button className="primary" disabled={busy}>{busy ? 'Verifying…' : 'Verify and continue'}</button>
+        <button className="primary" disabled={busy}>{busy ? 'Verifying and setting up…' : 'Verify and continue'}</button>
         <p className="auth-switch">Didn't get it? <button type="button" className="link" onClick={() => { setError(''); setStep('details') }}>Go back and request a new code</button></p>
       </form>}
     </section>

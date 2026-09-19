@@ -1,4 +1,4 @@
-const { DOCUMENT_TYPE_VALUES } = require("../constants/documentTypes");
+const { DOCUMENT_TYPE_VALUES, ACKNOWLEDGE_ONLY_TYPES } = require("../constants/documentTypes");
 const { ROLES } = require("../constants/roles");
 const { QUALIFICATION_STATUSES, CPD_STATUSES } = require("../constants/complianceStatuses");
 
@@ -17,15 +17,20 @@ function validateDocumentType(req, res, next) {
 
 function validateSignaturePayload(req, res, next) {
   const { signature, signerName } = req.body || {};
+  // FAIS Disclosure is acknowledged with a typed name, so its signature image is optional.
+  const signatureOptional =
+    ACKNOWLEDGE_ONLY_TYPES.includes(req.params.type) && (signature === undefined || signature === null || signature === "");
 
-  if (typeof signature !== "string" || signature.trim().length === 0) {
-    return res.status(400).json({ error: "Field 'signature' (base64 image data) is required" });
-  }
+  if (!signatureOptional) {
+    if (typeof signature !== "string" || signature.trim().length === 0) {
+      return res.status(400).json({ error: "Field 'signature' (base64 image data) is required" });
+    }
 
-  if (!/^data:image\/(png|jpeg);base64,/.test(signature)) {
-    return res
-      .status(400)
-      .json({ error: "Field 'signature' must be a base64 data URL (image/png or image/jpeg)" });
+    if (!/^data:image\/(png|jpeg);base64,/.test(signature)) {
+      return res
+        .status(400)
+        .json({ error: "Field 'signature' must be a base64 data URL (image/png or image/jpeg)" });
+    }
   }
 
   if (typeof signerName !== "string" || signerName.trim().length === 0) {

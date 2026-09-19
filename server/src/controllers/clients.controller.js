@@ -37,4 +37,13 @@ async function login(req, res) {
   }
 }
 
-module.exports = { createClient, completeRegistration, login };
+async function finishRegistration(req, res) {
+  try {
+    const result = await clientsService.finishRegistration(req.user.id);
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+module.exports = { createClient, completeRegistration, login, finishRegistration };

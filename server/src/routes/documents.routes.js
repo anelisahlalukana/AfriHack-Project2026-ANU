@@ -1,18 +1,22 @@
 const express = require("express");
-const { requireAuth } = require("../middleware/auth");
+const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireClientAccess, requireSentToClient } = require("../middleware/clientAccess");
 const { validateDocumentType, validateSignaturePayload } = require("../middleware/validate");
 const controller = require("../controllers/documents.controller");
 
 const router = express.Router({ mergeParams: true });
 
-router.use(requireAuth);
+// Advisors reach any client's documents; a client only their own.
+router.use(requireAuth, requireClientAccess);
 
 router.get("/", controller.listDocuments);
 router.get("/:type/download", validateDocumentType, controller.downloadDocument);
-router.post("/:type/send", validateDocumentType, controller.sendDocument);
+// Sending is an adviser action (clients get theirs from registration or an adviser).
+router.post("/:type/send", requireRole(["advisor"]), validateDocumentType, controller.sendDocument);
 router.post(
   "/:type/sign",
   validateDocumentType,
+  requireSentToClient,
   validateSignaturePayload,
   controller.signDocument
 );

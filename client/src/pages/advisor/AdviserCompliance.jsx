@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom'
-import { ComplianceTracker } from '../components/documents/ComplianceTracker'
+import { ComplianceTracker } from '../../components/documents/ComplianceTracker'
 
 export default function AdviserCompliance() {
   const { adviserId } = useParams()

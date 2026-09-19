@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 
 const { requireAuth } = require("./src/middleware/auth");
+const { requireClientAccess } = require("./src/middleware/clientAccess");
 const documentsController = require("./src/controllers/documents.controller");
 const documentsRoutes = require("./src/routes/documents.routes");
 const complianceRoutes = require("./src/routes/compliance.routes");
@@ -22,7 +23,12 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/clients", clientsRoutes);
 app.use("/api/clients/:clientId/documents", documentsRoutes);
-app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
+app.get(
+  "/api/clients/:clientId/consent-status",
+  requireAuth,
+  requireClientAccess,
+  documentsController.getConsentStatus
+);
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
 app.use("/api/admin/users", usersRoutes);
 

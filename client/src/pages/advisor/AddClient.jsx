@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
-import { addClient } from '../api/clients'
+import { addClient } from '../../api/clients'
 
 // Day-one details only. The full financial needs analysis is a later step, done
 // from the client's profile (ClientForm.jsx).
