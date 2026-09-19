@@ -17,7 +17,13 @@ const STATUS_CLASS = {
   filed: 'badge',
 }
 
-export function DocumentStatusList({ clientId }) {
+// FAIS Disclosure is acknowledged, not signed; it still ends up with status 'signed'.
+const ACKNOWLEDGE_TYPE = 'fais_disclosure'
+
+// `onlySent` hides documents that haven't been sent yet (used on the client's own
+// account page, where only what's actually been sent to them should show).
+// `emptyMessage` is shown when there is nothing to list.
+export function DocumentStatusList({ clientId, onlySent = false, emptyMessage }) {
   const [documents, setDocuments] = useState(null)
   const [error, setError] = useState('')
   const [openType, setOpenType] = useState(null)
@@ -41,19 +47,22 @@ export function DocumentStatusList({ clientId }) {
   }
 
   const openDoc = documents?.find(d => d.documentType === openType)
+  const visibleDocuments = onlySent ? documents?.filter(d => d.status !== 'not_sent') : documents
 
   return <section className="card">
     <header className="section-heading"><div><h2><FileText size={20} /> Documents</h2><p>Compliance documents for this client</p></div></header>
     {error && <p className="error" role="alert">{error}</p>}
     {!documents && !error && <p>Loading…</p>}
-    {documents?.map(doc => (
-      <div className="detail-row" key={doc.documentType}>
+    {visibleDocuments && !visibleDocuments.length && emptyMessage && <p className="empty">{emptyMessage}</p>}
+    {visibleDocuments?.map(doc => {
+      const acknowledge = doc.documentType === ACKNOWLEDGE_TYPE
+      return <div className="detail-row doc-row" key={doc.documentType}>
         <span>
           <b>{doc.label}</b>
-          {doc.signedAt && <small>Signed {new Date(doc.signedAt).toLocaleDateString()}</small>}
+          {doc.signedAt && <small>{acknowledge ? 'Acknowledged' : 'Signed'} {new Date(doc.signedAt).toLocaleDateString()}</small>}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className={STATUS_CLASS[doc.status] || 'badge'}>{STATUS_LABEL[doc.status] || doc.status}</span>
+        <span className="doc-actions">
+          <span className={STATUS_CLASS[doc.status] || 'badge'}>{acknowledge && doc.status === 'signed' ? 'Acknowledged' : STATUS_LABEL[doc.status] || doc.status}</span>
           <button
             type="button"
             disabled={doc.status === 'not_sent'}
@@ -62,11 +71,11 @@ export function DocumentStatusList({ clientId }) {
             View
           </button>
           <button type="button" className="primary" onClick={() => setOpenType(doc.documentType)}>
-            Sign
+            {acknowledge ? 'Acknowledge' : 'Sign'}
           </button>
         </span>
       </div>
-    ))}
+    })}
 
     {openDoc && (
       <DocumentCard

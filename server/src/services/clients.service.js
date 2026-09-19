@@ -4,6 +4,8 @@ const { supabaseAdmin } = require("../config/supabaseClient");
 const { sendTransactionalEmail } = require("../utils/brevoClient");
 const { escapeHtml } = require("../utils/escapeHtml");
 const { CLIENT_ROLE_ID } = require("../constants/roles");
+const { REGISTRATION_DOCUMENT_TYPES } = require("../constants/documentTypes");
+const documentsService = require("./documents.service");
 
 const ONBOARDING_STATUS = "onboarding";
 const CODE_COOLDOWN_MS = 60 * 1000;
@@ -268,4 +270,50 @@ async function loginWithIdNumber({ idNumber, password }) {
   return { access_token: data.session.access_token, refresh_token: data.session.refresh_token };
 }
 
-module.exports = { createClient, completeRegistration, loginWithIdNumber };
+// Runs when a client has just verified their email code (the browser calls this
+// with the new session; the server never sees the code check itself). Sends the
+// documents every client gets on day one. A failure here must never block the
+// client from getting into their account, so problems are logged and reported
+// back, not thrown: missing documents show up as "not sent" and an adviser can
+// send them from the client's profile.
+async function finishRegistration(authUserId) {
+  const { data: client, error } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("role_id", CLIENT_ROLE_ID)
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!client) throw httpError(404, "No client profile is linked to this login.");
+
+  const sent = [];
+  const failed = [];
+
+  let statusByType;
+  try {
+    const documents = await documentsService.listDocuments(client.id);
+    statusByType = new Map(documents.map((d) => [d.documentType, d.status]));
+  } catch (err) {
+    console.error("[clients.service] could not read documents for client", client.id, err.message);
+    return { sent, failed: [...REGISTRATION_DOCUMENT_TYPES] };
+  }
+
+  for (const type of REGISTRATION_DOCUMENT_TYPES) {
+    // Already sent or signed (e.g. this ran twice): leave it alone. Sending again
+    // would reset a signed document back to "sent".
+    if (statusByType.get(type) !== "not_sent") continue;
+
+    try {
+      await documentsService.sendDocument(client.id, type);
+      sent.push(type);
+    } catch (err) {
+      console.error(`[clients.service] could not send ${type} to client ${client.id}:`, err.message);
+      failed.push(type);
+    }
+  }
+
+  return { sent, failed };
+}
+
+module.exports = { createClient, completeRegistration, loginWithIdNumber, finishRegistration };

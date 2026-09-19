@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useForm, useFieldArray, useWatch } from 'react-hook-form'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
-import { useClients } from '../hooks/useClients'
-import { saveClient } from '../api/clients'
+import { useClients } from '../../hooks/useClients'
+import { saveClient } from '../../api/clients'
 
 const profileFields = ['first_name', 'second_name', 'surname', 'id_number', 'date_of_birth', 'nationality', 'marital_status', 'occupation', 'employer_name', 'annual_income', 'is_politically_exposed', 'pep_details', 'risk_profile_score', 'risk_profile_category', 'contact_email', 'contact_mobile', 'physical_address', 'status']
 function Field({ register, errors, name, label, type = 'text', required = false, options, ...props }) {
@@ -68,7 +68,7 @@ function ExistingClient({ id }) {
   if (error) return <div className="card" role="alert"><p className="error">{error}</p><button onClick={retry}>Try again</button><Link to="/">Back to clients</Link></div>
   return <Editor client={data} />
 }
-// Edits only: new clients are added with AddClient.jsx (route /clients/new).
+// Edits only: new clients are added from the Clients page (components/clients/AddClientDialog.jsx).
 export default function ClientForm() {
   const { id } = useParams()
   return <ExistingClient key={id} id={id} />

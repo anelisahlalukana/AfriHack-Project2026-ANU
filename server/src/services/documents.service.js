@@ -194,7 +194,7 @@ async function signDocument(clientId, type, { signature, signerName }) {
     document_type: type,
     status: "signed",
     signed_file_url: signedPath,
-    signature_data: signature,
+    signature_data: signature || null,
     signed_at: signedAt,
     expires_at: type === "client_consent" ? addMonths(signedAt, CONSENT_VALIDITY_MONTHS) : null,
   };

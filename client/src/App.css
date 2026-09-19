@@ -9,8 +9,30 @@
 .tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:-4px;bottom:calc(100% + 8px);width:min(260px,70vw);padding:8px 10px;border-radius:8px;background:#29231f;color:#fffaf6;font-size:13px;font-weight:400;line-height:1.4;text-align:left;z-index:10;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .auth-switch .link{background:none;border:0;padding:0;color:#a30b14;font-weight:600;font-size:inherit;text-decoration:underline;cursor:pointer}
 .auth-notice{background:#edf4ed;border:1px solid #c5d8c7;border-radius:8px;padding:12px;color:#365b3e}
-.account-page{max-width:650px;margin:50px auto}
-.account-page .card>img{width:min(100%,300px);align-self:center;height:auto}
+/* Client area (pages/client/*): mobile-first. The base rules are for phones; the min-width block below enhances wider screens. */
+.client-shell{min-height:100vh;min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.client-top{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;background:#fffdfa;border-bottom:1px solid #dfd6cf}
+.client-top img{height:34px;width:auto;max-width:100%}
+.client-content{max-width:650px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.client-content h1{font-size:26px}
+.client-content .eyebrow{text-align:left;margin:0 0 4px}
+.client-content .card{padding:16px}
+.client-content button,.client-content .button{min-height:44px}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#fffdfa;border-top:1px solid #dfd6cf;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:8px 4px;border-radius:0;font-size:12px;font-weight:550;color:#7a6c62}
+.bottom-nav a:hover{background:none}
+.bottom-nav a.active{background:none;box-shadow:none;color:#a30b14}
+@media(min-width:720px){
+.client-shell{padding-bottom:calc(100px + env(safe-area-inset-bottom))}
+.client-content{padding:28px 16px}
+.client-content h1{font-size:30px}
+.client-content .card{padding:24px}
+.bottom-nav{left:50%;right:auto;width:min(650px,calc(100% - 32px));transform:translateX(-50%);bottom:16px;border:1px solid #dfd6cf;border-radius:16px;box-shadow:0 6px 24px rgba(41,35,31,.12);padding-bottom:0}
+}
+/* Document rows wrap on narrow screens instead of overflowing; modals get tighter padding. */
+.doc-row{flex-wrap:wrap}
+.doc-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+@media(max-width:600px){.modal-backdrop{padding:10px}.modal{padding:18px}}
 
 .badge.status-signed{background:#e7f2ea;border-color:#bfe0c8;color:#2f6b3c}
 .badge.status-sent{background:#fbf1e3;border-color:#e9cf9f;color:#8f5f0d}
@@ -178,3 +200,26 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .rs-check .rs-tick:has(input:focus-visible){outline:2px solid var(--rs-red-text);outline-offset:2px}
 .rs-portal-top img{width:190px;height:auto}
 /* === end claims & requests === */
+/* Advisor Clients table: toolbar, sortable headers, clickable rows, column menu, pager. */
+.table-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.table-toolbar select{width:auto;min-width:150px}
+.sort-btn{background:none;border:0;padding:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;font-weight:inherit;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.sort-btn svg{opacity:.45}
+.sort-btn.sorted svg{opacity:1;color:#a30b14}
+th.num,td.num{text-align:right}
+th.num .sort-btn{flex-direction:row-reverse}
+.client-table td{white-space:nowrap}
+.clickable-row{cursor:pointer}
+.clickable-row:hover{background:#f7f1ec}
+.col-menu{position:relative}
+.col-panel{position:absolute;left:0;top:calc(100% + 6px);z-index:15;width:max-content;min-width:220px;max-width:calc(100vw - 32px);max-height:60vh;overflow:auto;background:#fffdfa;border:1px solid #dfd6cf;border-radius:10px;padding:12px;box-shadow:0 6px 24px rgba(41,35,31,.14);display:flex;flex-direction:column;gap:10px}
+.pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.pager-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pager-controls select{width:auto}
+@media(max-width:700px){.table-toolbar>label,.table-toolbar select{flex:1 1 100%;width:100%}
+.pager{flex-direction:column;align-items:stretch}
+.pager-controls{justify-content:space-between}
+}
+/* Advisor Reminders page: view tabs. */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip-row button{padding:6px 12px;font-size:13px}

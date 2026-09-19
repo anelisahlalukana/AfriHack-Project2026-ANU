@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Mail, UserPlus, Users } from 'lucide-react'
-import { listStaffUsers, createStaffUser, resendStaffInvite } from '../api/users'
+import { listStaffUsers, createStaffUser, resendStaffInvite } from '../../api/users'
 
 const ROLES = [
   { value: 'advisor', label: 'Advisor' },

@@ -1,20 +1,25 @@
 import { useState } from 'react'
-import { BrowserRouter, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Inbox, LayoutDashboard, LogOut, Plus, ShieldEllipsis, Users } from 'lucide-react'
+import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
+import { Bell, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
-import CompleteRegistration from './pages/CompleteRegistration'
-import ClientAccount from './pages/ClientAccount'
-import Dashboard from './pages/Dashboard'
-import ClientProfile from './pages/ClientProfile'
-import AddClient from './pages/AddClient'
-import ClientForm from './pages/ClientForm'
-import AdviserCompliance from './pages/AdviserCompliance'
-import AdminDashboard from './pages/AdminDashboard'
-import AdminUsers from './pages/AdminUsers'
+import CompleteRegistration from './pages/client/CompleteRegistration'
+import ClientLayout from './pages/client/ClientLayout'
+import ClientHome from './pages/client/ClientHome'
+import ClientDocuments from './pages/client/ClientDocuments'
+import ClientReminders from './pages/client/ClientReminders'
+import MyProfile from './pages/client/MyProfile'
+import Dashboard from './pages/advisor/Dashboard'
+import Clients from './pages/advisor/Clients'
+import Reminders from './pages/advisor/Reminders'
+import ClientProfile from './pages/advisor/ClientProfile'
+import ClientForm from './pages/advisor/ClientForm'
+import AdviserCompliance from './pages/advisor/AdviserCompliance'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
 import AdviserTaskDetail from './pages/claims/AdviserTaskDetail'
 import ClientTaskDetail from './pages/claims/ClientTaskDetail'
@@ -50,7 +55,9 @@ function WorkspaceLayout() {
       <hr className="side-divider" />
       <nav>
         <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
-        <NavLink to="/clients/new"><Plus size={18} /> Onboard a client</NavLink><NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
+        <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
+        <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
+        <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />
@@ -83,7 +90,16 @@ export default function App() {
     <Route path="/login" element={<Login />} />
     <Route path="/complete-registration" element={<CompleteRegistration />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route element={<ProtectedRoute />}><Route path="/account" element={<ClientAccount />} />
+
+    <Route element={<ProtectedRoute />}>
+      {/* Client home, documents, reminders and profile (bottom navigation). */}
+      <Route path="/account" element={<ClientLayout />}>
+        <Route index element={<ClientHome />} />
+        <Route path="documents" element={<ClientDocuments />} />
+        <Route path="reminders" element={<ClientReminders />} />
+        <Route path="profile" element={<MyProfile />} />
+      </Route>
+      {/* Client claims and requests: wider pages with their own top navigation. */}
       <Route element={<ClientPortalLayout />}>
         <Route path="/account/claims" element={<MyRequests />} />
         <Route path="/account/claims/new" element={<ReportClaim />} />
@@ -103,7 +119,10 @@ export default function App() {
     <Route element={<ProtectedRoute staffOnly excludeAdmin />}>
     <Route element={<WorkspaceLayout />}>
       <Route index element={<Dashboard />} />
-      <Route path="clients/new" element={<AddClient />} />
+      <Route path="clients" element={<Clients />} />
+      <Route path="reminders" element={<Reminders />} />
+      <Route path="workspace" element={<Navigate to="/reminders" replace />} />
+      <Route path="clients/new" element={<Navigate to="/clients?add=1" replace />} />
       <Route path="clients/:id" element={<ClientProfile />} />
       <Route path="clients/:id/edit" element={<ClientForm />} />
       <Route path="compliance/:adviserId" element={<AdviserCompliance />} />
