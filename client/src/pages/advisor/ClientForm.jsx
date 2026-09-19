@@ -68,7 +68,7 @@ function ExistingClient({ id }) {
   if (error) return <div className="card" role="alert"><p className="error">{error}</p><button onClick={retry}>Try again</button><Link to="/">Back to clients</Link></div>
   return <Editor client={data} />
 }
-// Edits only: new clients are added with AddClient.jsx (route /clients/new).
+// Edits only: new clients are added from the Clients page (components/clients/AddClientDialog.jsx).
 export default function ClientForm() {
   const { id } = useParams()
   return <ExistingClient key={id} id={id} />

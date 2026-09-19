@@ -1,16 +1,17 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { ArrowLeft, Pencil, Target } from 'lucide-react'
 import { useClients } from '../../hooks/useClients'
 import { money, totals, goalProgress } from '../../lib/financials'
 import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
 export default function ClientProfile() {
   const { id } = useParams()
+  const location = useLocation()
   const { data: client, loading, error, retry } = useClients(id)
   if (loading) return <p role="status">Loading client profile…</p>
   if (error) return <div className="card" role="alert"><p className="error">Unable to load this client. {error}</p><button onClick={retry}>Try again</button><Link to="/">Back to clients</Link></div>
   const { assets, liabilities, netWorth } = totals(client.client_financial_items)
   const maximum = Math.max(assets, liabilities, 1)
-  return <><Link className="back" to="/"><ArrowLeft size={16} /> All clients</Link><header className="page-heading"><div><p className="eyebrow">CLIENT FINANCIAL OVERVIEW</p><h1>{client.first_name} {client.second_name} {client.surname}</h1><p>{client.contact_email || 'No email provided'} · <span className="badge">{client.status}</span></p></div><Link className="button primary" to={`/clients/${id}/edit`}><Pencil size={16} /> Edit financial needs analysis</Link></header>
+  return <><Link className="back" to={location.state?.from || '/'}><ArrowLeft size={16} /> All clients</Link><header className="page-heading"><div><p className="eyebrow">CLIENT FINANCIAL OVERVIEW</p><h1>{client.first_name} {client.second_name} {client.surname}</h1><p>{client.contact_email || 'No email provided'} · <span className="badge">{client.status}</span></p></div><Link className="button primary" to={`/clients/${id}/edit`}><Pencil size={16} /> Edit financial needs analysis</Link></header>
     <div className="stats"><article className="card highlight"><span>Net worth</span><strong>{money(netWorth)}</strong><small>Total assets less total liabilities</small></article><article className="card"><span>Total assets</span><strong>{money(assets)}</strong><small>Current recorded asset values</small></article><article className="card"><span>Total liabilities</span><strong>{money(liabilities)}</strong><small>Outstanding balances</small></article></div>
     <div className="two-columns"><section className="card"><h2>Financial position</h2><p>Assets and liabilities, side by side.</p>{[['Assets', assets], ['Liabilities', liabilities]].map(([label, value]) => <div key={label} className="chart-row"><div><span>{label}</span><b>{money(value)}</b></div><div className="track"><span style={{ width: `${value / maximum * 100}%` }} className={label === 'Assets' ? 'asset-bar' : ''} /></div></div>)}
       {!client.client_financial_items.length && <p>No financial items yet. Add them in the financial needs analysis.</p>}
