@@ -4,13 +4,14 @@ import {
   CalendarDays,
   Check,
   ChevronRight,
-  CircleUserRound,
   Link2,
   MessageSquare,
   Plus,
   Settings2,
 } from "lucide-react";
 import { createDev4Api, disablePush, enablePush } from "../api/dev4";
+import Brand from "../components/Brand";
+import ThemeToggle from "../components/ThemeToggle";
 import "./Dev4Workspace.css";
 
 const dateLabel = (value) =>
@@ -193,17 +194,8 @@ export default function Dev4Workspace({
   return (
     <div className="rs-workspace">
       <aside className="rs-sidebar">
-        <div className="rs-brand">
-          <img src="/images/logo.jpg" alt="" />
-          <div>
-            <strong>ROYAL SQUARE</strong>
-            <span>Financial planning, together.</span>
-          </div>
-        </div>
-        <div className="rs-nav-label">
-          {adviser ? "PRACTICE WORKSPACE" : "YOUR WORKSPACE"}
-        </div>
-        <nav aria-label="Dev 4 navigation">
+        <Brand />
+        <nav aria-label="Workspace navigation">
           {navigation.map(([id, title, Icon]) => (
             <button
               type="button"
@@ -215,7 +207,7 @@ export default function Dev4Workspace({
                 setNotice("");
               }}
             >
-              <Icon size={18} />
+              <Icon size={16} />
               {title}
               {id === "notifications" && unread > 0 && (
                 <b className="rs-count">{unread}</b>
@@ -223,16 +215,15 @@ export default function Dev4Workspace({
             </button>
           ))}
         </nav>
-        <div className="rs-sidebar-note">
-          <span className="rs-small">HERE WHEN YOU NEED US</span>
-          <p>
-            Your next step.
-            <br />
-            Always in view.
-          </p>
-        </div>
         <div className="rs-user">
-          <CircleUserRound size={30} />
+          <div className="rs-avatar">
+            {user.name
+              .split(" ")
+              .filter((word) => /^[A-Za-z]/.test(word))
+              .slice(0, 2)
+              .map((word) => word[0])
+              .join("")}
+          </div>
           <div>
             <strong>{user.name}</strong>
             <span>{adviser ? "Royal Square adviser" : "Client"}</span>
@@ -270,9 +261,6 @@ export default function Dev4Workspace({
         )}
         <header className="rs-header">
           <div>
-            <span className="rs-eyebrow">
-              ROYAL SQUARE / {adviser ? "ADVISER" : "CLIENT"}
-            </span>
             <h1>{navigation.find((t) => t[0] === tab)?.[1]}</h1>
             <p>
               {tab === "reminders"
@@ -286,7 +274,12 @@ export default function Dev4Workspace({
                       : "Bring your financial position into focus."}
             </p>
           </div>
-          <span className="rs-date">{dateLabel(new Date().toISOString())}</span>
+          <div className="rs-header-actions">
+            <span className="rs-date">
+              {dateLabel(new Date().toISOString())}
+            </span>
+            <ThemeToggle />
+          </div>
         </header>
         {error && (
           <div className="rs-alert" role="alert">
@@ -308,19 +301,17 @@ export default function Dev4Workspace({
               <>
                 <div className="rs-stats">
                   <div>
-                    <span>ON YOUR RADAR</span>
+                    <span>Reminders</span>
                     <strong>{activeReminders.length}</strong>
                     <p>Open reminders</p>
                   </div>
                   <div>
-                    <span>KEEPING YOU INFORMED</span>
+                    <span>Notifications</span>
                     <strong>{unread}</strong>
                     <p>Unread updates</p>
                   </div>
                   <div>
-                    <span>
-                      {adviser ? "ACROSS THE PRACTICE" : "IN YOUR CORNER"}
-                    </span>
+                    <span>{adviser ? "Clients" : "Your adviser"}</span>
                     <strong>
                       {adviser ? data.clients.length : "Royal Square"}
                     </strong>
@@ -595,10 +586,6 @@ export default function Dev4Workspace({
             )}
           </>
         )}
-        <footer className="rs-footer">
-          ROYAL SQUARE FINANCIAL{" "}
-          <span>Every detail, a step towards your future.</span>
-        </footer>
       </main>
     </div>
   );

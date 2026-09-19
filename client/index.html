@@ -1,12 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#a30b14" />
+    <meta name="theme-color" content="#0b0908" />
     <title>Royal Square Financial</title>
+    <script>
+      try {
+        const theme = localStorage.getItem("royal-square-theme");
+        if (theme === "light" || theme === "dark")
+          document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          document.documentElement.dataset.theme === "light"
+            ? "#f1eeec"
+            : "#0b0908";
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

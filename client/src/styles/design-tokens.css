@@ -1,0 +1,119 @@
+/* Colours, typography and theme values copied from the approved HTML reference. */
+
+:root {
+  --bg: #f1eeec;
+  --sidebar: #e8e3e0;
+  --card: #fbfaf9;
+  --card-2: #f0ebe8;
+  --border: #dcd4cf;
+  --text: #211c1a;
+  --muted: #6d625c;
+  --taupe: #8a7b72;
+  --taupe-hi: #6e6058;
+  --taupe-soft: #dad1cb;
+  --red: #b00d17;
+  --red-text: #a30b14;
+  --on-red: #fff;
+  --ok: #3c7650;
+  --warn: #8f5f0d;
+  --phone-edge: #cfc6c1;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b0908;
+    --sidebar: #110e0d;
+    --card: #1d1917;
+    --card-2: #26211f;
+    --border: #332d2a;
+    --text: #f3efed;
+    --muted: #a2978f;
+    --taupe: #7d6f67;
+    --taupe-hi: #a3948b;
+    --taupe-soft: #3d3531;
+    --red: #a30b14;
+    --red-text: #ee5a64;
+    --on-red: #fff;
+    --ok: #8fbb9c;
+    --warn: #dcaa64;
+    --phone-edge: #2b2522;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b0908;
+  --sidebar: #110e0d;
+  --card: #1d1917;
+  --card-2: #26211f;
+  --border: #332d2a;
+  --text: #f3efed;
+  --muted: #a2978f;
+  --taupe: #7d6f67;
+  --taupe-hi: #a3948b;
+  --taupe-soft: #3d3531;
+  --red: #a30b14;
+  --red-text: #ee5a64;
+  --on-red: #fff;
+  --ok: #8fbb9c;
+  --warn: #dcaa64;
+  --phone-edge: #2b2522;
+  --shadow: none;
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Lora, Georgia, serif;
+  font-size: 14px;
+  line-height: 1.55;
+}
+h1,
+h2,
+h3,
+h4,
+.serif {
+  font-family: Merriweather, Georgia, serif;
+  margin: 0;
+}
+p {
+  margin: 0;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:focus-visible {
+  outline: 2px solid var(--red-text);
+  outline-offset: 2px;
+}
+i[data-ic] {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+i[data-ic] svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
