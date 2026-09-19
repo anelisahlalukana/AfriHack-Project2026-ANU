@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { isStaff } from '../lib/authRoles'
 import ClientPortalLinks from '../components/tasks/ClientPortalLinks'
 import { isStaff, accountHome } from '../lib/authRoles'
 

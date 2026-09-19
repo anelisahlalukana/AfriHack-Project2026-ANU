@@ -9,11 +9,11 @@ export function isAdmin(user) {
   return user?.app_metadata?.role === 'admin'
 }
 export function accountHome(user) {
-  if (!isStaff(user)) return '/account'
+  if (!isStaff(user)) return '/account/claims'
   return isAdmin(user) ? '/admin' : '/'
 }
 export function loginDestination(user, from) {
-  if (!isStaff(user)) return '/account'
+  if (!isStaff(user)) return '/account/claims'
   if (typeof from === 'string' && /^\/(?![\\/])/.test(from) && !/^\/(login|signup)([/?#]|$)/.test(from)) {
     return from
   }
