@@ -1,6 +1,9 @@
 // Only administrator-controlled app metadata grants workspace access.
 export function isStaff(user) {
-  return ['advisor', 'provider', 'broker'].includes(user?.app_metadata?.role)
+  return ['admin', 'advisor', 'provider', 'broker'].includes(user?.app_metadata?.role)
+}
+export function isAdmin(user) {
+  return user?.app_metadata?.role === 'admin'
 }
 export function accountHome(user) {
   return isStaff(user) ? '/' : '/account'

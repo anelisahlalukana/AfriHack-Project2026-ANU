@@ -1,265 +1,196 @@
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { getAdviserCompliance, updateAdviserCompliance } from "@/api/documents";
+import { useEffect, useState } from 'react'
+import { ShieldEllipsis } from 'lucide-react'
+import { getAdviserCompliance, updateAdviserCompliance } from '../../api/documents'
+
+const QUALIFICATION_STATUSES = [
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'suspended', label: 'Suspended' },
+]
+
+const CPD_STATUSES = [
+  { value: 'up_to_date', label: 'Up to date' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'not_started', label: 'Not started' },
+  { value: 'overdue', label: 'Overdue' },
+]
+
+function statusBadgeClass(value) {
+  if (['qualified', 'up_to_date'].includes(value)) return 'badge status-signed'
+  if (['suspended', 'overdue'].includes(value)) return 'badge status-flagged'
+  return 'badge status-sent'
+}
+
+function flagBadgeClass(flagged) {
+  return flagged ? 'badge status-flagged' : 'badge status-signed'
+}
 
 // Adviser-facing compliance status: qualification/CPD standing and
 // PEP / terrorism-financing screening flags, with an edit form.
-const QUALIFICATION_STATUSES = [
-  { value: "qualified", label: "Qualified" },
-  { value: "pending", label: "Pending" },
-  { value: "suspended", label: "Suspended" },
-];
-
-const CPD_STATUSES = [
-  { value: "up_to_date", label: "Up to date" },
-  { value: "in_progress", label: "In progress" },
-  { value: "not_started", label: "Not started" },
-  { value: "overdue", label: "Overdue" },
-];
-
-function statusVariant(value) {
-  if (["qualified", "up_to_date"].includes(value)) return "border-success/40 bg-success/10 text-success";
-  if (["suspended", "overdue"].includes(value)) return "border-destructive/40 bg-destructive/10 text-destructive";
-  return "border-warning/40 bg-warning/10 text-warning";
-}
-
 export function ComplianceTracker({ adviserId }) {
-  const [compliance, setCompliance] = useState(null);
-  const [form, setForm] = useState(null);
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
+  const [compliance, setCompliance] = useState(null)
+  const [form, setForm] = useState(null)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    let cancelled = false;
+    let active = true
+    getAdviserCompliance(adviserId)
+      .then(record => {
+        if (!active) return
+        setCompliance(record)
+        setForm(record)
+        setError('')
+      })
+      .catch(error => { if (active) setError(error.message) })
+    return () => { active = false }
+  }, [adviserId, reloadKey])
 
-    async function load() {
-      try {
-        const record = await getAdviserCompliance(adviserId);
-        if (cancelled) return;
-        setError(null);
-        setCompliance(record);
-        setForm(record);
-      } catch (err) {
-        if (!cancelled) setError(err.message);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [adviserId]);
-
-  async function handleSave() {
-    setSaving(true);
-    setError(null);
+  async function handleSave(event) {
+    event.preventDefault()
+    setSaving(true)
+    setError('')
     try {
       const updated = await updateAdviserCompliance(adviserId, {
-        qualification_status: form.qualification_status,
-        cpd_status: form.cpd_status,
-        is_politically_exposed: form.is_politically_exposed,
-        pep_details: form.pep_details,
-        terrorism_financing_flag: form.terrorism_financing_flag,
-        terrorism_financing_details: form.terrorism_financing_details,
-      });
-      setCompliance(updated);
-      setForm(updated);
-      setEditing(false);
-    } catch (err) {
-      setError(err.message);
+        qualificationStatus: form.qualificationStatus,
+        cpdStatus: form.cpdStatus,
+        isPoliticallyExposed: form.isPoliticallyExposed,
+        pepDetails: form.pepDetails,
+        terrorismFinancingFlag: form.terrorismFinancingFlag,
+        terrorismFinancingDetails: form.terrorismFinancingDetails,
+      })
+      setCompliance(updated)
+      setForm(updated)
+      setEditing(false)
+      setReloadKey(key => key + 1)
+    } catch (error) {
+      setError(error.message)
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
   }
 
   if (!compliance) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Compliance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">{error || "Loading..."}</p>
-        </CardContent>
-      </Card>
-    );
+    return <section className="card">
+      <header className="section-heading"><div><h2><ShieldEllipsis size={20} /> Compliance</h2></div></header>
+      <p>{error || 'Loading…'}</p>
+    </section>
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Compliance</CardTitle>
-        <CardDescription>Qualification, CPD and screening status</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {error && <p className="text-sm text-destructive">{error}</p>}
+  return <section className="card">
+    <header className="section-heading"><div><h2><ShieldEllipsis size={20} /> Compliance</h2><p>Qualification, CPD and screening status</p></div></header>
+    {error && <p className="error" role="alert">{error}</p>}
 
-        {!editing ? (
-          <>
-            <div className="flex flex-wrap gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground">Qualification</p>
-                <Badge variant="outline" className={statusVariant(compliance.qualification_status)}>
-                  {QUALIFICATION_STATUSES.find((s) => s.value === compliance.qualification_status)
-                    ?.label || compliance.qualification_status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">CPD</p>
-                <Badge variant="outline" className={statusVariant(compliance.cpd_status)}>
-                  {CPD_STATUSES.find((s) => s.value === compliance.cpd_status)?.label ||
-                    compliance.cpd_status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PEP check</p>
-                <Badge
-                  variant="outline"
-                  className={
-                    compliance.is_politically_exposed
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-success/40 bg-success/10 text-success"
-                  }
-                >
-                  {compliance.is_politically_exposed ? "Flagged" : "Clear"}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Terrorism financing check</p>
-                <Badge
-                  variant="outline"
-                  className={
-                    compliance.terrorism_financing_flag
-                      ? "border-destructive/40 bg-destructive/10 text-destructive"
-                      : "border-success/40 bg-success/10 text-success"
-                  }
-                >
-                  {compliance.terrorism_financing_flag ? "Flagged" : "Clear"}
-                </Badge>
-              </div>
-            </div>
-            {(compliance.pep_details || compliance.terrorism_financing_details) && (
-              <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                {compliance.pep_details && <p>PEP notes: {compliance.pep_details}</p>}
-                {compliance.terrorism_financing_details && (
-                  <p>Terrorism financing notes: {compliance.terrorism_financing_details}</p>
-                )}
-              </div>
-            )}
-            <Button size="sm" className="self-start" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-          </>
-        ) : (
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <Label>Qualification status</Label>
-                <Select
-                  value={form.qualification_status}
-                  onValueChange={(v) => setForm({ ...form, qualification_status: v })}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUALIFICATION_STATUSES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>CPD status</Label>
-                <Select
-                  value={form.cpd_status}
-                  onValueChange={(v) => setForm({ ...form, cpd_status: v })}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CPD_STATUSES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+    {!editing ? (
+      <>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+          <div><small>Qualification</small><div style={{ marginTop: 4 }}>
+            <span className={statusBadgeClass(compliance.qualificationStatus)}>
+              {QUALIFICATION_STATUSES.find(s => s.value === compliance.qualificationStatus)?.label || compliance.qualificationStatus}
+            </span>
+          </div></div>
+          <div><small>CPD</small><div style={{ marginTop: 4 }}>
+            <span className={statusBadgeClass(compliance.cpdStatus)}>
+              {CPD_STATUSES.find(s => s.value === compliance.cpdStatus)?.label || compliance.cpdStatus}
+            </span>
+          </div></div>
+          <div><small>PEP check</small><div style={{ marginTop: 4 }}>
+            <span className={flagBadgeClass(compliance.isPoliticallyExposed)}>
+              {compliance.isPoliticallyExposed ? 'Flagged' : 'Clear'}
+            </span>
+          </div></div>
+          <div><small>Terrorism financing check</small><div style={{ marginTop: 4 }}>
+            <span className={flagBadgeClass(compliance.terrorismFinancingFlag)}>
+              {compliance.terrorismFinancingFlag ? 'Flagged' : 'Clear'}
+            </span>
+          </div></div>
+        </div>
 
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="pep-flag"
-                  checked={form.is_politically_exposed}
-                  onCheckedChange={(c) => setForm({ ...form, is_politically_exposed: Boolean(c) })}
-                />
-                <Label htmlFor="pep-flag">Politically exposed person flag</Label>
-              </div>
-              {form.is_politically_exposed && (
-                <Input
-                  placeholder="PEP details"
-                  value={form.pep_details || ""}
-                  onChange={(e) => setForm({ ...form, pep_details: e.target.value })}
-                />
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="tf-flag"
-                  checked={form.terrorism_financing_flag}
-                  onCheckedChange={(c) =>
-                    setForm({ ...form, terrorism_financing_flag: Boolean(c) })
-                  }
-                />
-                <Label htmlFor="tf-flag">Terrorism-financing check flag</Label>
-              </div>
-              {form.terrorism_financing_flag && (
-                <Input
-                  placeholder="Terrorism financing details"
-                  value={form.terrorism_financing_details || ""}
-                  onChange={(e) => setForm({ ...form, terrorism_financing_details: e.target.value })}
-                />
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setForm(compliance);
-                  setEditing(false);
-                }}
-                disabled={saving}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : "Save"}
-              </Button>
-            </div>
+        {(compliance.pepDetails || compliance.terrorismFinancingDetails) && (
+          <div className="muted" style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {compliance.pepDetails && <p>PEP notes: {compliance.pepDetails}</p>}
+            {compliance.terrorismFinancingDetails && <p>Terrorism financing notes: {compliance.terrorismFinancingDetails}</p>}
           </div>
         )}
-      </CardContent>
-    </Card>
-  );
+
+        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+          <button type="button" className="primary" onClick={() => setEditing(true)}>Edit</button>
+        </div>
+      </>
+    ) : (
+      <form className="form-stack" onSubmit={handleSave}>
+        <div className="form-grid">
+          <label>Qualification status
+            <select
+              value={form.qualificationStatus}
+              onChange={event => setForm({ ...form, qualificationStatus: event.target.value })}
+            >
+              {QUALIFICATION_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </label>
+          <label>CPD status
+            <select
+              value={form.cpdStatus}
+              onChange={event => setForm({ ...form, cpdStatus: event.target.value })}
+            >
+              {CPD_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={form.isPoliticallyExposed}
+              onChange={event => setForm({ ...form, isPoliticallyExposed: event.target.checked })}
+            />
+            Politically exposed person flag
+          </label>
+          {form.isPoliticallyExposed && (
+            <label style={{ marginTop: 10 }}>PEP details
+              <input
+                value={form.pepDetails || ''}
+                onChange={event => setForm({ ...form, pepDetails: event.target.value })}
+              />
+            </label>
+          )}
+        </div>
+
+        <div>
+          <label className="checkbox">
+            <input
+              type="checkbox"
+              checked={form.terrorismFinancingFlag}
+              onChange={event => setForm({ ...form, terrorismFinancingFlag: event.target.checked })}
+            />
+            Terrorism-financing check flag
+          </label>
+          {form.terrorismFinancingFlag && (
+            <label style={{ marginTop: 10 }}>Terrorism financing details
+              <input
+                value={form.terrorismFinancingDetails || ''}
+                onChange={event => setForm({ ...form, terrorismFinancingDetails: event.target.value })}
+              />
+            </label>
+          )}
+        </div>
+
+        {error && <p className="error" role="alert">{error}</p>}
+
+        <div className="form-actions">
+          <button
+            type="button"
+            onClick={() => { setForm(compliance); setEditing(false) }}
+            disabled={saving}
+          >
+            Cancel
+          </button>
+          <button className="primary" disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
+        </div>
+      </form>
+    )}
+  </section>
 }

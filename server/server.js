@@ -6,6 +6,7 @@ const { requireAuth } = require("./src/middleware/auth");
 const documentsController = require("./src/controllers/documents.controller");
 const documentsRoutes = require("./src/routes/documents.routes");
 const complianceRoutes = require("./src/routes/compliance.routes");
+const usersRoutes = require("./src/routes/users.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/clients/:clientId/documents", documentsRoutes);
 app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
+app.use("/api/admin/users", usersRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
