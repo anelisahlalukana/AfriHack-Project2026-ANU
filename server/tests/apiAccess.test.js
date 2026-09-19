@@ -104,6 +104,9 @@ test("every protected endpoint answers 401 with a JSON error when signed out", a
     ["GET", "/api/me"],
     ["GET", "/api/catalog"],
     ["GET", "/api/dashboard"],
+    ["GET", "/api/dashboard/at-risk"],
+    ["GET", `/api/dashboard/at-risk/${UUID}`],
+    ["POST", `/api/dashboard/at-risk/${UUID}/check-in`],
     ["GET", "/api/tasks"],
     ["POST", "/api/tasks/claims"],
     ["GET", `/api/tasks/${UUID}`],
@@ -152,6 +155,21 @@ test("the practice dashboard and client creation are advisor-only", async () => 
     assert.equal((await request("GET", "/api/dashboard", { as })).status, 403, `dashboard as ${as}`);
     assert.equal((await request("POST", "/api/clients", { as, body: {} })).status, 403, `create client as ${as}`);
   }
+});
+
+test("Client Pulse and its check-in action are advisor-only", async () => {
+  for (const as of ["admin", "client", "provider"]) {
+    assert.equal((await request("GET", "/api/dashboard/at-risk", { as })).status, 403, `ranking as ${as}`);
+    assert.equal((await request("GET", `/api/dashboard/at-risk/${UUID}`, { as })).status, 403, `drill-down as ${as}`);
+    assert.equal((await request("POST", `/api/dashboard/at-risk/${UUID}/check-in`, { as })).status, 403, `check-in as ${as}`);
+  }
+});
+
+test("Client Pulse rejects a malformed client id before touching any data", async () => {
+  const drill = await request("GET", "/api/dashboard/at-risk/not-a-uuid", { as: "advisor" });
+  assert.equal(drill.status, 400);
+  assert.match(drill.json.error, /client id/);
+  assert.equal((await request("POST", "/api/dashboard/at-risk/not-a-uuid/check-in", { as: "advisor" })).status, 400);
 });
 
 test("the advisor's add-client form is validated before anything is created", async () => {
