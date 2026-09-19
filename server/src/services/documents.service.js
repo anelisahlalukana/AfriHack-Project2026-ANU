@@ -4,13 +4,13 @@ const {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_VALUES,
   ACKNOWLEDGE_ONLY_TYPES,
+  CONSENT_VALIDITY_MONTHS,
 } = require("../constants/documentTypes");
 const { ONBOARDING_STATUS, ACTIVE_STATUS } = require("../constants/clientStatuses");
 const { notifyClient, notifyAdviser } = require("./notifications.service");
 
 const TEMPLATES_BUCKET = process.env.DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 const DOCUMENTS_BUCKET = process.env.CLIENT_DOCUMENTS_BUCKET || "client-documents";
-const CONSENT_VALIDITY_MONTHS = 12;
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
 
 function docMeta(type) {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlarmClock, Hourglass, Inbox, Plus, UserRoundCheck } from 'lucide-react'
+import { Inbox, Plus } from 'lucide-react'
 import { useCatalog, useTaskList } from '../hooks/useTasks'
 import { formatDateTime, progressText } from '../lib/taskFormat'
 import { StatusChip, WaitingChip } from '../components/tasks/TaskBits'
@@ -38,12 +38,6 @@ export default function Tasks() {
       <div><p className="eyebrow">OPERATIONS</p><h1>Requests & claims</h1><p>Red outline means the client or insurer is waiting on us.</p></div>
       <Link className="button primary" to="/tasks/new"><Plus size={17} /> Log a request</Link>
     </header>
-    {tab !== 'closed' && <div className="stats rs-stats">
-      <article className="card"><Inbox /><span>Open</span><strong>{counts.open}</strong></article>
-      <article className="card"><Hourglass /><span>Waiting on us</span><strong>{counts.waiting_on_us}</strong></article>
-      <article className="card"><UserRoundCheck /><span>Waiting on clients</span><strong>{counts.needs_client}</strong></article>
-      <article className={`card ${counts.overdue ? 'rs-needs' : ''}`}><AlarmClock /><span>Overdue (48h+)</span><strong>{counts.overdue}</strong></article>
-    </div>}
     <section className="card">
       <div className="rs-tabs" role="tablist" aria-label="Queue views">
         {TABS.map(([key, label]) => <button key={key} role="tab" className="rs-tab" aria-selected={tab === key} onClick={() => setTab(key)}>{label}{key !== 'closed' && data && tab !== 'closed' ? ` (${counts[key]})` : ''}</button>)}
