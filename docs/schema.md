@@ -77,6 +77,21 @@ CREATE TABLE public.documents (
   CONSTRAINT documents_pkey PRIMARY KEY (id),
   CONSTRAINT documents_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
 );
+CREATE TABLE public.adviser_compliance (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  adviser_id uuid NOT NULL,
+  qualification_status text DEFAULT 'pending'::text,
+  cpd_status text DEFAULT 'not_started'::text,
+  is_politically_exposed boolean DEFAULT false,
+  pep_details text,
+  terrorism_financing_flag boolean DEFAULT false,
+  terrorism_financing_details text,
+  updated_at timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT adviser_compliance_pkey PRIMARY KEY (id),
+  CONSTRAINT adviser_compliance_adviser_id_key UNIQUE (adviser_id),
+  CONSTRAINT adviser_compliance_adviser_id_fkey FOREIGN KEY (adviser_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.tasks (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   client_id uuid,
