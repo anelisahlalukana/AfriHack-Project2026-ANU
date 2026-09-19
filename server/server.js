@@ -3,6 +3,10 @@ const cors = require("cors");
 require("dotenv").config({ path: ".env.dev4.local", quiet: true });
 require("dotenv").config({ quiet: true });
 
+const { requireAuth } = require("./src/middleware/auth");
+const documentsController = require("./src/controllers/documents.controller");
+const documentsRoutes = require("./src/routes/documents.routes");
+const complianceRoutes = require("./src/routes/compliance.routes");
 const app = express();
 const PORT = process.env.PORT || 5000;
 const { createDev4 } = require("./src/dev4");
@@ -32,9 +36,13 @@ const dev4 = createDev4({
 });
 app.locals.dev4 = dev4.service;
 
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || "http://localhost:5173" }));
-app.use(express.json({ limit: "32kb" }));
-app.use("/api/dev4", dev4.router);
+app.use(cors({ origin: process.env.CLIENT_ORIGIN || ["http://localhost:5173", "http://127.0.0.1:5173"] }));
+app.use("/api/dev4", express.json({ limit: "32kb" }), dev4.router);
+// Document signatures require larger payloads; Dev 4 retains its smaller limit.
+app.use(express.json({ limit: "10mb" }));
+app.use("/api/clients/:clientId/documents", documentsRoutes);
+app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
+app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "Server is running" });

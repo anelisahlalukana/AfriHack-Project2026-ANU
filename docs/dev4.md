@@ -13,7 +13,7 @@ npm install --prefix client
 npm run dev:demo
 ```
 
-Open http://127.0.0.1:5173. The API listens on 127.0.0.1:5000, and Vite proxies `/api`.
+Open http://127.0.0.1:5173/dev4-demo. The root URL retains the main branch login and client workspace. The API listens on 127.0.0.1:5000, and Vite proxies `/api`.
 Two adviser personas and two fictional clients are available in the demo selector.
 Changing personas disables this browser's existing push subscription so updates do
 not follow the wrong account. Enable push again after switching if needed.
@@ -75,7 +75,7 @@ is not proof a notification was displayed.
 ## Integration with Dev 1
 
 The self-contained frontend is `client/src/pages/Dev4Workspace.jsx`.
-`App.jsx` is only a demo host and can be replaced by the team's main router:
+`App.jsx` preserves the main branch routes. `Dev4Demo.jsx` hosts the demo separately at `/dev4-demo`. For authenticated integration:
 
 ```jsx
 <Dev4Workspace

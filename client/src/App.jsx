@@ -1,65 +1,55 @@
-import { useEffect, useState } from "react";
-import Dev4Workspace from "./pages/Dev4Workspace";
-import { createDev4Api } from "./api/dev4";
+import { useState } from 'react'
+import { BrowserRouter, Outlet, Route, Routes, Link } from 'react-router-dom'
+import { LayoutDashboard, LogOut, Plus, ShieldCheck } from 'lucide-react'
+import { AuthProvider } from './context/AuthContext'
+import { useAuth } from './hooks/useAuth'
+import ProtectedRoute from './components/ProtectedRoute'
+import Login from './pages/Login'
+import ClientAccount from './pages/ClientAccount'
+import Dashboard from './pages/Dashboard'
+import ClientProfile from './pages/ClientProfile'
+import ClientForm from './pages/ClientForm'
+import Dev4Demo from './pages/Dev4Demo'
+import './App.css'
 
+function WorkspaceLayout() {
+  const { session, signOut } = useAuth()
+  const [error, setError] = useState('')
+  const [signingOut, setSigningOut] = useState(false)
+  async function logout() {
+    setSigningOut(true); setError('')
+    try { await signOut() }
+    catch (error) { setError(error.message) }
+    finally { setSigningOut(false) }
+  }
+  return <div className="app-shell">
+    <aside><Link className="brand" to="/"><img src="/images/logo.jpg" alt="Royal Square Financial" /></Link>
+      <p className="eyebrow">ADVISOR WORKSPACE</p>
+      <nav><Link to="/"><LayoutDashboard size={18} /> Client overview</Link><Link to="/clients/new"><Plus size={18} /> Onboard a client</Link></nav>
+      <div className="advisor"><ShieldCheck size={22} /><span>{session.user.email}</span><button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>{error && <p role="alert" className="error">{error}</p>}</div>
+    </aside>
+    <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
+  </div>
+}
+function AuthenticatedApp() {
+  return <AuthProvider><Routes>
+    <Route path="/login" element={<Login key="login" />} />
+    <Route path="/signup" element={<Login key="signup" signup />} />
+    <Route element={<ProtectedRoute />}><Route path="/account" element={<ClientAccount />} /></Route>
+    <Route element={<ProtectedRoute staffOnly />}>
+    <Route element={<WorkspaceLayout />}>
+      <Route index element={<Dashboard />} />
+      <Route path="clients/new" element={<ClientForm />} />
+      <Route path="clients/:id" element={<ClientProfile />} />
+      <Route path="clients/:id/edit" element={<ClientForm />} />
+      <Route path="*" element={<div className="card"><h1>Page not found</h1><Link to="/">Return to your clients</Link></div>} />
+    </Route>
+    </Route>
+  </Routes></AuthProvider>
+}
 export default function App() {
-  const [config, setConfig] = useState(null);
-  const [userId, setUserId] = useState("");
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let active = true;
-    createDev4Api()("/config")
-      .then((result) => {
-        if (active) {
-          setConfig(result);
-          setUserId(result.users[0]?.id || "");
-        }
-      })
-      .catch((err) => {
-        if (active) setError(err.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-  if (error)
-    return (
-      <div className="rs-start">
-        <h1>Royal Square</h1>
-        <p role="alert">{error}</p>
-        <p>
-          Start the backend and frontend together with{" "}
-          <code>npm run dev:demo</code>.
-        </p>
-        <button onClick={() => location.reload()}>Retry connection</button>
-      </div>
-    );
-  if (!config)
-    return (
-      <div className="rs-start" role="status">
-        Opening Royal Square…
-      </div>
-    );
-  if (!config.demo)
-    return (
-      <div className="rs-start">
-        <h1>Royal Square</h1>
-        <p>Dev 4 is ready for the team's authentication integration.</p>
-        <p>
-          For the local demo, run <code>npm run dev:demo</code>. See{" "}
-          <code>docs/dev4.md</code> for the verified-user integration contract.
-        </p>
-      </div>
-    );
-  const user = config.users.find((item) => item.id === userId);
-  return (
-    <Dev4Workspace
-      key={userId}
-      user={user}
-      demo
-      users={config.users}
-      onSwitchUser={setUserId}
-      pushConfig={config.push}
-    />
-  );
+  return <BrowserRouter><Routes>
+    <Route path="/dev4-demo" element={<Dev4Demo />} />
+    <Route path="*" element={<AuthenticatedApp />} />
+  </Routes></BrowserRouter>
 }

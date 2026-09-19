@@ -394,7 +394,7 @@ function createService({
                 title: "Royal Square Financial",
                 body: "You have a new update. Open Royal Square to view it.",
                 tag: n.id,
-                url: "/#notifications",
+                url: "/dev4-demo#notifications",
               });
               store.transaction((draft) =>
                 draft.notifications
