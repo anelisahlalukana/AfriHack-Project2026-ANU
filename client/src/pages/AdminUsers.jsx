@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { UserPlus, Users } from 'lucide-react'
-import { listStaffUsers, createStaffUser } from '../api/users'
+import { Mail, UserPlus, Users } from 'lucide-react'
+import { listStaffUsers, createStaffUser, resendStaffInvite } from '../api/users'
 
 const ROLES = [
   { value: 'advisor', label: 'Advisor' },
@@ -14,6 +14,9 @@ export default function AdminUsers() {
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
+  const [resendingId, setResendingId] = useState(null)
+  const [resendError, setResendError] = useState('')
+  const [resendNotice, setResendNotice] = useState('')
 
   useEffect(() => {
     let active = true
@@ -43,6 +46,20 @@ export default function AdminUsers() {
       setFormError(error.message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function resend(user) {
+    setResendingId(user.id)
+    setResendError('')
+    setResendNotice('')
+    try {
+      await resendStaffInvite(user.id)
+      setResendNotice(`A new password link has been sent to ${user.email}. Any earlier link no longer works.`)
+    } catch (error) {
+      setResendError(error.message)
+    } finally {
+      setResendingId(null)
     }
   }
 
@@ -80,13 +97,18 @@ export default function AdminUsers() {
       {listError && <p className="error" role="alert">{listError}</p>}
       {!users && !listError && <p>Loading…</p>}
       {users && !users.length && <p className="empty">No staff accounts yet.</p>}
+      {resendError && <p className="error" role="alert">{resendError}</p>}
+      {resendNotice && <p className="auth-notice" role="status">{resendNotice}</p>}
       {users && users.length > 0 && <div className="table-scroll"><table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th></tr></thead>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Password link</th></tr></thead>
         <tbody>{users.map(u => <tr key={u.id}>
           <td>{u.fullName || '—'}</td>
           <td>{u.email}</td>
           <td><span className="badge">{u.role}</span></td>
           <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+          <td><button className="button" onClick={() => resend(u)} disabled={resendingId !== null} aria-label={`Resend password link to ${u.email}`}>
+            <Mail size={16} /> {resendingId === u.id ? 'Sending…' : 'Resend link'}
+          </button></td>
         </tr>)}</tbody>
       </table></div>}
     </section>

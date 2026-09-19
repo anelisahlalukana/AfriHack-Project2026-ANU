@@ -9,3 +9,8 @@ export async function createStaffUser({ email, fullName, role }) {
   const { data } = await http.post("/api/admin/users", { email, fullName, role });
   return data.user;
 }
+
+export async function resendStaffInvite(id) {
+  const { data } = await http.post(`/api/admin/users/${id}/resend-invite`);
+  return data.user;
+}

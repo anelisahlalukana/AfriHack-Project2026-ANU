@@ -19,4 +19,13 @@ async function createUser(req, res) {
   }
 }
 
-module.exports = { listUsers, createUser };
+async function resendInvite(req, res) {
+  try {
+    const result = await usersService.resendStaffInvite(req.params.id);
+    res.json({ user: result });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+module.exports = { listUsers, createUser, resendInvite };

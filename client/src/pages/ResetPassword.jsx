@@ -1,8 +1,16 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
 import { loginDestination } from '../lib/authRoles'
+
+// Supabase reports a bad link (expired, already used) in the URL hash or query
+// string, e.g. #error_code=otp_expired&error_description=Email+link+is+invalid...
+function readLinkError() {
+  const hash = new URLSearchParams(window.location.hash.slice(1))
+  const query = new URLSearchParams(window.location.search)
+  return hash.get('error_description') || query.get('error_description') || ''
+}
 
 // Landing page for the emailed Supabase recovery link (admin-created staff
 // accounts, and regular "forgot password" flows). Supabase establishes a
@@ -10,11 +18,27 @@ import { loginDestination } from '../lib/authRoles'
 export default function ResetPassword() {
   const { session, loading } = useAuth()
   const navigate = useNavigate()
+  const [linkError] = useState(readLinkError)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   if (loading) return <p className="loading" role="status">Loading…</p>
-  if (!session) return <Navigate to="/login" replace />
+  if (!session) return <div className="login-page">
+    <section className="login-story">
+      <p className="eyebrow">ROYAL SQUARE FINANCIAL</p>
+      <h1>Link not valid</h1>
+      <p>We couldn't verify your password link.</p>
+    </section>
+    <section className="login-panel">
+      <div className="card">
+        <p className="eyebrow">ACCOUNT SETUP</p>
+        <h2>This link can't be used</h2>
+        <p className="error" role="alert">{linkError || 'The link is missing, has expired, or was already used.'}</p>
+        <p>Password links work once. If it was opened before (some email apps preview links automatically), ask your administrator to send a new one.</p>
+        <Link to="/login">Back to sign in</Link>
+      </div>
+    </section>
+  </div>
 
   async function submit(event) {
     event.preventDefault()

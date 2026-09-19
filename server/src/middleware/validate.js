@@ -53,6 +53,14 @@ function validateNewUserPayload(req, res, next) {
   next();
 }
 
+function validateUserIdParam(req, res, next) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
+    return res.status(400).json({ error: "The user id in the URL isn't valid" });
+  }
+
+  next();
+}
+
 function validateComplianceUpdate(req, res, next) {
   const body = req.body || {};
 
@@ -97,5 +105,6 @@ module.exports = {
   validateDocumentType,
   validateSignaturePayload,
   validateNewUserPayload,
+  validateUserIdParam,
   validateComplianceUpdate,
 };
