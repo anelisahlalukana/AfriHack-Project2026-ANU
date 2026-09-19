@@ -1,49 +1,76 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { AuthContext } from "@/context/auth-context";
+import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { AuthContext } from '../hooks/useAuth'
 
-// Minimal Supabase session provider: tracks the current user/session and
-// exposes sign-in/sign-out. Built to unblock testing the Documents &
-// Compliance API routes, which all require a valid session.
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState(null)
+  const [loading, setLoading] = useState(Boolean(supabase))
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    let cancelled = false;
+    if (!supabase) return
+    let active = true
+    let changed = false
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, next) => {
+      changed = true
+      if (active) {
+        setSession(next)
+        setError('')
+        setLoading(false)
+      }
+    })
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (active && !changed) {
+        setSession(data.session)
+        setError(error?.message || '')
+        setLoading(false)
+      }
+    }).catch(error => {
+      if (active && !changed) {
+        setError(error.message)
+        setLoading(false)
+      }
+    })
+    return () => { active = false; subscription.unsubscribe() }
+  }, [])
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      setSession(data.session);
-      setLoading(false);
-    });
+  async function signIn(email, password) {
+    if (!supabase) throw new Error('Supabase authentication is not configured.')
+    setError('')
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+    if (error) throw error
+    if (!data.session) throw new Error('Sign-in did not return a session. Please try again.')
+    setSession(data.session)
+  }
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-    });
-
-    return () => {
-      cancelled = true;
-      listener.subscription.unsubscribe();
-    };
-  }, []);
-
-  async function signInWithPassword(email, password) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+  async function signUp(email, password, fullName) {
+    if (!supabase) throw new Error('Supabase authentication is not configured.')
+    setError('')
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: `${window.location.origin}/login`,
+      },
+    })
+    if (error) throw error
+    // No role is accepted from the browser. Unprovisioned accounts are clients.
+    if (data.session) setSession(data.session)
+    return data
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    if (!supabase) throw new Error('Supabase authentication is not configured.')
+    const { error } = await supabase.auth.signOut()
+    if (error) throw error
+    setSession(null)
+    setError('')
   }
 
-  const value = {
-    session,
-    user: session?.user || null,
-    loading,
-    signInWithPassword,
-    signOut,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, signIn, signUp, signOut, configured: Boolean(supabase) }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
