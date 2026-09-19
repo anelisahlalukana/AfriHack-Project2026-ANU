@@ -1,27 +1,27 @@
 import { useState } from 'react'
-import { Star } from 'lucide-react'
 import { completeClientAction } from '../../api/tasks'
-import { errorMessage, todayInputValue } from '../../lib/taskFormat'
 import { Alert } from './TaskBits'
+
+const SUBMIT_LABEL = { date: 'Confirm date', review: 'Close with review', upload: 'I have uploaded everything', confirm: 'Done' }
 
 // The "Needs you" card: whatever the current step needs from the client.
 export function ClientActionPanel({ task, onChange }) {
   const action = task.permissions?.clientAction
-  const [date, setDate] = useState('')
-  const [rating, setRating] = useState(0)
-  const [review, setReview] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [minDate] = useState(() => todayInputValue())
   if (!action) return null
 
   async function submit(event) {
     event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const body = action.kind === 'date'
+      ? { date: data.get('date') }
+      : action.kind === 'review'
+        ? { rating: Number(data.get('rating')), review: data.get('review').trim() || undefined }
+        : {}
     setBusy(true); setError('')
-    try {
-      const body = action.kind === 'date' ? { date } : action.kind === 'review' ? { rating, review } : {}
-      onChange(await completeClientAction(task.id, body))
-    } catch (err) { setError(errorMessage(err)) }
+    try { onChange(await completeClientAction(task.id, body)) }
+    catch (error) { setError(error.message) }
     finally { setBusy(false) }
   }
 
@@ -30,21 +30,17 @@ export function ClientActionPanel({ task, onChange }) {
     <h2 id="needs-you">{action.label}</h2>
     {action.kind === 'upload' && <p>Add the documents below under Documents, then let us know you are done.</p>}
     {action.kind === 'confirm' && <p>Tell us once this is done and we will take it from there.</p>}
-    <div className="rs-actions">
-      {action.kind === 'date' && <label>Date<input type="date" min={minDate} value={date} onChange={e => setDate(e.target.value)} required /></label>}
+    <fieldset className="rs-actions" disabled={busy} style={{ border: 0, padding: 0, margin: 0 }}>
+      {action.kind === 'date' && <label>Date<input type="date" name="date" min={new Date().toLocaleDateString('en-CA')} required /></label>}
       {action.kind === 'review' && <>
-        <fieldset className="form-stack" style={{ flex: '1 1 100%' }}>
-          <legend>How did we do?</legend>
-          <div className="rs-row-actions" role="radiogroup" aria-label="Rating out of 5">
-            {[1, 2, 3, 4, 5].map(value => <button type="button" key={value} role="radio" aria-checked={rating === value} aria-label={`${value} out of 5`} className={rating >= value ? 'primary' : ''} onClick={() => setRating(value)}><Star size={16} /></button>)}
-          </div>
+        <fieldset className="rs-rating" style={{ flex: '1 1 100%' }}>
+          <legend>How did we do? *</legend>
+          {[1, 2, 3, 4, 5].map(value => <label key={value}><input type="radio" name="rating" value={value} required />{value}</label>)}
         </fieldset>
-        <label style={{ flex: '1 1 100%' }}>A short review (optional)<textarea value={review} maxLength={2000} onChange={e => setReview(e.target.value)} /></label>
+        <label style={{ flex: '1 1 100%' }}>A short review (optional)<textarea name="review" maxLength={2000} /></label>
       </>}
-      <button className="primary" disabled={busy || (action.kind === 'review' && !rating)}>
-        {busy ? 'Saving…' : action.kind === 'date' ? 'Confirm date' : action.kind === 'review' ? 'Close with review' : action.kind === 'upload' ? 'I have uploaded everything' : 'Done'}
-      </button>
-    </div>
+      <button className="primary">{busy ? 'Saving…' : SUBMIT_LABEL[action.kind] || 'Done'}</button>
+    </fieldset>
     <Alert>{error}</Alert>
   </form>
 }

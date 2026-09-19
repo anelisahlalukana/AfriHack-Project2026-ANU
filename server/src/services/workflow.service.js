@@ -6,6 +6,7 @@ const { notifyClient, notifyAdviser } = require("./taskNotifications.service");
 const { applyRequestToClient } = require("./requestEffects.service");
 const { findStage, statusForStage } = require("../utils/workflow");
 const { badRequest } = require("../utils/httpError");
+const { clientName } = require("./taskAccess.service");
 
 async function stagesFor(task) {
   const grouped = await listStagesByWorkflow();
@@ -93,7 +94,7 @@ async function moveToStage(task, stageKey, actor, { note = null, visibleToClient
   }
   if (actor.type !== "adviser") {
     await notifyAdviser(merged, {
-      title: `${merged.clients?.first_name || "Client"} ${merged.clients?.surname || ""}: ${stage.stage_label}`.trim(),
+      title: `${clientName(merged.client)}: ${stage.stage_label}`,
       body: note || `${taskName(merged)} moved to "${stage.stage_label}".`,
     });
   }

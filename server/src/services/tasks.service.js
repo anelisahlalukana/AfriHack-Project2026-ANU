@@ -9,15 +9,19 @@ const {
   MAX_NOTE_LENGTH,
 } = require("../constants/taskConfig");
 const catalog = require("./catalog.service");
-const { getClientForAccess, getTaskForAccess, requireLinkedClient } = require("./taskAccess.service");
+const {
+  TASK_SELECT,
+  clientName,
+  resolveAccess,
+  requireClientRecord,
+  getClientForAccess,
+  getTaskForAccess,
+} = require("./taskAccess.service");
 const { moveToStage, stagesFor, addUpdate, patchTask } = require("./workflow.service");
 const mockProvider = require("./mockProvider.service");
 const { notifyClient, notifyAdviser } = require("./taskNotifications.service");
 const wf = require("../utils/workflow");
 const { badRequest, forbidden, conflict, notFound, assertUuid } = require("../utils/httpError");
-
-const TASK_SELECT =
-  "*, clients!inner(id, advisor_id, auth_user_id, first_name, surname, contact_email), providers(id, name, reference_prefix, product_lines)";
 
 function actorFor(access) {
   return {
@@ -75,10 +79,8 @@ function summarise(task, stages, config) {
     progress: prog,
     waitingOn: wf.waitingOn(task, stages),
     overdue: wf.isOverdue(task, stages),
-    client: task.clients
-      ? { id: task.clients.id, name: `${task.clients.first_name} ${task.clients.surname}`, linked: Boolean(task.clients.auth_user_id) }
-      : null,
-    provider: task.providers ? { id: task.providers.id, name: task.providers.name } : null,
+    client: task.client ? { id: task.client.id, name: clientName(task.client) } : null,
+    provider: task.provider ? { id: task.provider.id, name: task.provider.name } : null,
     providerReference: task.data?.provider_reference || null,
     claimsHandler: task.data?.claims_handler || null,
     policyNumber: task.policy_number,
@@ -108,9 +110,9 @@ async function configMaps() {
 // Listing and detail
 // ---------------------------------------------------------------------------
 async function listTasks(access, filters = {}) {
-  requireLinkedClient(access);
+  requireClientRecord(access);
   let query = supabaseAdmin.from("tasks").select(TASK_SELECT).order("updated_at", { ascending: false }).limit(500);
-  query = access.role === "staff" ? query.eq("clients.advisor_id", access.userId) : query.eq("client_id", access.clientId);
+  query = access.role === "staff" ? query.eq("client.advisor_id", access.userId) : query.eq("client_id", access.clientId);
 
   if (filters.clientId) {
     assertUuid(filters.clientId, "clientId");
@@ -225,7 +227,7 @@ async function buildDetail(access, task) {
             nextStage: next ? { key: next.stage_key, label: next.stage_label, actor: next.actor, terminal: next.is_terminal } : null,
             canSimulateProvider:
               active &&
-              Boolean(task.providers) &&
+              Boolean(task.provider) &&
               task.status !== "awaiting_client" &&
               ((next && next.actor === "provider") || (current?.repeatable && current.actor === "provider")),
           }
@@ -340,7 +342,7 @@ async function submitTask(access, taskId, body = {}) {
     status: "open",
     submitted_at: new Date().toISOString(),
   });
-  let current = { ...task, ...submitted, providers: provider };
+  let current = { ...task, ...submitted, provider };
 
   await addUpdate(current, {
     note: `${category.label} claim submitted to Royal Square.`,
@@ -351,12 +353,12 @@ async function submitTask(access, taskId, body = {}) {
   });
   await createPoliceReminder(current, category, form);
   await notifyAdviser(current, {
-    title: `New ${category.label.toLowerCase()} claim from ${current.clients.first_name} ${current.clients.surname}`,
+    title: `New ${category.label.toLowerCase()} claim from ${clientName(current.client)}`,
     body: `${current.reference} was submitted and sent to ${provider.name}.`,
   });
 
   current = await mockProvider.registerClaim(current, provider);
-  return buildDetail(access, { ...current, providers: provider });
+  return buildDetail(access, { ...current, provider });
 }
 
 // Non-claim requests are created and submitted in one step.
@@ -393,7 +395,7 @@ async function createRequest(access, body = {}) {
   });
   current = { ...data, ...current };
   if (provider) current = await mockProvider.submitRequest(current, provider);
-  return buildDetail(access, { ...data, ...current, providers: provider });
+  return buildDetail(access, { ...data, ...current, provider });
 }
 
 // ---------------------------------------------------------------------------
@@ -627,19 +629,29 @@ async function getFileUrl(access, taskId, fileId) {
   return signed.signedUrl;
 }
 
+// Every exported function takes the signed-in Supabase user (req.user) and works out
+// what they may see and do, so controllers call exactly one service function.
+function withAccess(fn) {
+  return async (user, ...args) => fn(await resolveAccess(user), ...args);
+}
+
+// Advisors post notes and move steps; clients send messages.
+async function postUpdate(access, taskId, body) {
+  return access.role === "staff" ? postStaffUpdate(access, taskId, body) : postClientMessage(access, taskId, body);
+}
+
 module.exports = {
-  listTasks,
-  getTaskDetail,
-  createClaim,
-  updateDraft,
-  submitTask,
-  createRequest,
-  postStaffUpdate,
-  postClientMessage,
-  completeClientAction,
-  closeTask,
-  cancelDraft,
-  simulateProvider,
-  uploadFile,
-  getFileUrl,
+  listTasks: withAccess(listTasks),
+  getTaskDetail: withAccess(getTaskDetail),
+  createClaim: withAccess(createClaim),
+  updateDraft: withAccess(updateDraft),
+  submitTask: withAccess(submitTask),
+  createRequest: withAccess(createRequest),
+  postUpdate: withAccess(postUpdate),
+  completeClientAction: withAccess(completeClientAction),
+  closeTask: withAccess(closeTask),
+  cancelDraft: withAccess(cancelDraft),
+  simulateProvider: withAccess(simulateProvider),
+  uploadFile: withAccess(uploadFile),
+  getFileUrl: withAccess(getFileUrl),
 };

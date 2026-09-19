@@ -4,7 +4,6 @@ import { AlarmClock, Hourglass, Inbox, Plus, UserRoundCheck } from 'lucide-react
 import { useCatalog, useTaskList } from '../hooks/useTasks'
 import { formatDateTime, progressText } from '../lib/taskFormat'
 import { StatusChip, WaitingChip } from '../components/tasks/TaskBits'
-import '../styles/claims.css'
 
 const TABS = [
   ['open', 'All open'],

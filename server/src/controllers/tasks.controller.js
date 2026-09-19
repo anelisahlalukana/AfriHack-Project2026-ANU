@@ -1,87 +1,138 @@
-const tasks = require("../services/tasks.service");
-const catalog = require("../services/catalog.service");
-const clientLinks = require("../services/clientLinks.service");
-const { resolveAccess } = require("../services/taskAccess.service");
-const { handle } = require("../utils/httpError");
+const tasksService = require("../services/tasks.service");
 
-const withAccess = (fn) => handle(async (req, res) => fn(req, res, await resolveAccess(req.user)));
+// Claims and client requests. Each handler reads req, calls one service function,
+// and replies. Services decide what the signed-in user may see and do.
+
+async function listTasks(req, res) {
+  try {
+    const { kind, view, category, q, clientId } = req.query;
+    const tasks = await tasksService.listTasks(req.user, { kind, view, category, q, clientId });
+    res.json({ tasks });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function getTask(req, res) {
+  try {
+    const task = await tasksService.getTaskDetail(req.user, req.params.taskId);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function createClaim(req, res) {
+  try {
+    const task = await tasksService.createClaim(req.user, req.body);
+    res.status(201).json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function updateDraft(req, res) {
+  try {
+    const task = await tasksService.updateDraft(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function submitTask(req, res) {
+  try {
+    const task = await tasksService.submitTask(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function cancelDraft(req, res) {
+  try {
+    const task = await tasksService.cancelDraft(req.user, req.params.taskId);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function createRequest(req, res) {
+  try {
+    const task = await tasksService.createRequest(req.user, req.body);
+    res.status(201).json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function postUpdate(req, res) {
+  try {
+    const task = await tasksService.postUpdate(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function clientAction(req, res) {
+  try {
+    const task = await tasksService.completeClientAction(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function closeTask(req, res) {
+  try {
+    const task = await tasksService.closeTask(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function simulateProvider(req, res) {
+  try {
+    const task = await tasksService.simulateProvider(req.user, req.params.taskId, req.body);
+    res.json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function uploadFile(req, res) {
+  try {
+    const task = await tasksService.uploadFile(req.user, req.params.taskId, req.file, req.body);
+    res.status(201).json({ task });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+async function getFileUrl(req, res) {
+  try {
+    const url = await tasksService.getFileUrl(req.user, req.params.taskId, req.params.fileId);
+    res.json({ url });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
 
 module.exports = {
-  // Catalog: claim categories, request types and providers (config-driven forms).
-  getCatalog: handle(async (req, res) => {
-    res.json(await catalog.getCatalog());
-  }),
-
-  me: handle(async (req, res) => {
-    res.json(await clientLinks.whoAmI(req.user));
-  }),
-
-  listTasks: withAccess(async (req, res, access) => {
-    const { kind, view, category, q, clientId } = req.query;
-    res.json({ tasks: await tasks.listTasks(access, { kind, view, category, q, clientId }) });
-  }),
-
-  getTask: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.getTaskDetail(access, req.params.taskId) });
-  }),
-
-  createClaim: withAccess(async (req, res, access) => {
-    res.status(201).json({ task: await tasks.createClaim(access, req.body || {}) });
-  }),
-
-  updateDraft: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.updateDraft(access, req.params.taskId, req.body || {}) });
-  }),
-
-  submitTask: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.submitTask(access, req.params.taskId, req.body || {}) });
-  }),
-
-  cancelDraft: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.cancelDraft(access, req.params.taskId) });
-  }),
-
-  createRequest: withAccess(async (req, res, access) => {
-    res.status(201).json({ task: await tasks.createRequest(access, req.body || {}) });
-  }),
-
-  postUpdate: withAccess(async (req, res, access) => {
-    const task =
-      access.role === "staff"
-        ? await tasks.postStaffUpdate(access, req.params.taskId, req.body || {})
-        : await tasks.postClientMessage(access, req.params.taskId, req.body || {});
-    res.json({ task });
-  }),
-
-  clientAction: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.completeClientAction(access, req.params.taskId, req.body || {}) });
-  }),
-
-  closeTask: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.closeTask(access, req.params.taskId, req.body || {}) });
-  }),
-
-  simulateProvider: withAccess(async (req, res, access) => {
-    res.json({ task: await tasks.simulateProvider(access, req.params.taskId, req.body || {}) });
-  }),
-
-  uploadFile: withAccess(async (req, res, access) => {
-    res.status(201).json({ task: await tasks.uploadFile(access, req.params.taskId, req.file, req.body || {}) });
-  }),
-
-  getFileUrl: withAccess(async (req, res, access) => {
-    res.json({ url: await tasks.getFileUrl(access, req.params.taskId, req.params.fileId) });
-  }),
-
-  getLinkStatus: withAccess(async (req, res, access) => {
-    res.json(await clientLinks.getLinkStatus(access, req.params.clientId));
-  }),
-
-  linkAccount: withAccess(async (req, res, access) => {
-    res.json(await clientLinks.linkClientAccount(access, req.params.clientId, req.body?.email));
-  }),
-
-  unlinkAccount: withAccess(async (req, res, access) => {
-    res.json(await clientLinks.unlinkClientAccount(access, req.params.clientId));
-  }),
+  listTasks,
+  getTask,
+  createClaim,
+  updateDraft,
+  submitTask,
+  cancelDraft,
+  createRequest,
+  postUpdate,
+  clientAction,
+  closeTask,
+  simulateProvider,
+  uploadFile,
+  getFileUrl,
 };

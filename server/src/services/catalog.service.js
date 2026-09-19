@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require("../config/supabaseClient");
+const { PROVIDER_ROLE_ID } = require("../constants/roles");
 
 // Configuration tables change rarely; cache briefly so every request doesn't re-read them.
 const CACHE_MS = 60 * 1000;
@@ -58,10 +59,12 @@ async function listStagesByWorkflow() {
 
 async function listProviders() {
   return cached("providers", async () => {
+    // Product providers (the mocked insurers) are public.users rows with role_id 2.
     const { data, error } = await supabaseAdmin
-      .from("providers")
-      .select("id, name, provider_type, product_lines, reference_prefix, integration_mode")
-      .order("name");
+      .from("users")
+      .select("id, name:organisation_name, provider_type, product_lines, reference_prefix, integration_mode")
+      .eq("role_id", PROVIDER_ROLE_ID)
+      .order("organisation_name");
     if (error) throw new Error(error.message);
     return data;
   });

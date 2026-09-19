@@ -1,4 +1,4 @@
-import { http } from "@/api/http";
+import { http } from "./http";
 
 // Claims and client requests. All calls go through the Express API, which
 // checks whether the signed-in user is staff or a linked client.
@@ -81,19 +81,4 @@ export async function uploadTaskFile(taskId, file, { documentKey, label } = {}) 
 export async function getTaskFileUrl(taskId, fileId) {
   const { data } = await http.get(`/api/tasks/${taskId}/files/${fileId}/url`);
   return data.url;
-}
-
-export async function getAccountLink(clientId) {
-  const { data } = await http.get(`/api/clients/${clientId}/account-link`);
-  return data;
-}
-
-export async function linkAccount(clientId, email) {
-  const { data } = await http.post(`/api/clients/${clientId}/account-link`, { email });
-  return data;
-}
-
-export async function unlinkAccount(clientId) {
-  const { data } = await http.delete(`/api/clients/${clientId}/account-link`);
-  return data;
 }

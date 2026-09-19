@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
 import { ArrowLeft } from 'lucide-react'
 import { useCatalog, useTask } from '../../hooks/useTasks'
 import { cancelDraft, createClaim, submitClaim, updateDraft } from '../../api/tasks'
-import { errorMessage } from '../../lib/taskFormat'
+import { compactForm, dynamicDefaults } from '../../lib/taskFormat'
 import { Alert } from '../../components/tasks/TaskBits'
 import { SafetyBanner, SceneChecklist } from '../../components/tasks/SceneChecklist'
 import { DynamicFields } from '../../components/tasks/DynamicFields'
@@ -26,7 +27,7 @@ function ChooseCategory() {
     try {
       const task = await createClaim({ category })
       navigate(`/account/claims/${task.id}/continue`)
-    } catch (err) { setError(errorMessage(err)); setBusy(null) }
+    } catch (error) { setError(error.message); setBusy(null) }
   }
   return <>
     <Link className="back" to="/account/claims"><ArrowLeft size={16} /> My claims & requests</Link>
@@ -45,50 +46,58 @@ function DraftEditor({ task, providers, onTaskChange }) {
   const navigate = useNavigate()
   const hasChecklist = task.config.sceneChecklist.length > 0
   const [step, setStep] = useState(hasChecklist && !Object.keys(task.checklist).length ? 'checklist' : 'details')
-  const [checklist, setChecklist] = useState(task.checklist)
-  const [form, setForm] = useState(task.draftForm || {})
-  const [provider, setProvider] = useState({ providerId: task.provider?.id || '', policyNumber: task.policyNumber || '' })
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
+  const { register, control, handleSubmit, getValues, setValue } = useForm({
+    defaultValues: {
+      checklist: Object.fromEntries(task.config.sceneChecklist.map(item => [item.key, { done: Boolean(task.checklist[item.key]?.done), note: task.checklist[item.key]?.note || '' }])),
+      form: dynamicDefaults(task.config.formFields, task.draftForm),
+      providerId: task.provider?.id || '',
+      policyNumber: task.policyNumber || '',
+    },
+  })
 
   async function run(label, action) {
     setBusy(label); setError('')
-    try { await action() } catch (err) { setError(errorMessage(err)) } finally { setBusy('') }
+    try { await action() } catch (error) { setError(error.message) } finally { setBusy('') }
   }
-  const saveChecklist = () => run('checklist', async () => { onTaskChange(await updateDraft(task.id, { checklist })); setStep('details') })
-  const saveForLater = () => run('save', async () => { onTaskChange(await updateDraft(task.id, { checklist, form, ...(provider.providerId ? provider : { policyNumber: provider.policyNumber }) })) })
+  const draftBody = () => {
+    const { checklist, form, providerId, policyNumber } = getValues()
+    return { checklist, form, policyNumber, ...(providerId ? { providerId } : {}) }
+  }
+  const saveChecklist = () => run('checklist', async () => { onTaskChange(await updateDraft(task.id, { checklist: getValues('checklist') })); setStep('details') })
+  const saveForLater = () => run('save', async () => { onTaskChange(await updateDraft(task.id, draftBody())) })
   const discard = () => run('discard', async () => { await cancelDraft(task.id); navigate('/account/claims') })
-  const submit = event => {
-    event.preventDefault()
-    run('submit', async () => {
-      const submitted = await submitClaim(task.id, { form, ...provider })
-      navigate(`/account/tasks/${submitted.id}`)
-    })
-  }
+  // Enter in a checklist note submits the form: treat it as "save and continue", never as the claim submission.
+  const submit = values => step === 'checklist' ? saveChecklist() : run('submit', async () => {
+    const submitted = await submitClaim(task.id, { form: compactForm(values.form), providerId: values.providerId, policyNumber: values.policyNumber })
+    navigate(`/account/tasks/${submitted.id}`)
+  })
 
   return <>
     <Link className="back" to="/account/claims"><ArrowLeft size={16} /> My claims & requests</Link>
     <header className="page-heading"><div><p className="eyebrow">{task.typeLabel.toUpperCase()} CLAIM · {task.reference}</p><h1>{step === 'checklist' ? 'At the scene' : 'Tell us what happened'}</h1><Stepper step={step} hasChecklist={hasChecklist} /></div></header>
 
-    {step === 'checklist' ? <div className="rs-stack">
-      {task.config.safetyBanner && <SafetyBanner />}
-      <section className="card">
-        <SceneChecklist task={task} items={task.config.sceneChecklist} value={checklist} onChange={setChecklist} onTaskChange={onTaskChange} />
-        <div className="form-actions"><button className="primary" onClick={saveChecklist} disabled={Boolean(busy)}>{busy === 'checklist' ? 'Saving…' : 'Save and continue to your claim'}</button></div>
-      </section>
-    </div> : <form className="rs-stack" onSubmit={submit}>
-      <section className="card rs-form"><h2>Your policy</h2><ProviderFields providers={providers} category={task.claimCategory} providerId={provider.providerId} policyNumber={provider.policyNumber} onChange={setProvider} /></section>
-      <section className="card rs-form"><h2>What happened</h2><DynamicFields fields={task.config.formFields} values={form} onChange={setForm} /></section>
-      <DocumentsPanel task={task} onChange={onTaskChange} />
+    <form className="rs-stack" onSubmit={handleSubmit(submit)}>
+      {step === 'checklist' ? <>
+        {task.config.safetyBanner && <SafetyBanner />}
+        <section className="card">
+          <SceneChecklist task={task} items={task.config.sceneChecklist} register={register} control={control} setValue={setValue} onTaskChange={onTaskChange} />
+          <div className="form-actions"><button type="button" className="primary" onClick={saveChecklist} disabled={Boolean(busy)}>{busy === 'checklist' ? 'Saving…' : 'Save and continue to your claim'}</button></div>
+        </section>
+      </> : <>
+        <section className="card rs-form"><h2>Your policy</h2><ProviderFields providers={providers} category={task.claimCategory} register={register} /></section>
+        <section className="card rs-form"><h2>What happened</h2><DynamicFields fields={task.config.formFields} register={register} control={control} /></section>
+        <DocumentsPanel task={task} onChange={onTaskChange} />
+        <div className="form-actions">
+          <button type="button" onClick={discard} disabled={Boolean(busy)}>{busy === 'discard' ? 'Discarding…' : 'Discard'}</button>
+          {hasChecklist && <button type="button" onClick={() => setStep('checklist')}>Back to the checklist</button>}
+          <button type="button" onClick={saveForLater} disabled={Boolean(busy)}>{busy === 'save' ? 'Saving…' : 'Save for later'}</button>
+          <button className="primary" disabled={Boolean(busy)}>{busy === 'submit' ? 'Sending to your insurer…' : 'Submit claim'}</button>
+        </div>
+      </>}
       <Alert>{error}</Alert>
-      <div className="form-actions">
-        <button type="button" onClick={discard} disabled={Boolean(busy)}>{busy === 'discard' ? 'Discarding…' : 'Discard'}</button>
-        {hasChecklist && <button type="button" onClick={() => setStep('checklist')}>Back to the checklist</button>}
-        <button type="button" onClick={saveForLater} disabled={Boolean(busy)}>{busy === 'save' ? 'Saving…' : 'Save for later'}</button>
-        <button className="primary" disabled={Boolean(busy)}>{busy === 'submit' ? 'Sending to your insurer…' : 'Submit claim'}</button>
-      </div>
-    </form>}
-    {step === 'checklist' && <Alert>{error}</Alert>}
+    </form>
   </>
 }
 

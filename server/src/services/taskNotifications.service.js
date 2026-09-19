@@ -19,7 +19,7 @@ function notifyClient(task, { title, body }) {
 }
 
 function notifyAdviser(task, { title, body }) {
-  const advisorId = task.clients?.advisor_id;
+  const advisorId = task.client?.advisor_id;
   if (!advisorId) return Promise.resolve();
   return insertNotification({
     client_id: task.client_id,

@@ -1,8 +1,10 @@
 // When a request is completed, apply it to the client record so the dashboard never goes stale.
 const { supabaseAdmin } = require("../config/supabaseClient");
+const { CLIENT_ROLE_ID } = require("../constants/roles");
 
 async function updateClient(clientId, fields) {
-  const { error } = await supabaseAdmin.from("clients").update(fields).eq("id", clientId);
+  // Clients are public.users rows with role_id 1.
+  const { error } = await supabaseAdmin.from("users").update(fields).eq("id", clientId).eq("role_id", CLIENT_ROLE_ID);
   if (error) throw new Error(error.message);
 }
 

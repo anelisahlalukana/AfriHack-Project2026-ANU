@@ -50,7 +50,7 @@ function WorkspaceLayout() {
       <hr className="side-divider" />
       <nav>
         <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
-        <NavLink to="/clients/new"><Plus size={18} /> Onboard a client</NavLink><Link to="/tasks"><Inbox size={18} /> Requests & claims</Link>
+        <NavLink to="/clients/new"><Plus size={18} /> Onboard a client</NavLink><NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />

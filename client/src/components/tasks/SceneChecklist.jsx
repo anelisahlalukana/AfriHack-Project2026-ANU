@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import { useWatch } from 'react-hook-form'
 import { Camera, Check, Mic, Phone } from 'lucide-react'
 import { uploadTaskFile } from '../../api/tasks'
-import { errorMessage } from '../../lib/taskFormat'
 import { Alert } from './TaskBits'
 
 export function SafetyBanner() {
@@ -14,12 +14,14 @@ export function SafetyBanner() {
   </div>
 }
 
-// The at-the-scene checklist: one job at a time, photos and voice notes captured straight into the draft.
-export function SceneChecklist({ task, items, value, onChange, onTaskChange }) {
+// The at-the-scene checklist, part of the claim draft's react-hook-form form
+// (fields `checklist.<key>.done` and `checklist.<key>.note`). Photos and voice notes
+// upload straight into the draft and tick their item.
+export function SceneChecklist({ task, items, register, control, setValue, onTaskChange }) {
   const [busyKey, setBusyKey] = useState(null)
   const [error, setError] = useState('')
-  const doneCount = items.filter(item => value[item.key]?.done).length
-  const set = (key, patch) => onChange({ ...value, [key]: { done: false, note: '', ...value[key], ...patch } })
+  const checklist = useWatch({ control, name: 'checklist' }) || {}
+  const doneCount = items.filter(item => checklist[item.key]?.done).length
 
   async function capture(item, event) {
     const file = event.target.files?.[0]
@@ -28,22 +30,24 @@ export function SceneChecklist({ task, items, value, onChange, onTaskChange }) {
     setBusyKey(item.key); setError('')
     try {
       onTaskChange(await uploadTaskFile(task.id, file, { documentKey: item.document_key, label: item.label }))
-      set(item.key, { done: true })
-    } catch (err) { setError(errorMessage(err)) }
+      setValue(`checklist.${item.key}.done`, true)
+    } catch (error) { setError(error.message) }
     finally { setBusyKey(null) }
   }
 
   return <div className="rs-checklist">
     <p className="rs-note">{doneCount} of {items.length} done. Camera and voice notes are used only for this claim; tell any witness before you record them.</p>
     {items.map(item => {
-      const entry = value[item.key] || {}
       const media = item.kind === 'photo' || item.kind === 'voice'
-      return <div key={item.key} className={`rs-check ${entry.done ? 'done' : ''}`}>
-        <button type="button" className="rs-tick" aria-pressed={Boolean(entry.done)} aria-label={`${entry.done ? 'Undo' : 'Mark done'}: ${item.label}`} onClick={() => set(item.key, { done: !entry.done })}>{entry.done && <Check size={14} />}</button>
+      return <div key={item.key} className="rs-check">
+        <label className="rs-tick" aria-label={`Done: ${item.label}`}>
+          <input type="checkbox" className="sr-only" {...register(`checklist.${item.key}.done`)} />
+          <Check size={14} />
+        </label>
         <div>
           <b>{item.label}</b>
           {item.hint && <small>{item.hint}</small>}
-          {(item.kind === 'text' || item.kind === 'voice') && <input type="text" aria-label={`${item.label} notes`} value={entry.note || ''} placeholder="Notes" onChange={e => set(item.key, { note: e.target.value, done: Boolean(e.target.value.trim()) || entry.done })} />}
+          {(item.kind === 'text' || item.kind === 'voice') && <input type="text" aria-label={`${item.label} notes`} placeholder="Notes" {...register(`checklist.${item.key}.note`)} />}
         </div>
         {media && <label className="button rs-capture" aria-busy={busyKey === item.key}>
           {item.kind === 'photo' ? <Camera size={15} /> : <Mic size={15} />} {busyKey === item.key ? 'Saving…' : item.kind === 'photo' ? 'Photo' : 'Voice note'}

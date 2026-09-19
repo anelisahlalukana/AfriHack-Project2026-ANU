@@ -9,4 +9,10 @@ const ROLES = ["admin", "advisor"];
 // This is the database role_id on public.users, not an app_metadata.role value.
 const CLIENT_ROLE_ID = 1;
 
-module.exports = { ROLES, CLIENT_ROLE_ID };
+// public.roles.id for product providers (the mocked insurers), stored as users rows.
+const PROVIDER_ROLE_ID = 2;
+
+// The only staff role that works with client data (claims, requests, FNA).
+const ADVISOR_ROLE = "advisor";
+
+module.exports = { ROLES, CLIENT_ROLE_ID, PROVIDER_ROLE_ID, ADVISOR_ROLE };

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { statusLabel, waitingLabel, progressText, formRows, providersFor, errorMessage, todayInputValue, fileSize } from '../src/lib/taskFormat.js'
+import { statusLabel, waitingLabel, progressText, formRows, providersFor, errorMessage, todayInputValue, fileSize, dynamicDefaults, compactForm } from '../src/lib/taskFormat.js'
 
 test('status and waiting labels depend on who is looking', () => {
   assert.equal(statusLabel('awaiting_client'), 'Needs you')
@@ -37,9 +37,15 @@ test('providers are filtered by product line', () => {
 })
 
 test('helpers: API errors, dates, file sizes', () => {
-  assert.equal(errorMessage({ response: { data: { error: 'Pick a date' } } }), 'Pick a date')
+  assert.equal(errorMessage({}), 'Something went wrong. Please try again.')
   assert.equal(errorMessage(new Error('Network Error')), 'Network Error')
   assert.match(todayInputValue(new Date('2026-09-19T10:00:00')), /^2026-09-19$/)
   assert.equal(fileSize(2048), '2 KB')
   assert.equal(fileSize(3 * 1024 * 1024), '3.0 MB')
+})
+
+test('form defaults and blank answers', () => {
+  const fields = [{ key: 'a', type: 'text' }, { key: 'b', type: 'boolean' }, { key: 'items', type: 'financial_items' }]
+  assert.deepEqual(dynamicDefaults(fields, { a: 'saved' }), { a: 'saved', b: false, items: [{ category: 'asset', item_type: '', amount: '' }] })
+  assert.deepEqual(compactForm({ a: '', b: false, c: 'x', d: null }), { b: false, c: 'x' })
 })

@@ -1,26 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Paperclip, X } from 'lucide-react'
+import { useForm } from 'react-hook-form'
+import { ArrowLeft } from 'lucide-react'
 import { useCatalog } from '../../hooks/useTasks'
 import { createRequest, uploadTaskFile } from '../../api/tasks'
 import { listClients } from '../../api/clients'
-import { errorMessage } from '../../lib/taskFormat'
+import { compactForm, dynamicDefaults } from '../../lib/taskFormat'
 import { Alert } from '../../components/tasks/TaskBits'
 import { DynamicFields } from '../../components/tasks/DynamicFields'
 import { ProviderFields } from '../../components/tasks/ProviderFields'
-import '../../styles/claims.css'
 
-// Staff only: choose which client the request is for (e.g. it arrived by email or phone).
-function ClientSelect({ value, onChange }) {
+// Advisors only: choose which client the request is for (e.g. it arrived by email or phone).
+function ClientSelect({ register }) {
   const [clients, setClients] = useState(null)
   const [error, setError] = useState('')
   useEffect(() => {
     let active = true
-    listClients().then(rows => { if (active) setClients(rows) }).catch(err => { if (active) setError(errorMessage(err)) })
+    listClients()
+      .then(rows => { if (active) setClients(rows.filter(row => row.first_name)) })
+      .catch(error => { if (active) setError(error.message) })
     return () => { active = false }
   }, [])
   return <label>Client *
-    <select value={value} onChange={e => onChange(e.target.value)} required disabled={!clients}>
+    <select {...register('clientId', { required: true })} required disabled={!clients}>
       <option value="" disabled>{clients ? 'Choose a client…' : 'Loading clients…'}</option>
       {clients?.map(client => <option key={client.id} value={client.id}>{client.first_name} {client.surname}</option>)}
     </select>
@@ -30,50 +32,55 @@ function ClientSelect({ value, onChange }) {
 
 function RequestForm({ type, providers, staff, initialClientId, onBack }) {
   const navigate = useNavigate()
-  const [clientId, setClientId] = useState(initialClientId || '')
-  const [form, setForm] = useState({})
-  const [provider, setProvider] = useState({ providerId: '', policyNumber: '' })
-  const [pending, setPending] = useState({})
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const { register, control, handleSubmit, formState: { isSubmitting } } = useForm({
+    defaultValues: {
+      clientId: initialClientId || '',
+      providerId: '',
+      policyNumber: '',
+      form: dynamicDefaults(type.form_fields),
+    },
+  })
 
-  async function submit(event) {
-    event.preventDefault()
-    setBusy(true); setError('')
+  async function submit(values) {
+    setError('')
     try {
       let task = await createRequest({
         taskType: type.task_type,
-        form,
-        clientId: staff ? clientId : undefined,
-        ...(type.requires_provider ? provider : {}),
+        form: compactForm(values.form),
+        clientId: staff ? values.clientId : undefined,
+        ...(type.requires_provider ? { providerId: values.providerId, policyNumber: values.policyNumber } : {}),
       })
-      // Attach chosen files after the request exists; a failed upload can be retried on the detail page.
-      for (const [documentKey, file] of Object.entries(pending)) {
-        try { task = await uploadTaskFile(task.id, file, { documentKey }) } catch { /* shown as missing on the next screen */ }
+      // Attach chosen files after the request exists; anything that fails shows as missing on the next screen.
+      for (const doc of type.required_documents) {
+        const file = values.documents?.[doc.key]?.[0]
+        if (!file) continue
+        try { task = await uploadTaskFile(task.id, file, { documentKey: doc.key }) } catch { /* retried from the detail page */ }
       }
       navigate(staff ? `/tasks/${task.id}` : `/account/tasks/${task.id}`)
-    } catch (err) { setError(errorMessage(err)); setBusy(false) }
+    } catch (error) { setError(error.message) }
   }
 
-  return <form className="rs-stack" onSubmit={submit}>
-    <section className="card rs-form">
-      <div className="section-heading"><div><h2>{type.label}</h2><p>{type.description}</p></div><button type="button" onClick={onBack}>Change</button></div>
-      {staff && <div className="form-grid"><ClientSelect value={clientId} onChange={setClientId} /></div>}
-      {type.requires_provider && <ProviderFields providers={providers} category={null} providerId={provider.providerId} policyNumber={provider.policyNumber} onChange={setProvider} />}
-      <DynamicFields fields={type.form_fields} values={form} onChange={setForm} />
-    </section>
-    {type.required_documents.length > 0 && <section className="card">
-      <h2>Supporting documents</h2>
-      {type.required_documents.map(doc => <div className="rs-pack-row" key={doc.key}>
-        <span>{doc.label}{doc.required ? '' : ' (optional)'}<small>{pending[doc.key]?.name || 'No file chosen'}</small></span>
-        {pending[doc.key]
-          ? <button type="button" onClick={() => setPending(current => { const next = { ...current }; delete next[doc.key]; return next })}><X size={14} /> Remove</button>
-          : <label className="button"><Paperclip size={15} /> Choose file<input className="sr-only" type="file" accept="image/*,application/pdf" onChange={e => { const file = e.target.files?.[0]; if (file) setPending(p => ({ ...p, [doc.key]: file })) }} /></label>}
-      </div>)}
-      <p className="rs-note">Required documents can also be added after you send the request.</p>
-    </section>}
-    <Alert>{error}</Alert>
-    <div className="form-actions"><button className="primary" disabled={busy}>{busy ? 'Sending…' : 'Send request'}</button></div>
+  return <form className="rs-stack" onSubmit={handleSubmit(submit)}>
+    <fieldset disabled={isSubmitting} className="form-stack">
+      <section className="card rs-form">
+        <div className="section-heading"><div><h2>{type.label}</h2><p>{type.description}</p></div><button type="button" onClick={onBack}>Change</button></div>
+        {staff && <div className="form-grid"><ClientSelect register={register} /></div>}
+        {type.requires_provider && <ProviderFields providers={providers} category={null} register={register} />}
+        <DynamicFields fields={type.form_fields} register={register} control={control} />
+      </section>
+      {type.required_documents.length > 0 && <section className="card">
+        <h2>Supporting documents</h2>
+        {type.required_documents.map(doc => <div className="rs-pack-row" key={doc.key}>
+          <label style={{ flex: '1 1 260px' }}>{doc.label}{doc.required ? '' : ' (optional)'}
+            <input type="file" accept="image/*,application/pdf" {...register(`documents.${doc.key}`)} />
+          </label>
+        </div>)}
+        <p className="rs-note">Required documents can also be added after you send the request.</p>
+      </section>}
+      <Alert>{error}</Alert>
+      <div className="form-actions"><button className="primary">{isSubmitting ? 'Sending…' : 'Send request'}</button></div>
+    </fieldset>
   </form>
 }
 

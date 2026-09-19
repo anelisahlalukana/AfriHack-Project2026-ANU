@@ -2,8 +2,6 @@
 // Stage lists, claim categories and request types live in the database
 // (claim_stages, claim_categories, request_types) so they can change without code.
 
-const STAFF_ROLES = ["advisor", "provider", "broker"];
-
 const CLAIM_CATEGORIES = ["motor", "life", "health", "funeral", "personal", "commercial"];
 
 const TASK_STATUSES = ["draft", "open", "awaiting_client", "completed", "declined", "cancelled"];
@@ -32,7 +30,6 @@ const MOCK_HANDLERS = [
 ];
 
 module.exports = {
-  STAFF_ROLES,
   CLAIM_CATEGORIES,
   TASK_STATUSES,
   CLOSED_STATUSES,

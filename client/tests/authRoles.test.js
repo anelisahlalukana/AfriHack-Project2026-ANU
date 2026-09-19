@@ -13,8 +13,8 @@ test('public accounts, editable metadata, and non-staff roles cannot grant staff
     { app_metadata: { role: 'unexpected' } },
   ]) {
     assert.equal(isStaff(user), false)
-    assert.equal(accountHome(user), '/account')
-    assert.equal(loginDestination(user, '/clients/new'), '/account')
+    assert.equal(accountHome(user), '/account/claims')
+    assert.equal(loginDestination(user, '/clients/new'), '/account/claims')
   }
 })
 test('advisor opens the client workspace at /', () => {

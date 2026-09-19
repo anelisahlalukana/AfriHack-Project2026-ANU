@@ -44,6 +44,7 @@ export function useCatalog() {
   return useLoaded('catalog', getCatalog)
 }
 
-export function useMe() {
-  return useLoaded('me', getMe)
+// Pass enabled = false to skip the request (e.g. for staff, who don't use the client portal).
+export function useMe(enabled = true) {
+  return useLoaded(enabled ? 'me' : null, getMe)
 }

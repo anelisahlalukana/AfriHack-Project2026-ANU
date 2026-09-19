@@ -80,7 +80,7 @@ async function submitRequest(task, provider) {
 // Demo control: the insurer pushes the next update it is responsible for
 // (authorisation, weekly repair update, payment, decline).
 async function simulateProviderEvent(task, { decline = false, note } = {}) {
-  const provider = task.providers;
+  const provider = task.provider;
   if (!provider) throw badRequest("This request has no product provider");
   if (["completed", "declined", "cancelled", "draft"].includes(task.status)) {
     throw badRequest("This request is not active");

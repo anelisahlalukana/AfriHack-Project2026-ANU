@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { CheckCircle2, CircleDashed, Download, Upload } from 'lucide-react'
 import { getTaskFileUrl, uploadTaskFile } from '../../api/tasks'
-import { errorMessage, fileSize, formatDateTime } from '../../lib/taskFormat'
+import { fileSize, formatDateTime } from '../../lib/taskFormat'
 import { Alert } from './TaskBits'
 
 const ACCEPT = 'image/*,application/pdf,audio/*'
@@ -15,7 +15,7 @@ function UploadControl({ taskId, documentKey, label, onUploaded }) {
     if (!file) return
     setBusy(true); setError('')
     try { onUploaded(await uploadTaskFile(taskId, file, { documentKey, label })) }
-    catch (err) { setError(errorMessage(err)) }
+    catch (error) { setError(error.message) }
     finally { setBusy(false) }
   }
   return <span className="rs-upload">
@@ -34,7 +34,7 @@ export function DocumentsPanel({ task, onChange, canUpload = true }) {
   async function open(fileId) {
     setError('')
     try { window.open(await getTaskFileUrl(task.id, fileId), '_blank', 'noopener') }
-    catch (err) { setError(errorMessage(err)) }
+    catch (error) { setError(error.message) }
   }
   return <section className="card">
     <header className="section-heading">

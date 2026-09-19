@@ -88,12 +88,28 @@ export function todayInputValue(now = new Date()) {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10)
 }
 
+// api/http.js already puts the backend's { error } message on error.message.
 export function errorMessage(error) {
-  return error?.response?.data?.error || error?.message || 'Something went wrong. Please try again.'
+  return error?.message || 'Something went wrong. Please try again.'
 }
 
 // Providers that can handle a claim category (requests may use any provider).
 export function providersFor(providers = [], category) {
   if (!category) return providers
   return providers.filter(provider => (provider.product_lines || []).includes(category))
+}
+
+// Default values for a config-driven form (financial item lists start with one row).
+export function dynamicDefaults(fields = [], saved = {}) {
+  return Object.fromEntries(fields.map(field => {
+    if (saved[field.key] !== undefined) return [field.key, saved[field.key]]
+    if (field.type === 'financial_items') return [field.key, [{ category: 'asset', item_type: '', amount: '' }]]
+    if (field.type === 'boolean') return [field.key, false]
+    return [field.key, '']
+  }))
+}
+
+// Drops blank answers so optional fields aren't sent as empty strings.
+export function compactForm(values = {}) {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== '' && value !== null && value !== undefined))
 }

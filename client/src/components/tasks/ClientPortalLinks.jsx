@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { FilePlus2, ListChecks, ShieldAlert } from 'lucide-react'
-import '../../styles/claims.css'
 
 // Shown on the client account page.
 export default function ClientPortalLinks() {
