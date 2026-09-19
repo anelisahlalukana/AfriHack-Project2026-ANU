@@ -1,19 +1,13 @@
 const crypto = require("crypto");
 const { supabaseAdmin } = require("../config/supabaseClient");
 const { sendTransactionalEmail } = require("../utils/brevoClient");
+const { escapeHtml } = require("../utils/escapeHtml");
 const { ROLES } = require("../constants/roles");
 
 const LIST_PAGE_SIZE = 200;
 
-function escapeHtml(value) {
-  return String(value).replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
-// Staff accounts only (admin/advisor) — clients self-register
-// via signup and aren't managed here.
+// Staff accounts only (admin/advisor) — clients are added by an advisor
+// (see clients.service.js) and aren't managed here.
 async function listStaffUsers() {
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: LIST_PAGE_SIZE });
   if (error) throw new Error(error.message);

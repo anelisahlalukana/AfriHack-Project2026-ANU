@@ -5,4 +5,8 @@
 // docs/system_requirments.md).
 const ROLES = ["admin", "advisor"];
 
-module.exports = { ROLES };
+// public.roles.id for the 'client' row (1 = client, 2 = provider, 3 = advisor).
+// This is the database role_id on public.users, not an app_metadata.role value.
+const CLIENT_ROLE_ID = 1;
+
+module.exports = { ROLES, CLIENT_ROLE_ID };

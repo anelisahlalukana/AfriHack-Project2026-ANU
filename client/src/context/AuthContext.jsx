@@ -43,23 +43,6 @@ export function AuthProvider({ children }) {
     setSession(data.session)
   }
 
-  async function signUp(email, password, fullName) {
-    if (!supabase) throw new Error('Supabase authentication is not configured.')
-    setError('')
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: { full_name: fullName.trim() },
-        emailRedirectTo: `${window.location.origin}/login`,
-      },
-    })
-    if (error) throw error
-    // No role is accepted from the browser. Unprovisioned accounts are clients.
-    if (data.session) setSession(data.session)
-    return data
-  }
-
   async function signOut() {
     if (!supabase) throw new Error('Supabase authentication is not configured.')
     const { error } = await supabase.auth.signOut()
@@ -69,7 +52,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, signIn, signUp, signOut, configured: Boolean(supabase) }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, signIn, signOut, configured: Boolean(supabase) }}>
       {children}
     </AuthContext.Provider>
   )
