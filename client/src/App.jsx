@@ -55,7 +55,7 @@ function WorkspaceLayout() {
       <p className="eyebrow">ADVISOR WORKSPACE</p>
       <hr className="side-divider" />
       <nav>
-        <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
+        <NavLink to="/" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
