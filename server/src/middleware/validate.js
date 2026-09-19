@@ -54,6 +54,8 @@ function validateNewUserPayload(req, res, next) {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Clients sign in with their ID number, so it has to be exactly 13 digits.
+const ID_NUMBER_PATTERN = /^\d{13}$/;
 
 function validateNewClientPayload(req, res, next) {
   const { first_name, second_name, surname, contact_email, contact_mobile } = req.body || {};
@@ -86,12 +88,25 @@ function validateCompleteRegistrationPayload(req, res, next) {
       .status(400)
       .json({ error: "Field 'email' must be a full email address, e.g. name@example.com" });
   }
-  if (typeof id_number !== "string" || id_number.trim().length === 0 || id_number.trim().length > 30) {
-    return res.status(400).json({ error: "Please enter your ID or passport number" });
+  if (typeof id_number !== "string" || !ID_NUMBER_PATTERN.test(id_number.trim())) {
+    return res.status(400).json({ error: "Your ID number must be exactly 13 digits" });
   }
   // 72 is the most bytes Supabase will hash from a password.
   if (typeof password !== "string" || password.length < 8 || password.length > 72) {
     return res.status(400).json({ error: "Your password must be between 8 and 72 characters" });
+  }
+
+  next();
+}
+
+function validateClientLoginPayload(req, res, next) {
+  const { id_number, password } = req.body || {};
+
+  if (typeof id_number !== "string" || !ID_NUMBER_PATTERN.test(id_number.trim())) {
+    return res.status(400).json({ error: "Your ID number must be exactly 13 digits" });
+  }
+  if (typeof password !== "string" || password.length === 0) {
+    return res.status(400).json({ error: "Field 'password' is required" });
   }
 
   next();
@@ -151,6 +166,7 @@ module.exports = {
   validateNewUserPayload,
   validateNewClientPayload,
   validateCompleteRegistrationPayload,
+  validateClientLoginPayload,
   validateUserIdParam,
   validateComplianceUpdate,
 };

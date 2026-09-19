@@ -21,3 +21,8 @@ export async function addClient(values) {
 export async function completeRegistration({ email, idNumber, password }) {
   await http.post('/api/clients/complete-registration', { email, id_number: idNumber, password })
 }
+// Public: ID-number sign-in for clients. Returns the session tokens to hand to supabase.auth.setSession.
+export async function loginClient({ idNumber, password }) {
+  const { data } = await http.post('/api/clients/login', { id_number: idNumber, password })
+  return data.session
+}

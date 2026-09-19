@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { AuthContext } from '../hooks/useAuth'
+import { loginClient } from '../api/clients'
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
@@ -41,6 +42,20 @@ export function AuthProvider({ children }) {
     if (error) throw error
     if (!data.session) throw new Error('Sign-in did not return a session. Please try again.')
     setSession(data.session)
+    return data.session
+  }
+
+  // Clients sign in with their ID number. Supabase only signs in by email, so the
+  // server looks up the login and returns session tokens (never the email).
+  async function signInWithIdNumber(idNumber, password) {
+    if (!supabase) throw new Error('Supabase authentication is not configured.')
+    setError('')
+    const tokens = await loginClient({ idNumber, password })
+    const { data, error } = await supabase.auth.setSession(tokens)
+    if (error) throw error
+    if (!data.session) throw new Error('Sign-in did not return a session. Please try again.')
+    setSession(data.session)
+    return data.session
   }
 
   async function signOut() {
@@ -52,7 +67,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, signIn, signOut, configured: Boolean(supabase) }}>
+    <AuthContext.Provider value={{ session, user: session?.user ?? null, loading, error, signIn, signInWithIdNumber, signOut, configured: Boolean(supabase) }}>
       {children}
     </AuthContext.Provider>
   )

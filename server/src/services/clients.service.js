@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { createClient: createSupabaseClient } = require("@supabase/supabase-js");
 const { supabaseAdmin } = require("../config/supabaseClient");
 const { sendTransactionalEmail } = require("../utils/brevoClient");
 const { escapeHtml } = require("../utils/escapeHtml");
@@ -12,6 +13,13 @@ const CODE_COOLDOWN_MS = 60 * 1000;
 // pending client's email could flood their inbox. Per server process, which is
 // enough for a single-instance deployment.
 const lastCodeSentAt = new Map();
+
+// Failed ID-number sign-ins (ID number -> { count, since }). IDs are easy to
+// find out, so the password is all that protects an account; this stops the
+// login endpoint being used to guess it.
+const MAX_LOGIN_FAILURES = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
+const loginFailures = new Map();
 
 function httpError(status, message) {
   return Object.assign(new Error(message), { status });
@@ -156,6 +164,20 @@ async function completeRegistration({ email, idNumber, password }) {
     throw httpError(429, "A code was sent a moment ago. Please wait a minute before asking for another.");
   }
 
+  // Clients sign in with their ID number, so it must identify exactly one client.
+  const { data: sameId, error: sameIdError } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("role_id", CLIENT_ROLE_ID)
+    .eq("id_number", idNumber.trim())
+    .neq("id", client.id)
+    .limit(1);
+
+  if (sameIdError) throw new Error(sameIdError.message);
+  if (sameId.length) {
+    throw httpError(409, "That ID number is already registered to another client. Please check it, or contact your adviser.");
+  }
+
   const { error: idError } = await supabaseAdmin
     .from("users")
     .update({ id_number: idNumber.trim() })
@@ -195,4 +217,55 @@ async function completeRegistration({ email, idNumber, password }) {
   lastCodeSentAt.set(authUser.id, Date.now());
 }
 
-module.exports = { createClient, completeRegistration };
+// Client sign-in. Supabase signs users in by email, so we find the client's login
+// from their ID number, sign in on their behalf, and hand back only the session
+// tokens. The email is never sent to the browser, and every failure reads the
+// same so the endpoint can't be used to discover which ID numbers are registered.
+async function loginWithIdNumber({ idNumber, password }) {
+  const id = idNumber.trim();
+
+  const failures = loginFailures.get(id);
+  if (failures && Date.now() - failures.since > LOGIN_LOCKOUT_MS) loginFailures.delete(id);
+  if ((loginFailures.get(id)?.count ?? 0) >= MAX_LOGIN_FAILURES) {
+    throw httpError(429, "Too many failed sign-in attempts. Please try again in 15 minutes.");
+  }
+
+  const rejected = () => {
+    const previous = loginFailures.get(id);
+    loginFailures.set(id, { count: (previous?.count ?? 0) + 1, since: previous?.since ?? Date.now() });
+    return httpError(401, "Invalid ID number or password.");
+  };
+
+  const { data: rows, error: findError } = await supabaseAdmin
+    .from("users")
+    .select("auth_user_id")
+    .eq("role_id", CLIENT_ROLE_ID)
+    .eq("id_number", id)
+    .limit(2);
+
+  if (findError) throw new Error(findError.message);
+  if (rows.length !== 1 || !rows[0].auth_user_id) throw rejected();
+
+  const { data: authData } = await supabaseAdmin.auth.admin.getUserById(rows[0].auth_user_id);
+  const email = authData?.user?.email;
+  if (!email) throw rejected();
+
+  // A throwaway client, so no user session ever sits on the shared admin client.
+  const signInClient = createSupabaseClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { data, error: signInError } = await signInClient.auth.signInWithPassword({ email, password });
+
+  if (signInError || !data?.session) {
+    // Only reachable with the right password, so it's safe to be specific.
+    if (signInError?.code === "email_not_confirmed") {
+      throw httpError(403, "Your registration isn't finished yet. Use the link in your invitation email to complete it.");
+    }
+    throw rejected();
+  }
+
+  loginFailures.delete(id);
+  return { access_token: data.session.access_token, refresh_token: data.session.refresh_token };
+}
+
+module.exports = { createClient, completeRegistration, loginWithIdNumber };
