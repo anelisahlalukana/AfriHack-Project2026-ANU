@@ -43,6 +43,10 @@
   --sidebar-text:#41546c;
   --sidebar-active:#b9cbdd;
   --sidebar-line:rgba(16,58,110,.14);
+  --sidebar-hover:rgba(255,255,255,.55);
+  --sidebar-btn:rgba(255,255,255,.7);
+  --highlight-bg:linear-gradient(160deg,#1a5bab,#0b2e5c);
+  --highlight-border:#0b2e5c;
 
   /* accents used by name across the app */
   --red:var(--brand-600);
@@ -147,3 +151,122 @@ label{display:flex;flex-direction:column;gap:6px;font-weight:500;font-size:13px;
 .error{color:var(--red-text);overflow-wrap:anywhere}
 .loading{padding:60px;text-align:center}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ============================================================
+   Dark mode.
+   The same blue system on deep navy surfaces, applied two ways:
+   - the system preference, unless the user explicitly chose light
+   - an explicit data-theme="dark" on <html>
+   ============================================================ */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --brand-950:#9cc4f5;
+    --brand-900:#7fb0f1;
+    --brand-800:#5b9ce9;
+    --brand-700:#6ba7ef;
+    --brand-600:#3b8bf0;
+    --brand-500:#66a6f3;
+    --accent-500:#6ba7ef;
+    --accent-400:#5b9ce9;
+    --accent-300:#2f4d78;
+    --accent-200:#22395c;
+    --accent-100:#18283f;
+    --accent-50:#141f31;
+
+    --bg:#0b1220;
+    --card:#141d2f;
+    --field:#0f1828;
+    --card-2:#1a2436;
+    --card-3:#212c40;
+    --border:#26324a;
+    --border-strong:#35435f;
+    --text:#e8edf5;
+    --text-2:#c3cddd;
+    --muted:#93a1b8;
+    --slate:#7d8eac;
+    --slate-soft:#2b3752;
+    --slate-hi:#9fb0cb;
+
+    --sidebar:linear-gradient(180deg,#121d31 0%,#0e1728 45%,#0b1322 100%);
+    --sidebar-solid:#0e1728;
+    --sidebar-text:#a8b8d0;
+    --sidebar-active:#23344f;
+    --sidebar-line:rgba(160,190,230,.14);
+    --sidebar-hover:rgba(255,255,255,.07);
+    --sidebar-btn:rgba(255,255,255,.06);
+    --highlight-bg:linear-gradient(160deg,#1d2c47,#131c2e);
+    --highlight-border:#2b3b57;
+
+    --ok:#35c48f;
+    --ok-bg:#10281f;
+    --ok-border:#1e4d3b;
+    --warn:#e0a04a;
+    --warn-bg:#2a1f0e;
+    --warn-border:#4c3917;
+    --danger:#f4756b;
+    --danger-bg:#2b1416;
+    --danger-border:#5a2429;
+
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px -14px rgba(0,0,0,.7);
+    --shadow-lg:0 16px 40px -18px rgba(0,0,0,.75);
+    --hero:linear-gradient(160deg,#16305a 0%,#102340 45%,#0b1322 100%);
+
+    color-scheme:dark;
+  }
+}
+
+/* The same values when the user has explicitly chosen dark. */
+:root[data-theme="dark"]{
+  --brand-950:#9cc4f5;
+  --brand-900:#7fb0f1;
+  --brand-800:#5b9ce9;
+  --brand-700:#6ba7ef;
+  --brand-600:#3b8bf0;
+  --brand-500:#66a6f3;
+  --accent-500:#6ba7ef;
+  --accent-400:#5b9ce9;
+  --accent-300:#2f4d78;
+  --accent-200:#22395c;
+  --accent-100:#18283f;
+  --accent-50:#141f31;
+
+  --bg:#0b1220;
+  --card:#141d2f;
+  --field:#0f1828;
+  --card-2:#1a2436;
+  --card-3:#212c40;
+  --border:#26324a;
+  --border-strong:#35435f;
+  --text:#e8edf5;
+  --text-2:#c3cddd;
+  --muted:#93a1b8;
+  --slate:#7d8eac;
+  --slate-soft:#2b3752;
+  --slate-hi:#9fb0cb;
+
+  --sidebar:linear-gradient(180deg,#121d31 0%,#0e1728 45%,#0b1322 100%);
+  --sidebar-solid:#0e1728;
+  --sidebar-text:#a8b8d0;
+  --sidebar-active:#23344f;
+  --sidebar-line:rgba(160,190,230,.14);
+  --sidebar-hover:rgba(255,255,255,.07);
+  --sidebar-btn:rgba(255,255,255,.06);
+  --highlight-bg:linear-gradient(160deg,#1d2c47,#131c2e);
+  --highlight-border:#2b3b57;
+
+  --ok:#35c48f;
+  --ok-bg:#10281f;
+  --ok-border:#1e4d3b;
+  --warn:#e0a04a;
+  --warn-bg:#2a1f0e;
+  --warn-border:#4c3917;
+  --danger:#f4756b;
+  --danger-bg:#2b1416;
+  --danger-border:#5a2429;
+
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 22px -14px rgba(0,0,0,.7);
+  --shadow-lg:0 16px 40px -18px rgba(0,0,0,.75);
+  --hero:linear-gradient(160deg,#16305a 0%,#102340 45%,#0b1322 100%);
+
+  color-scheme:dark;
+}

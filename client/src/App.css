@@ -37,7 +37,7 @@ nav a{
   transition:background .15s ease,color .15s ease;
 }
 nav a svg{opacity:.7;flex:none}
-nav a:hover{background:rgba(255,255,255,.55);color:var(--brand-950)}
+nav a:hover{background:var(--sidebar-hover);color:var(--brand-950)}
 nav a.active,nav a[aria-current="page"]{
   background:var(--sidebar-active);
   color:var(--brand-950);
@@ -54,12 +54,12 @@ nav a.active svg,nav a[aria-current="page"] svg{opacity:1;color:var(--brand-700)
   overflow-wrap:anywhere;font-size:12px;
 }
 .advisor button{
-  background:rgba(255,255,255,.7);
+  background:var(--sidebar-btn);
   border-color:var(--sidebar-line);
-  color:var(--text-2);
+  color:var(--sidebar-text);
   border-radius:10px;
 }
-.advisor button:hover:not(:disabled){background:var(--card);border-color:var(--accent-300);color:var(--brand-700)}
+.advisor button:hover:not(:disabled){background:var(--sidebar-hover);border-color:var(--accent-300);color:var(--brand-700)}
 .advisor .error{color:var(--red-text)}
 
 main{padding:26px 38px 55px;min-width:0;max-width:1550px;width:100%;margin:auto}
@@ -93,9 +93,9 @@ main{padding:26px 38px 55px;min-width:0;max-width:1550px;width:100%;margin:auto}
 .stats strong{font-size:clamp(22px,2.4vw,32px);font-family:var(--font-display);color:var(--text);overflow-wrap:anywhere;line-height:1.15}
 .stats span{color:var(--muted);font-size:12.5px}
 .highlight{
-  background:linear-gradient(160deg,var(--brand-700),var(--brand-900));
-  border-color:var(--brand-900);
-  color:var(--accent-100);
+  background:var(--highlight-bg);
+  border-color:var(--highlight-border);
+  color:#e8eefb;
 }
 .highlight h1,.highlight h2,.highlight h3,.highlight strong{color:#fff}
 .highlight p,.highlight small,.highlight span{color:rgba(226,238,252,.78)}
@@ -644,3 +644,39 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .rs-alert{border-color:var(--danger);color:var(--danger)}
 .rs-queue tr.waiting-us td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
 .compliance-table .status-flagged{color:var(--danger)}
+
+/* ============================================================
+   Dark mode adjustments.
+   Tokens cover almost everything; these are the few places that
+   need more than a colour swap.
+   ============================================================ */
+
+/* The wordmark is dark artwork on a baked-in white background, so on dark
+   surfaces it gets an explicit white plate rather than blending. */
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .side-logo img,
+  :root:not([data-theme="light"]) .client-top img,
+  :root:not([data-theme="light"]) .rs-portal-top img{
+    mix-blend-mode:normal;background:#fff;border-radius:8px;padding:6px 8px;
+  }
+}
+:root[data-theme="dark"] .side-logo img,
+:root[data-theme="dark"] .client-top img,
+:root[data-theme="dark"] .rs-portal-top img{
+  mix-blend-mode:normal;background:#fff;border-radius:8px;padding:6px 8px;
+}
+
+/* Theme toggle: a quiet icon button that shows the mode it will switch to. */
+.theme-toggle{
+  padding:7px;border-radius:var(--r-control);
+  background:transparent;border-color:transparent;color:var(--muted);
+  flex:none;
+}
+.theme-toggle:hover:not(:disabled){background:var(--card-2);border-color:var(--border);color:var(--text)}
+aside .theme-toggle{background:var(--sidebar-btn);border-color:var(--sidebar-line);color:var(--sidebar-text)}
+aside .theme-toggle:hover:not(:disabled){background:var(--sidebar-hover);color:var(--brand-700)}
+.side-user+.theme-toggle{align-self:flex-start}
+.advisor-row{display:flex;align-items:center;gap:8px}
+.advisor-row .side-user{flex:1;min-width:0}
+.client-top .theme-toggle{position:absolute;left:12px;top:50%;transform:translateY(-50%)}
+.login-theme-toggle{position:fixed;right:16px;top:16px;z-index:40;background:var(--card);border-color:var(--border)}

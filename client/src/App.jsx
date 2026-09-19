@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
+import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
 import CompleteRegistration from './pages/client/CompleteRegistration'
@@ -46,9 +47,12 @@ function SignOutBlock({ onSignOut, name, role }) {
     finally { setSigningOut(false) }
   }
   return <div className="advisor">
-    <div className="side-user">
-      <span className="side-avatar" aria-hidden="true">{initialsOf(name)}</span>
-      <span className="side-user-text"><strong title={name}>{name}</strong><small>{role}</small></span>
+    <div className="advisor-row">
+      <div className="side-user">
+        <span className="side-avatar" aria-hidden="true">{initialsOf(name)}</span>
+        <span className="side-user-text"><strong title={name}>{name}</strong><small>{role}</small></span>
+      </div>
+      <ThemeToggle />
     </div>
     <button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
     {error && <p role="alert" className="error">{error}</p>}
