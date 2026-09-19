@@ -20,4 +20,18 @@ async function requireAuth(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth };
+// Gates a route to specific staff roles (req.user.app_metadata.role), e.g.
+// requireRole(["admin"]). Must run after requireAuth.
+function requireRole(allowedRoles) {
+  return (req, res, next) => {
+    const role = req.user?.app_metadata?.role;
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(403).json({ error: "Forbidden: insufficient role" });
+    }
+
+    next();
+  };
+}
+
+module.exports = { requireAuth, requireRole };

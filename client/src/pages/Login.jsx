@@ -47,7 +47,7 @@ export default function Login({ signup = false }) {
       <form className="card" onSubmit={submit}>
         <p className="eyebrow">{signup ? 'CLIENT REGISTRATION' : 'ROYAL SQUARE FINANCIAL'}</p>
         <h2>{signup ? 'Create your client account' : 'Welcome back'}</h2>
-        <p>{signup ? 'Start by creating your secure client login.' : 'Clients, providers, and brokers can sign in here.'}</p>
+        <p>{signup ? 'Start by creating your secure client login.' : 'Clients and advisers can sign in here.'}</p>
         {!configured && <p className="error" role="alert">Sign-in is currently unavailable. Please contact your administrator.</p>}
         {signup && <label>Full name<input name="full_name" autoComplete="name" required disabled={busy || !configured} /></label>}
         <label>Email address<input name="email" type="email" autoComplete="username" required disabled={busy || !configured} /></label>
@@ -57,7 +57,7 @@ export default function Login({ signup = false }) {
         {notice && <p className="auth-notice" role="status">{notice}</p>}
         <button className="primary" disabled={busy || !configured}>{busy ? (signup ? 'Creating account…' : 'Signing in…') : (signup ? 'Create client account' : 'Sign in')}</button>
         <p className="auth-switch">{signup ? <>Already have an account? <Link to="/login">Sign in</Link></> : <>New client? <Link to="/signup">Create an account</Link></>}</p>
-        <small>Providers and brokers: sign in with your administrator-provided account. Registration is for clients only.</small>
+        <small>Advisers and admins: sign in with your administrator-provided account. Registration is for clients only.</small>
       </form>
     </section>
   </div>

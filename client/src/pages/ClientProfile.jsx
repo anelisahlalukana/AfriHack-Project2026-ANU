@@ -3,6 +3,7 @@ import { ArrowLeft, Pencil, Target } from 'lucide-react'
 import { useClients } from '../hooks/useClients'
 import { money, totals, goalProgress } from '../lib/financials'
 import ClientTasksPanel from '../components/tasks/ClientTasksPanel'
+import { DocumentStatusList } from '../components/documents/DocumentStatusList'
 export default function ClientProfile() {
   const { id } = useParams()
   const { data: client, loading, error, retry } = useClients(id)
@@ -18,5 +19,6 @@ export default function ClientProfile() {
     </section><section className="card"><h2><Target size={20} /> Goals & milestones</h2><p>Track progress toward what matters most.</p>{!client.client_goals.length && <div className="empty"><p>No goals recorded yet.</p><Link to={`/clients/${id}/edit`}>Add the first goal</Link></div>}{client.client_goals.map(goal => <article className="goal" key={goal.id}><div className="section-heading"><h3>{goal.goal_name}</h3><span className="badge">{goal.status.replaceAll('_', ' ')}</span></div><p>{money(goal.current_progress)} of {money(goal.target_amount)}</p><progress max="100" value={goalProgress(goal)} aria-label={`${goal.goal_name} progress`} /><div className="section-heading"><small>{goalProgress(goal).toFixed(0)}% funded</small><small>{goal.target_date ? `Target: ${goal.target_date}` : 'No target date'}</small></div></article>)}</section></div>
     <div className="two-columns"><section className="card"><h2>Client details</h2><dl>{[['Mobile', client.contact_mobile], ['Date of birth', client.date_of_birth], ['Nationality', client.nationality], ['Marital status', client.marital_status], ['Occupation', client.occupation], ['Employer', client.employer_name], ['Annual income', money(client.annual_income)], ['Address', client.physical_address], ['Risk profile', client.risk_profile_category], ['Politically exposed', client.is_politically_exposed ? 'Yes' : 'No']].map(([label, value]) => <div className="detail-row" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl></section><section className="card"><h2>Dependants</h2>{!client.client_dependants.length && <p>No dependants recorded.</p>}{client.client_dependants.map(person => <div className="detail-row" key={person.id}><span><b>{person.full_name}</b><small>{person.relationship || 'Relationship not specified'}{person.date_of_birth ? ` · Born ${person.date_of_birth}` : ''}</small></span><span>{person.beneficiary_percentage ?? 0}%<small>Beneficiary allocation</small></span></div>)}</section></div>
            <ClientTasksPanel clientId={id} />
+    <DocumentStatusList clientId={id} />
   </>
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isStaff } from '../lib/authRoles'
 import ClientPortalLinks from '../components/tasks/ClientPortalLinks'
+import { isStaff, accountHome } from '../lib/authRoles'
 
 export default function ClientAccount() {
   const { user, signOut } = useAuth()
@@ -19,7 +20,7 @@ export default function ClientAccount() {
     <p className="eyebrow">YOUR ACCOUNT</p>
     <h1>Welcome{user.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}</h1>
     <p>You are signed in as {user.email}.</p>
-    {isStaff(user) ? <Link className="button primary" to="/">Open your workspace</Link> : <><p>Report a claim, ask for a change, and track everything in one place.</p><ClientPortalLinks /></>}
+    {isStaff(user) ? <Link className="button primary" to={accountHome(user)}>Open your workspace</Link> : <p>Your client account is ready. Contact your adviser to arrange your financial needs analysis.</p>}
     {error && <p className="error" role="alert">{error}</p>}
     <button onClick={logout} disabled={busy}>{busy ? 'Signing out…' : 'Sign out'}</button>
   </section></main>
