@@ -9,6 +9,7 @@ const complianceRoutes = require("./src/routes/compliance.routes");
 const tasksRoutes = require("./src/routes/tasks.routes");
 const catalogRoutes = require("./src/routes/catalog.routes");
 const usersRoutes = require("./src/routes/users.routes");
+const clientsRoutes = require("./src/routes/clients.routes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -21,6 +22,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "Server is running" });
 });
 
+app.use("/api/clients", clientsRoutes);
 app.use("/api/clients/:clientId/documents", documentsRoutes);
 app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);

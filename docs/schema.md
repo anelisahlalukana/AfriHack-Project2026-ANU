@@ -48,7 +48,7 @@ CREATE TABLE public.users (
   CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
   CONSTRAINT users_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id),
   CONSTRAINT users_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id),
-  CONSTRAINT users_identity_required CHECK (CASE role_id WHEN 1 THEN first_name IS NOT NULL AND surname IS NOT NULL WHEN 2 THEN organisation_name IS NOT NULL ELSE first_name IS NOT NULL END)
+  CONSTRAINT users_identity_required CHECK (CASE role_id WHEN 2 THEN organisation_name IS NOT NULL ELSE first_name IS NOT NULL END)
 );
 CREATE TABLE public.client_dependants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

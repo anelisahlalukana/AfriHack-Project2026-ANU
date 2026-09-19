@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
+import { http } from './http'
 async function result(request) {
   const { data, error } = await request
   if (error) throw error
@@ -10,3 +11,13 @@ export const getClient = id => result(supabase.from('users').select('*, client_d
 export const saveClient = (id, profile, dependants, financialItems, goals) => result(supabase.rpc('save_client_fna', {
   p_id: id || null, p_profile: profile, p_dependants: dependants, p_items: financialItems, p_goals: goals,
 }))
+
+// Through the Express API (not RLS): creating a client also creates their login, which needs the service-role key.
+export async function addClient(values) {
+  const { data } = await http.post('/api/clients', values)
+  return data.client
+}
+// Public step of client registration. Emails the client a verification code.
+export async function completeRegistration({ email, idNumber, password }) {
+  await http.post('/api/clients/complete-registration', { email, id_number: idNumber, password })
+}

@@ -3,10 +3,10 @@
 1. Create a Supabase project (or use the existing project with the tables in `docs/schema.md`).
 2. Run `supabase/migrations/202609190001_advisor_workspace.sql` in its SQL editor. It creates missing FNA tables, enables advisor-scoped RLS on all four tables, and installs the transactional `save_client_fna` function. Review existing policies and back up production data before applying migrations.
 3. Apply `supabase/migrations/202609190002_client_registration_roles.sql` before enabling sign-ups. It restricts all FNA table operations (including the save RPC) to administrator-provisioned staff roles, in addition to existing record ownership rules.
-4. Enable email/password sign-ups for clients in Supabase Authentication. Enable email confirmation, configure email delivery, and add your app's `/login` URL to the allowed Auth redirect URLs (for local development: `http://localhost:5173/login`). Set the production Site URL when deploying.
+4. Keep email/password sign-in enabled in Supabase Authentication (public sign-ups aren't used: advisers add clients, and the server creates each client's login). Keep email confirmation on. Add your app's `/login` and `/reset-password` URLs to the allowed Auth redirect URLs (for local development: `http://localhost:5173/login` and `http://localhost:5173/reset-password`). Without `/reset-password` on the list, Supabase ignores the invite link's redirect and sends people to the Site URL instead. Set the production Site URL when deploying.
 5. Create advisor/admin accounts through Supabase Authentication → Users, the server-side Admin API, or `npm run create-admin --prefix server` (bootstraps the first admin). Set their **app metadata** role to `advisor` or `admin` using the Admin API or the SQL example below. Do not use editable user metadata for roles. Existing client records still require an `advisor_id` matching their assigned staff user's Auth ID. (`provider` is not a logged-in role — it's the mocked external insurer/integration layer described in `docs/system_requirments.md`.)
 6. Copy `client/.env.example` to `client/.env.local`, then supply your Supabase URL and publishable/anon key. Never put a service-role key in frontend environment variables.
-7. Run `npm install --prefix client`, then `npm run dev --prefix client`. The three features talk directly to Supabase; the Express server is not required.
+7. Run `npm install --prefix client`, then `npm run dev --prefix client`. Viewing and editing clients talks directly to Supabase. Adding a client, completing registration, documents and staff management need the Express server (`npm run dev --prefix server`) because they use the service-role key and Brevo.
 8. For deployment, configure the host to serve `index.html` for frontend paths such as `/clients/:id/edit`.
 
 ## Behaviour
@@ -34,9 +34,9 @@ Auth integration follows the [Supabase password sign-in](https://supabase.com/do
 
 ## Client registration and staff provisioning
 
-- `/signup` creates client Auth accounts only. `/login` accepts clients, advisors, and admins. `provider` is not a logged-in role — see `docs/system_requirments.md`.
+- There is no public sign-up. An advisor adds a client at `/clients/new`; the server creates the client's login and emails an invitation to `/complete-registration` (set `CLIENT_APP_URL` in `server/.env`; defaults to `http://localhost:5173`). The client enters their ID number and a password, then the 6-digit code emailed to them, and lands on `/account`. `/login` accepts clients, advisors, and admins. `provider` is not a logged-in role — see `docs/system_requirments.md`.
 - Accounts without an administrator-assigned staff role are treated as clients, even if user metadata claims a different role. They land on `/account` and cannot access the advisor workspace, admin area, or FNA tables.
-- The client account page confirms successful sign-in. Linking an Auth client to an advisor-managed FNA record and a self-service financial portal are not implemented; no financial records are automatically matched by email.
+- The client account page confirms successful sign-in. Each client's login is created together with their advisor-managed record (`users.auth_user_id`), so no matching by email is needed. A self-service financial portal is not implemented.
 - Advisors and admins have no public registration flow. Provision their account and role administratively — either `npm run create-admin --prefix server "email" "Full Name"` (creates an admin, emails a password-setup link via Brevo), the in-app admin User management screen (once at least one admin exists), or directly in the Supabase SQL editor, substituting the exact Auth user UUID and required role (`advisor` or `admin`):
 
 ```sql
@@ -48,6 +48,6 @@ where id = 'REPLACE_WITH_AUTH_USER_UUID'::uuid;
 
 Have the staff member sign out and back in after assigning a role so their access token includes it. No service-role key belongs in the browser. Advisors share the advisor workspace and can access only records assigned to their own user ID; admins can only reach `/admin` and `/admin/users`, never client FNA data.
 
-Verify a newly registered client can confirm email, log in and sign out, but is redirected from `/` and `/clients/new` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = advisor` does not grant access. Then verify an administratively provisioned advisor can log in to the workspace, and an admin lands on `/admin` instead.
+Verify a client added by an advisor can complete registration with the emailed code, log in and sign out, but is redirected from `/` and `/clients/new` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = advisor` does not grant access. Then verify an administratively provisioned advisor can log in to the workspace, and an admin lands on `/admin` instead.
 
-Registration uses [Supabase signUp](https://supabase.com/docs/reference/javascript/auth-signup) and its confirmation-email redirect.
+Registration codes come from Supabase's [generateLink](https://supabase.com/docs/reference/javascript/auth-admin-generatelink) (`email_otp`), are emailed through Brevo, and are checked in the browser with `verifyOtp` (type `email`).

@@ -1,20 +1,34 @@
-// The 5 compliance document types tracked per client.
-// `type` is the documents.document_type value; `templateFile` is the object
-// name expected inside the document-templates Storage bucket.
+// The 5 compliance document types tracked per client, matching the actual
+// templates Royal Square Financial supplied (see docs/ and the CEO's
+// onboarding brief). `type` is the documents.document_type value;
+// `templateFile` is the object name expected inside the
+// document-templates Storage bucket.
 const DOCUMENT_TYPES = [
-  { type: "fica", label: "FICA / KYC Verification", templateFile: "fica.pdf" },
-  { type: "client_consent", label: "Client Consent", templateFile: "client_consent.pdf" },
   {
-    type: "risk_profile_declaration",
-    label: "Risk Profile Declaration",
-    templateFile: "risk_profile_declaration.pdf",
+    type: "confidentiality_agreement",
+    label: "Confidentiality Agreement",
+    templateFile: "confidentiality_agreement.pdf",
   },
   {
-    type: "fee_disclosure",
-    label: "Fee Disclosure & Mandate",
-    templateFile: "fee_disclosure.pdf",
+    type: "broker_appointment",
+    label: "Broker Appointment",
+    templateFile: "broker_appointment.pdf",
   },
-  { type: "record_of_advice", label: "Record of Advice", templateFile: "record_of_advice.pdf" },
+  {
+    type: "client_consent",
+    label: "Client Consent",
+    templateFile: "client_consent.pdf",
+  },
+  {
+    type: "service_agreement",
+    label: "Service Agreement",
+    templateFile: "service_agreement.pdf",
+  },
+  {
+    type: "fais_disclosure",
+    label: "FAIS Disclosure",
+    templateFile: "fais_disclosure.pdf",
+  },
 ];
 
 const DOCUMENT_TYPE_VALUES = DOCUMENT_TYPES.map((d) => d.type);

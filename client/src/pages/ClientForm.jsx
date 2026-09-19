@@ -17,12 +17,12 @@ function RepeatingSection({ title, description, fields, append, remove, defaults
 function Editor({ client }) {
   const navigate = useNavigate()
   const [error, setError] = useState('')
-  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm({ defaultValues: client ? {
+  const { register, control, handleSubmit, formState: { errors, isSubmitting } } = useForm({ defaultValues: {
     ...Object.fromEntries(profileFields.map(key => [key, client[key] ?? ''])),
     dependants: client.client_dependants,
     items: client.client_financial_items,
     goals: client.client_goals,
-  } : { status: 'onboarding', is_politically_exposed: false, dependants: [], items: [], goals: [] } })
+  } })
   const politicallyExposed = useWatch({ control, name: 'is_politically_exposed' })
   const dependants = useFieldArray({ control, name: 'dependants' })
   const items = useFieldArray({ control, name: 'items' })
@@ -37,11 +37,11 @@ function Editor({ client }) {
     const profile = clean(Object.fromEntries(profileFields.map(key => [key, values[key] ?? null])))
     if (!profile.is_politically_exposed) profile.pep_details = null
     try {
-      const id = await saveClient(client?.id, profile, values.dependants.map(clean), values.items.map(clean), values.goals.map(clean))
+      const id = await saveClient(client.id, profile, values.dependants.map(clean), values.items.map(clean), values.goals.map(clean))
       navigate(`/clients/${id}`, { replace: true })
     } catch (error) { setError(`Could not save the client. Your changes are still here. ${error.message}`) }
   }
-  return <><Link className="back" to={client ? `/clients/${client.id}` : '/'}><ArrowLeft size={16} /> {client ? 'Back to profile' : 'All clients'}</Link><header className="page-heading"><div><p className="eyebrow">FINANCIAL NEEDS ANALYSIS</p><h1>{client ? 'Edit client profile' : 'Let’s get to know your client'}</h1><p>Capture the essentials, understand their needs, and set a direction. * Required fields.</p></div></header>
+  return <><Link className="back" to={`/clients/${client.id}`}><ArrowLeft size={16} /> Back to profile</Link><header className="page-heading"><div><p className="eyebrow">FINANCIAL NEEDS ANALYSIS</p><h1>Edit client profile</h1><p>Capture the essentials, understand their needs, and set a direction. * Required fields.</p></div></header>
     <form onSubmit={handleSubmit(submit)}><fieldset disabled={isSubmitting} className="form-stack">
       <section className="card"><h2>Personal information</h2><div className="form-grid">
         {field({ name: 'first_name', label: 'First name', required: true })}{field({ name: 'second_name', label: 'Second name' })}{field({ name: 'surname', label: 'Surname', required: true })}
@@ -59,7 +59,7 @@ function Editor({ client }) {
       <RepeatingSection title="Goals" description="Set a target and record the amount already saved. All amounts in ZAR." {...goals} defaults={{ goal_name: '', goal_type: '', target_amount: '', target_date: '', current_progress: 0, status: 'in_progress' }}>
         {index => <>{field({ name: `goals.${index}.goal_name`, label: 'Goal name', required: true })}{field({ name: `goals.${index}.goal_type`, label: 'Goal type', options: ['retirement', 'education', 'home', 'emergency_fund', 'other'] })}{field({ name: `goals.${index}.target_amount`, label: 'Target amount (ZAR)', type: 'number', min: '0.01', step: '0.01', required: true })}{field({ name: `goals.${index}.target_date`, label: 'Target date', type: 'date' })}{field({ name: `goals.${index}.current_progress`, label: 'Amount saved (ZAR)', type: 'number', min: 0, step: '0.01', required: true })}{field({ name: `goals.${index}.status`, label: 'Goal status', required: true, options: ['in_progress', 'completed', 'on_hold'] })}</>}
       </RepeatingSection>
-      {error && <p className="error card" role="alert">{error}</p>}<footer className="form-actions"><Link className="button" to={client ? `/clients/${client.id}` : '/'}>Cancel</Link><button className="primary" disabled={isSubmitting}>{isSubmitting ? 'Saving client…' : 'Save client & financial needs analysis'}</button></footer>
+      {error && <p className="error card" role="alert">{error}</p>}<footer className="form-actions"><Link className="button" to={`/clients/${client.id}`}>Cancel</Link><button className="primary" disabled={isSubmitting}>{isSubmitting ? 'Saving client…' : 'Save client & financial needs analysis'}</button></footer>
     </fieldset></form></>
 }
 function ExistingClient({ id }) {
@@ -68,7 +68,8 @@ function ExistingClient({ id }) {
   if (error) return <div className="card" role="alert"><p className="error">{error}</p><button onClick={retry}>Try again</button><Link to="/">Back to clients</Link></div>
   return <Editor client={data} />
 }
+// Edits only: new clients are added with AddClient.jsx (route /clients/new).
 export default function ClientForm() {
   const { id } = useParams()
-  return id ? <ExistingClient key={id} id={id} /> : <Editor key="new" />
+  return <ExistingClient key={id} id={id} />
 }
