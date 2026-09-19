@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { isStaff, accountHome } from '../../lib/authRoles'
 import { getOwnClient } from '../../api/clients'
 import { AskChat } from '../../components/tasks/AskChat'
+import ThemeToggle from '../../components/ThemeToggle'
 
 // Shell for every signed-in client page: a slim top bar, the page, and a bottom navigation bar
 // (Home, Documents, Claims, Reminders, Profile). Built mobile-first; the bar floats centred on
@@ -45,6 +46,7 @@ export default function ClientLayout() {
 
   return <div className="client-shell">
     <header className="client-top">
+      <ThemeToggle />
       <img src="/images/slogan.png" alt="Royal Square Financial" />
       <button type="button" className="signout" onClick={logout} disabled={signingOut} aria-label="Sign out"><LogOut size={16} /> <span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button>
     </header>

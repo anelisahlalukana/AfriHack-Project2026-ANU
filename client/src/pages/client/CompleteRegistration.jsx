@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ThemeToggle from '../../components/ThemeToggle'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { completeRegistration, finishRegistration } from '../../api/clients'
 import { supabase } from '../../lib/supabaseClient'
@@ -68,6 +69,7 @@ export default function CompleteRegistration() {
   }
 
   return <div className="login-page">
+    <ThemeToggle className="login-theme-toggle" />
     <section className="login-story">
       <img className="login-slogan" src="/images/slogan.png" alt="Royal Square Financial" />
       <p className="eyebrow">CLIENT REGISTRATION</p>

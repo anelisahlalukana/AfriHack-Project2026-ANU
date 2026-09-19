@@ -4,8 +4,8 @@
   background: var(--bg);
   color: var(--text);
   font:
-    400 14px/1.55 Lora,
-    Georgia,
+    400 14px/1.55 Geist Variable,
+    var(--font-display),
     serif;
   min-height: 100svh;
 }
@@ -51,7 +51,7 @@
 .rs-count {
   margin-left: auto;
   font:
-    400 11px Lora,
+    400 11px Geist Variable,
     serif;
   background: var(--red);
   color: var(--on-red);
@@ -72,11 +72,11 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--taupe-soft);
+  background: var(--slate-soft);
   display: grid;
   place-items: center;
   font:
-    700 10.5px Merriweather,
+    700 10.5px Geist Variable,
     serif;
   flex: none;
 }
@@ -132,8 +132,8 @@
 }
 .rs-header h1 {
   font:
-    700 19px/1.4 Merriweather,
-    Georgia,
+    700 19px/1.4 Geist Variable,
+    var(--font-display),
     serif;
   margin: 0;
 }
@@ -170,8 +170,8 @@
 }
 .rs-stats strong {
   font:
-    700 26px/1.2 Merriweather,
-    Georgia,
+    700 26px/1.2 Geist Variable,
+    var(--font-display),
     serif;
 }
 .rs-stats p {
@@ -196,8 +196,8 @@
 .rs-section-head h2,
 .rs-push h2 {
   font:
-    700 14.5px/1.4 Merriweather,
-    Georgia,
+    700 14.5px/1.4 Geist Variable,
+    var(--font-display),
     serif;
 }
 .rs-section-head p {
@@ -272,7 +272,7 @@
 }
 .rs-date-tile b {
   font:
-    700 20px/1.2 Merriweather,
+    700 20px/1.2 Geist Variable,
     serif;
   display: block;
 }
@@ -287,8 +287,8 @@
 }
 .rs-grow h3 {
   font:
-    600 13.5px/1.4 Lora,
-    Georgia,
+    600 13.5px/1.4 Geist Variable,
+    var(--font-display),
     serif;
 }
 .rs-grow p {
@@ -328,7 +328,7 @@
 }
 .rs-empty h3 {
   font:
-    700 14.5px/1.4 Merriweather,
+    700 14.5px/1.4 Geist Variable,
     serif;
 }
 .rs-empty p {
@@ -447,7 +447,7 @@
 }
 .rs-connection-note > svg {
   flex: none;
-  color: var(--taupe-hi);
+  color: var(--slate-hi);
 }
 .rs-connection-note h3 {
   font-size: 14.5px;
@@ -470,8 +470,8 @@
 .rs-snapshot > strong {
   display: block;
   font:
-    700 32px/1.1 Merriweather,
-    Georgia,
+    700 32px/1.1 Geist Variable,
+    var(--font-display),
     serif;
   margin: 8px 0;
 }
@@ -489,7 +489,7 @@
 }
 .rs-financial-lines b {
   font:
-    700 12.5px Merriweather,
+    700 12.5px Geist Variable,
     serif;
   color: var(--text);
 }
@@ -591,3 +591,16 @@
     display: none;
   }
 }
+
+/* The shared tokens put a pale blue gradient behind .rs-sidebar. */
+.rs-sidebar { border-right: 1px solid var(--sidebar-line); color: var(--sidebar-text); }
+.rs-workspace nav button { color: var(--sidebar-text); }
+.rs-workspace nav button:hover { background: rgba(255, 255, 255, 0.55); color: var(--brand-950); }
+.rs-workspace nav button[aria-current] {
+  background: var(--sidebar-active);
+  color: var(--brand-950);
+  box-shadow: none;
+}
+.rs-user { border-top-color: var(--sidebar-line); }
+.rs-user strong { color: var(--brand-950); }
+.rs-user span { color: var(--slate-hi); }
