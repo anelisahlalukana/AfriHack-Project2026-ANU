@@ -39,8 +39,9 @@ function toCamelDocument(row) {
 
 async function getClient(clientId) {
   const { data, error } = await supabaseAdmin
-    .from("clients")
-    .select("*")
+    .from("users")
+    .select("*, roles!inner(name)")
+    .eq("roles.name", "client")
     .eq("id", clientId)
     .single();
 

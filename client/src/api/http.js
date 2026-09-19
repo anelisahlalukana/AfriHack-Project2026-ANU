@@ -19,3 +19,23 @@ http.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+// Every controller in server/src/controllers/*.js responds with
+// { error: "message" } on failure. Without this, axios's error.message is a
+// generic "Request failed with status code 400/500" and the real message
+// never reaches the UI. Components just do `catch (error) { setError(error.message) }`
+// and rely on this to have already put the backend's message there.
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const backendMessage = error.response?.data?.error;
+
+    if (backendMessage) {
+      error.message = backendMessage;
+    } else if (!error.response) {
+      error.message = "Couldn't reach the server. Check your connection and try again.";
+    }
+
+    return Promise.reject(error);
+  }
+);

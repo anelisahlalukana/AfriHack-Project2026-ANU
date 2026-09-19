@@ -78,6 +78,20 @@ function validateDocumentType(req, res, next) {
 }
 ```
 
+### Backend error handling
+
+Every non-2xx response — from a controller's `catch`, a validation middleware, or
+`requireAuth`/`requireRole` — is `res.status(n).json({ error: "human-readable message" })`.
+Always this exact shape, `error` always a plain string. The frontend's `http.js` response
+interceptor reads `error.response.data.error` and puts it on the thrown error's `.message`,
+which is what every component's `catch (error) { setError(error.message) }` displays — a
+different shape (`{ message: ... }`, an array, a nested object) silently breaks that and the
+user sees a generic "Request failed with status code 400" instead of the real reason.
+
+Write the message for the person using the app, not a stack trace — e.g.
+`"Field 'email' must be a full email address, e.g. name@example.com"`, not
+`"ValidationError: email"`.
+
 ### Auth & roles
 
 - Every route that isn't public goes through `requireAuth` (verifies the Supabase session
@@ -134,6 +148,13 @@ export async function listDocuments(clientId) {
   return data.documents;
 }
 ```
+
+`http.js` also has a response interceptor that rewrites `error.message` to the backend's
+actual `{ error: "..." }` body on failure. This is why `catch (error) { setError(error.message) }`
+works and shows a real message instead of axios's generic `"Request failed with status code
+400"` — every backend error response **must** keep using the `{ error: "message" }` shape
+(see Backend error handling below) for this to keep working. Don't add a second, different
+error-shape convention on a new route.
 
 **Two valid data-access patterns exist in this codebase — pick the right one:**
 
