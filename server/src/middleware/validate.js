@@ -1,5 +1,5 @@
 const { DOCUMENT_TYPE_VALUES, ACKNOWLEDGE_ONLY_TYPES } = require("../constants/documentTypes");
-const { ROLES } = require("../constants/roles");
+const { ACCOUNT_ROLES, PROVIDER_ROLE } = require("../constants/roles");
 const { QUALIFICATION_STATUSES } = require("../constants/complianceStatuses");
 const { SCREENING_TYPES, AUDIT_DEFAULT_LIMIT, AUDIT_MAX_LIMIT } = require("../constants/compliance");
 const { southAfricaDate } = require("../utils/complianceRules");
@@ -312,6 +312,30 @@ function validateClientActionPayload(req, res, next) {
   next();
 }
 
+// Provider portal: a reply to Royal Square (required text) or a new claims handler name.
+function validateProviderMessagePayload(req, res, next) {
+  const { note } = req.body || {};
+  if (typeof note !== "string" || !note.trim() || note.length > MAX_TASK_NOTE_LENGTH) {
+    return res.status(400).json({ error: `Write a message of at most ${MAX_TASK_NOTE_LENGTH} characters` });
+  }
+  next();
+}
+
+function validateHandlerPayload(req, res, next) {
+  const { name } = req.body || {};
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 120) {
+    return res.status(400).json({ error: "Enter the claims handler's name (at most 120 characters)" });
+  }
+  next();
+}
+
+function validateClientIdParam(req, res, next) {
+  if (!UUID_PATTERN.test(req.params.clientId || "")) {
+    return res.status(400).json({ error: "The client id in the URL isn't valid" });
+  }
+  next();
+}
+
 function validateComplianceIds(req, res, next) {
   for (const name of ["clientId", "adviserId"]) {
     if (req.params[name] !== undefined && !UUID_PATTERN.test(req.params[name])) {
@@ -363,6 +387,9 @@ function validateCpdRecord(req, res, next) {
 }
 
 module.exports = {
+  validateProviderMessagePayload,
+  validateHandlerPayload,
+  validateClientIdParam,
   validateComplianceIds,
   validateAuditLimit,
   validateScreening,

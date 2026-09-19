@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Bell, ChartColumn, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
+import { Bell, HeartPulse, ChartColumn, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -14,6 +14,8 @@ import ClientReminders from './pages/client/ClientReminders'
 import MyProfile from './pages/client/MyProfile'
 import Dashboard from './pages/advisor/Dashboard'
 import Clients from './pages/advisor/Clients'
+import ClientPulse from './pages/advisor/ClientPulse'
+import ClientPulseDetail from './pages/advisor/ClientPulseDetail'
 import Reminders from './pages/advisor/Reminders'
 import ClientProfile from './pages/advisor/ClientProfile'
 import ClientForm from './pages/advisor/ClientForm'
@@ -61,6 +63,7 @@ function WorkspaceLayout() {
       <nav>
         <NavLink to="/" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
+        <NavLink to="/client-pulse"><HeartPulse size={18} /> Client Pulse</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
@@ -133,6 +136,8 @@ export default function App() {
     <Route element={<WorkspaceLayout />}>
       <Route index element={<Dashboard />} />
       <Route path="clients" element={<Clients />} />
+      <Route path="client-pulse" element={<ClientPulse />} />
+      <Route path="client-pulse/:clientId" element={<ClientPulseDetail />} />
       <Route path="reminders" element={<Reminders />} />
       <Route path="workspace" element={<Navigate to="/reminders" replace />} />
       <Route path="clients/new" element={<Navigate to="/clients?add=1" replace />} />

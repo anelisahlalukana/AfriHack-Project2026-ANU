@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getDashboard } from '../api/dashboard'
 
-const REFRESH_MS = 15000
+export const REFRESH_MS = 15000
 
 // The advisor dashboard, kept live: loads once, re-checks every 15 seconds while the tab is
 // showing, and straight away when the tab comes back into view. If a refresh fails it keeps the

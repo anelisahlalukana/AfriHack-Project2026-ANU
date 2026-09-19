@@ -297,3 +297,4 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .live-stale{color:#8f5f0d}.live-stale i{animation:none}
 @keyframes live-pulse{50%{opacity:.35}}
 @media(prefers-reduced-motion:reduce){.live i{animation:none}}
+.pulse-row{cursor:pointer}.pulse-row:hover{background:#f7f1ec}.pulse-reasons{display:flex;flex-wrap:wrap;gap:6px}.pulse-row td:last-child{width:32px;color:#937363}.detail-row progress{margin-top:8px;max-width:260px}
