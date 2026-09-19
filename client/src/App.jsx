@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Outlet, Route, Routes, Link } from 'react-router-dom'
-import { LayoutDashboard, LogOut, Plus, ShieldCheck } from 'lucide-react'
+import { Inbox, LayoutDashboard, LogOut, Plus, ShieldCheck } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -9,6 +9,13 @@ import ClientAccount from './pages/ClientAccount'
 import Dashboard from './pages/Dashboard'
 import ClientProfile from './pages/ClientProfile'
 import ClientForm from './pages/ClientForm'
+import Tasks from './pages/Tasks'
+import AdviserTaskDetail from './pages/claims/AdviserTaskDetail'
+import ClientTaskDetail from './pages/claims/ClientTaskDetail'
+import MyRequests from './pages/claims/MyRequests'
+import NewRequest from './pages/claims/NewRequest'
+import ReportClaim from './pages/claims/ReportClaim'
+import ClientPortalLayout from './components/tasks/ClientPortalLayout'
 import './App.css'
 
 function WorkspaceLayout() {
@@ -24,7 +31,7 @@ function WorkspaceLayout() {
   return <div className="app-shell">
     <aside><Link className="brand" to="/"><img src="/images/logo.jpg" alt="Royal Square Financial" /></Link>
       <p className="eyebrow">ADVISOR WORKSPACE</p>
-      <nav><Link to="/"><LayoutDashboard size={18} /> Client overview</Link><Link to="/clients/new"><Plus size={18} /> Onboard a client</Link></nav>
+      <nav><Link to="/"><LayoutDashboard size={18} /> Client overview</Link><Link to="/clients/new"><Plus size={18} /> Onboard a client</Link><Link to="/tasks"><Inbox size={18} /> Requests & claims</Link></nav>
       <div className="advisor"><ShieldCheck size={22} /><span>{session.user.email}</span><button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>{error && <p role="alert" className="error">{error}</p>}</div>
     </aside>
     <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
@@ -34,13 +41,24 @@ export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
     <Route path="/login" element={<Login key="login" />} />
     <Route path="/signup" element={<Login key="signup" signup />} />
-    <Route element={<ProtectedRoute />}><Route path="/account" element={<ClientAccount />} /></Route>
+    <Route element={<ProtectedRoute />}><Route path="/account" element={<ClientAccount />} />
+      <Route element={<ClientPortalLayout />}>
+        <Route path="/account/claims" element={<MyRequests />} />
+        <Route path="/account/claims/new" element={<ReportClaim />} />
+        <Route path="/account/claims/:taskId/continue" element={<ReportClaim />} />
+        <Route path="/account/requests/new" element={<NewRequest />} />
+        <Route path="/account/tasks/:taskId" element={<ClientTaskDetail />} />
+      </Route>
+    </Route>
     <Route element={<ProtectedRoute staffOnly />}>
     <Route element={<WorkspaceLayout />}>
       <Route index element={<Dashboard />} />
       <Route path="clients/new" element={<ClientForm />} />
       <Route path="clients/:id" element={<ClientProfile />} />
       <Route path="clients/:id/edit" element={<ClientForm />} />
+      <Route path="tasks" element={<Tasks />} />
+      <Route path="tasks/new" element={<NewRequest staff />} />
+      <Route path="tasks/:taskId" element={<AdviserTaskDetail />} />
       <Route path="*" element={<div className="card"><h1>Page not found</h1><Link to="/">Return to your clients</Link></div>} />
     </Route>
     </Route>
