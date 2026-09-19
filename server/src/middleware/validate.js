@@ -193,7 +193,6 @@ function validateComplianceUpdate(req, res, next) {
 // --- Claims & requests -------------------------------------------------------
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_TASK_NOTE_LENGTH = 2000;
-const MAX_HANDLER_NAME_LENGTH = 120;
 
 function isPlainObject(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -269,31 +268,6 @@ function validateTaskUpdatePayload(req, res, next) {
   }
   if (outcome !== undefined && !["completed", "declined"].includes(outcome)) {
     return res.status(400).json({ error: "Field 'outcome' must be completed or declined" });
-  }
-  next();
-}
-
-// Shared by the adviser route (/api/tasks/:taskId/provider-messages) and the
-// provider portal's message and decline routes. A decline may carry no reason.
-function validateProviderMessagePayload(req, res, next) {
-  const { note } = req.body || {};
-  if (note !== undefined && note !== null && typeof note !== "string") {
-    return res.status(400).json({ error: "Field 'note' must be text" });
-  }
-  if (typeof note === "string" && note.length > MAX_TASK_NOTE_LENGTH) {
-    return res.status(400).json({ error: `Notes must be at most ${MAX_TASK_NOTE_LENGTH} characters` });
-  }
-  next();
-}
-
-// The provider portal's claims-handler reassignment (/api/provider/tasks/:taskId/handler).
-function validateHandlerPayload(req, res, next) {
-  const { name } = req.body || {};
-  if (typeof name !== "string" || !name.trim()) {
-    return res.status(400).json({ error: "Enter the new handler's name" });
-  }
-  if (name.trim().length > MAX_HANDLER_NAME_LENGTH) {
-    return res.status(400).json({ error: `A name can be at most ${MAX_HANDLER_NAME_LENGTH} characters` });
   }
   next();
 }
@@ -400,8 +374,6 @@ module.exports = {
   validateDraftPayload,
   validateTaskUpdatePayload,
   validateClientActionPayload,
-  validateProviderMessagePayload,
-  validateHandlerPayload,
   validateDocumentType,
   validateSignaturePayload,
   validateSignedUpload,
