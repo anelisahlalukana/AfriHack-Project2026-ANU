@@ -53,6 +53,50 @@ function validateNewUserPayload(req, res, next) {
   next();
 }
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateNewClientPayload(req, res, next) {
+  const { first_name, second_name, surname, contact_email, contact_mobile } = req.body || {};
+
+  if (typeof first_name !== "string" || first_name.trim().length === 0) {
+    return res.status(400).json({ error: "Field 'first_name' is required" });
+  }
+  if (typeof surname !== "string" || surname.trim().length === 0) {
+    return res.status(400).json({ error: "Field 'surname' is required" });
+  }
+  if (typeof contact_email !== "string" || !EMAIL_PATTERN.test(contact_email.trim())) {
+    return res
+      .status(400)
+      .json({ error: "Field 'contact_email' must be a full email address, e.g. name@example.com" });
+  }
+  for (const [name, value] of [["second_name", second_name], ["contact_mobile", contact_mobile]]) {
+    if (value !== undefined && value !== null && typeof value !== "string") {
+      return res.status(400).json({ error: `Field '${name}' must be text` });
+    }
+  }
+
+  next();
+}
+
+function validateCompleteRegistrationPayload(req, res, next) {
+  const { email, id_number, password } = req.body || {};
+
+  if (typeof email !== "string" || !EMAIL_PATTERN.test(email.trim())) {
+    return res
+      .status(400)
+      .json({ error: "Field 'email' must be a full email address, e.g. name@example.com" });
+  }
+  if (typeof id_number !== "string" || id_number.trim().length === 0 || id_number.trim().length > 30) {
+    return res.status(400).json({ error: "Please enter your ID or passport number" });
+  }
+  // 72 is the most bytes Supabase will hash from a password.
+  if (typeof password !== "string" || password.length < 8 || password.length > 72) {
+    return res.status(400).json({ error: "Your password must be between 8 and 72 characters" });
+  }
+
+  next();
+}
+
 function validateUserIdParam(req, res, next) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) {
     return res.status(400).json({ error: "The user id in the URL isn't valid" });
@@ -105,6 +149,8 @@ module.exports = {
   validateDocumentType,
   validateSignaturePayload,
   validateNewUserPayload,
+  validateNewClientPayload,
+  validateCompleteRegistrationPayload,
   validateUserIdParam,
   validateComplianceUpdate,
 };

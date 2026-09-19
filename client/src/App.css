@@ -4,6 +4,7 @@
 .login-story .login-slogan{display:block;width:min(100%,420px);height:auto;object-fit:contain;margin:0 auto 30px}
 .auth-switch{text-align:center;font-size:14px}
 .auth-switch a{color:#a30b14;font-weight:600}
+.auth-switch .link{background:none;border:0;padding:0;color:#a30b14;font-weight:600;font-size:inherit;text-decoration:underline;cursor:pointer}
 .auth-notice{background:#edf4ed;border:1px solid #c5d8c7;border-radius:8px;padding:12px;color:#365b3e}
 .account-page{max-width:650px;margin:50px auto}
 .account-page .card>img{width:min(100%,300px);align-self:center;height:auto}
