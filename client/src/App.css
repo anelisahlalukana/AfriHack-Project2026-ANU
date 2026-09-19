@@ -18,7 +18,7 @@
 .client-content .eyebrow{text-align:left;margin:0 0 4px}
 .client-content .card{padding:16px}
 .client-content button,.client-content .button{min-height:44px}
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,1fr);gap:0;background:#fffdfa;border-top:1px solid #dfd6cf;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#fffdfa;border-top:1px solid #dfd6cf;padding-bottom:env(safe-area-inset-bottom)}
 .bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:8px 4px;border-radius:0;font-size:12px;font-weight:550;color:#7a6c62}
 .bottom-nav a:hover{background:none}
 .bottom-nav a.active{background:none;box-shadow:none;color:#a30b14}
@@ -44,3 +44,26 @@
 .doc-preview p{padding:16px}
 .sig-pad{border:1px solid #cfc4bd;border-radius:7px;background:#fff}
 .sig-pad canvas{width:100%;height:160px;touch-action:none}
+/* Advisor Clients table: toolbar, sortable headers, clickable rows, column menu, pager. */
+.table-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.table-toolbar select{width:auto;min-width:150px}
+.sort-btn{background:none;border:0;padding:0;color:inherit;font:inherit;text-transform:inherit;letter-spacing:inherit;font-weight:inherit;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.sort-btn svg{opacity:.45}
+.sort-btn.sorted svg{opacity:1;color:#a30b14}
+th.num,td.num{text-align:right}
+th.num .sort-btn{flex-direction:row-reverse}
+.client-table td{white-space:nowrap}
+.clickable-row{cursor:pointer}
+.clickable-row:hover{background:#f7f1ec}
+.col-menu{position:relative}
+.col-panel{position:absolute;left:0;top:calc(100% + 6px);z-index:15;width:max-content;min-width:220px;max-width:calc(100vw - 32px);max-height:60vh;overflow:auto;background:#fffdfa;border:1px solid #dfd6cf;border-radius:10px;padding:12px;box-shadow:0 6px 24px rgba(41,35,31,.14);display:flex;flex-direction:column;gap:10px}
+.pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.pager-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.pager-controls select{width:auto}
+@media(max-width:700px){.table-toolbar>label,.table-toolbar select{flex:1 1 100%;width:100%}
+.pager{flex-direction:column;align-items:stretch}
+.pager-controls{justify-content:space-between}
+}
+/* Advisor Reminders page: view tabs. */
+.chip-row{display:flex;flex-wrap:wrap;gap:8px}
+.chip-row button{padding:6px 12px;font-size:13px}

@@ -34,7 +34,7 @@ Auth integration follows the [Supabase password sign-in](https://supabase.com/do
 
 ## Client registration and staff provisioning
 
-- There is no public sign-up. An advisor adds a client at `/clients/new`; the server creates the client's login and emails an invitation to `/complete-registration` (set `CLIENT_APP_URL` in `server/.env`; defaults to `http://localhost:5173`). The client enters their ID number and a password, then the 6-digit code emailed to them, and lands on `/account`. The client area is mobile-first with a bottom navigation bar: Home (`/account`), Documents (`/account/documents`) and Profile (`/account/profile`). `/login` has one Username box: advisors and admins enter their email address, clients enter their 13-digit ID number (the one they registered with). Clients can't sign in with an email address. `provider` is not a logged-in role — see `docs/system_requirments.md`.
+- There is no public sign-up. An advisor adds a client with **Add client** on the Clients page (`/clients`), which opens a popup; the server creates the client's login and emails an invitation to `/complete-registration` (set `CLIENT_APP_URL` in `server/.env`; defaults to `http://localhost:5173`). The client enters their ID number and a password, then the 6-digit code emailed to them, and lands on `/account`. The client area is mobile-first with a bottom navigation bar: Home (`/account`), Documents (`/account/documents`) and Profile (`/account/profile`). `/login` has one Username box: advisors and admins enter their email address, clients enter their 13-digit ID number (the one they registered with). Clients can't sign in with an email address. `provider` is not a logged-in role — see `docs/system_requirments.md`.
 - Accounts without an administrator-assigned staff role are treated as clients, even if user metadata claims a different role. They land on `/account` and cannot access the advisor workspace, admin area, or FNA tables.
 - The client account page confirms successful sign-in. Each client's login is created together with their advisor-managed record (`users.auth_user_id`), so no matching by email is needed. A self-service financial portal is not implemented.
 - Advisors and admins have no public registration flow. Provision their account and role administratively — either `npm run create-admin --prefix server "email" "Full Name"` (creates an admin, emails a password-setup link via Brevo), the in-app admin User management screen (once at least one admin exists), or directly in the Supabase SQL editor, substituting the exact Auth user UUID and required role (`advisor` or `admin`):
@@ -48,6 +48,29 @@ where id = 'REPLACE_WITH_AUTH_USER_UUID'::uuid;
 
 Have the staff member sign out and back in after assigning a role so their access token includes it. No service-role key belongs in the browser. Advisors share the advisor workspace and can access only records assigned to their own user ID; admins can only reach `/admin` and `/admin/users`, never client FNA data.
 
-Verify a client added by an advisor can complete registration with the emailed code, log in and sign out, but is redirected from `/` and `/clients/new` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = advisor` does not grant access. Then verify an administratively provisioned advisor can log in to the workspace, and an admin lands on `/admin` instead.
+Verify a client added by an advisor can complete registration with the emailed code, log in and sign out, but is redirected from `/` and `/clients` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = advisor` does not grant access. Then verify an administratively provisioned advisor can log in to the workspace, and an admin lands on `/admin` instead.
 
 Registration codes come from Supabase's [generateLink](https://supabase.com/docs/reference/javascript/auth-admin-generatelink) (`email_otp`), are emailed through Brevo, and are checked in the browser with `verifyOtp` (type `email`).
+
+## Reminders and push notifications
+
+Advisors see every reminder for their clients on the **Reminders** page (`/reminders`, in the advisor sidebar): open, overdue and done reminders, the notifications they trigger, an **Add reminder** popup, **Mark done**, and a switch for push alerts on the device being used.
+
+Clients get the same alerts on their own **Reminders** tab in the client area (`/account/reminders`, the third tab of the bottom navigation): what is coming up, earlier reminders, their notifications and the push switch. It is read-only, shows only that client's reminders (never adviser-only ones or other clients'), and Home shows a short summary. Tapping a push alert opens the right page for the person (advisers: `/reminders`, clients: `/account/reminders`).
+
+Set-up, in order:
+
+1. Apply `supabase/migrations/202609190010_reminders_shared.sql`, then `supabase/migrations/202609190011_reminders_fix_client_link.sql` in the Supabase SQL editor. The second one corrects two functions from the first that referred to a `users.client_user_id` column that does not exist; without it the first reminder that comes due fails and no notification is ever created.
+2. Push needs three values in `server/.env`. Generate the key pair with `npm run push:keys --prefix server`, and set a contact for the push services (this is sent to them with every message, so use an address you are happy to share):
+
+   ```
+   VAPID_PUBLIC_KEY=...
+   VAPID_PRIVATE_KEY=...
+   VAPID_SUBJECT=mailto:you@example.com
+   ```
+
+   If any of the three is missing or invalid the server logs `Push notifications are OFF` and starts normally; the Reminders page then says push is not set up.
+3. Push only works on HTTPS or `localhost`, in a browser that supports it (on iPhone, add the app to the Home Screen first). Each device turns it on for itself; `client/public/sw.js` is the service worker that shows the alert. The alert text is always generic, so nothing about a client appears on a lock screen.
+4. Optional: `CLIENT_ORIGIN` limits which website may call the API (default: `http://localhost:5173`), and `REMINDERS_TICK_MS` changes how often due reminders are fired and waiting push messages are sent (default 30000).
+
+Checks: `npm test --prefix server` (24 tests, no database needed). `node server/scripts/e2e-reminders.js --yes` runs an end-to-end test against the real Supabase project with throwaway accounts and deletes everything it created.

@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { FileText } from 'lucide-react'
+import { Bell, FileText } from 'lucide-react'
 import { listDocuments } from '../../api/documents'
+import { listNotifications, listReminders } from '../../api/reminders'
+import { filterReminders, todayKey } from '../../lib/reminderTable'
 
 export default function ClientHome() {
   const { user, client, clientError } = useOutletContext()
   // Documents sent to the client that they haven't signed yet. undefined while loading.
   const [waiting, setWaiting] = useState(undefined)
   const [documentsError, setDocumentsError] = useState('')
+  // Reminders coming up and unread notifications. Stays null if they can't be loaded: it's only a summary.
+  const [summary, setSummary] = useState(null)
   const name = client?.first_name || user.user_metadata?.full_name
 
   useEffect(() => {
@@ -16,6 +20,17 @@ export default function ClientHome() {
     listDocuments(client.id)
       .then(documents => { if (active) { setWaiting(documents.filter(doc => doc.status === 'sent').length); setDocumentsError('') } })
       .catch(error => { if (active) setDocumentsError(error.message) })
+    return () => { active = false }
+  }, [client])
+
+  useEffect(() => {
+    if (!client) return
+    let active = true
+    Promise.all([listReminders(), listNotifications()])
+      .then(([reminders, notifications]) => {
+        if (active) setSummary({ comingUp: filterReminders(reminders, { view: 'open' }, todayKey()).length, unread: notifications.filter(notification => !notification.readAt).length })
+      })
+      .catch(() => { if (active) setSummary(null) })
     return () => { active = false }
   }, [client])
 
@@ -43,5 +58,11 @@ export default function ClientHome() {
         <Link className="button" to="/account/documents">View your documents</Link>
       </>}
     </section>
+
+    {client && summary && <section className="card">
+      <h2><Bell size={20} /> Reminders</h2>
+      <p>{summary.comingUp ? `${summary.comingUp} coming up` : 'Nothing coming up right now.'}{summary.unread ? ` · ${summary.unread} unread notification${summary.unread === 1 ? '' : 's'}` : ''}</p>
+      <Link className={summary.unread ? 'button primary' : 'button'} to="/account/reminders">View reminders</Link>
+    </section>}
   </>
 }
