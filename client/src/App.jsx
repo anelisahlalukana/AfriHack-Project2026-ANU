@@ -1,122 +1,98 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
+import { AuthProvider } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
+import Login from "@/pages/Login";
+import ClientProfile from "@/pages/ClientProfile";
+import AdviserCompliance from "@/pages/AdviserCompliance";
 
-function App() {
-  const [count, setCount] = useState(0)
+// Minimal routing shell. Dashboard/Tasks pages are still empty placeholders
+// owned by other slices, so this only wires up the routes the Documents &
+// Compliance feature needs, plus enough auth to get a real session for
+// testing (full navigation/app shell still to come).
+function Home() {
+  const { user, signOut } = useAuth();
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 p-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl">Royal Square Financial</h1>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{user.email}</span>
+          <Button size="sm" variant="outline" onClick={signOut}>
+            Sign out
+          </Button>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Temporary entry point. Replace once full navigation is wired up.
+      </p>
+      <div className="flex flex-col gap-1 text-sm">
+        <Link className="text-primary underline underline-offset-4" to="/clients/demo">
+          View a client's documents
+        </Link>
+        <Link
+          className="text-primary underline underline-offset-4"
+          to="/advisers/demo/compliance"
         >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+          View adviser compliance
+        </Link>
+      </div>
+    </div>
+  );
 }
 
-export default App
+function RequireAuth({ children }) {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <p className="p-6 text-sm text-muted-foreground">Loading...</p>;
+  }
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  return children;
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <Home />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/clients/:clientId"
+        element={
+          <RequireAuth>
+            <ClientProfile />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/advisers/:adviserId/compliance"
+        element={
+          <RequireAuth>
+            <AdviserCompliance />
+          </RequireAuth>
+        }
+      />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
