@@ -194,12 +194,12 @@ async function signDocument(clientId, type, { signature, signerName }, actor) {
     signedAt,
   });
 
-  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt, actor });
+  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt });
 }
 
 // A client signed outside the app (print/scan or a PDF editor) and uploaded the result, so
 // there is nothing to embed: the uploaded file is stored as-is as the signed copy.
-async function uploadSignedDocument(clientId, type, fileBytes, actor) {
+async function uploadSignedDocument(clientId, type, fileBytes) {
   const row = await getDocumentRow(clientId, type);
   return saveSignedCopy({
     clientId,
@@ -208,13 +208,12 @@ async function uploadSignedDocument(clientId, type, fileBytes, actor) {
     bytes: fileBytes,
     signature: null,
     signedAt: new Date().toISOString(),
-    actor,
   });
 }
 
 // Shared by every route to 'signed': stores the signed PDF, marks the document signed, and
 // then checks whether that completes the client's onboarding documents.
-async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt, actor }) {
+async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt }) {
   const signedPath = `${clientId}/${type}/signed.pdf`;
   const { error: uploadError } = await supabaseAdmin.storage
     .from(DOCUMENTS_BUCKET)
@@ -238,12 +237,6 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt,
 
   if (error) throw new Error(error.message);
   if (type === "client_consent") await logConsentSigning(clientId, data, row, actor);
-
-  const allSigned = await activateClientIfAllSigned(clientId);
-  // Re-signing a document that was already signed (e.g. renewing an expired consent) doesn't
-  // complete anything new, so only a first signing can be the one that finishes onboarding.
-  const completedOnboarding = allSigned && row?.status !== "signed";
-  await notifyDocumentSigned(clientId, type, { completedOnboarding });
   return toCamelDocument(data);
 }
 
