@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Bell, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
+import { Bell, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -20,6 +20,13 @@ import ClientForm from './pages/advisor/ClientForm'
 import AdviserCompliance from './pages/advisor/AdviserCompliance'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
+import Tasks from './pages/Tasks'
+import AdviserTaskDetail from './pages/claims/AdviserTaskDetail'
+import ClientTaskDetail from './pages/claims/ClientTaskDetail'
+import MyRequests from './pages/claims/MyRequests'
+import NewRequest from './pages/claims/NewRequest'
+import ReportClaim from './pages/claims/ReportClaim'
+import ClientClaimsArea from './pages/client/ClientClaimsArea'
 import './App.css'
 
 function SignOutBlock({ onSignOut }) {
@@ -50,6 +57,7 @@ function WorkspaceLayout() {
         <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
+        <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />
@@ -88,6 +96,14 @@ export default function App() {
         <Route path="documents" element={<ClientDocuments />} />
         <Route path="reminders" element={<ClientReminders />} />
         <Route path="profile" element={<MyProfile />} />
+        <Route element={<ClientClaimsArea />}>
+          <Route path="claims" element={<MyRequests />} />
+          <Route path="claims/new" element={<ReportClaim />} />
+          <Route path="claims/:taskId/continue" element={<ReportClaim />} />
+          {/* "Ask for something" is now the chat button; old links land on the claims page. */}
+          <Route path="requests/new" element={<Navigate to="/account/claims" replace />} />
+          <Route path="tasks/:taskId" element={<ClientTaskDetail />} />
+        </Route>
       </Route>
     </Route>
 
@@ -108,6 +124,9 @@ export default function App() {
       <Route path="clients/:id" element={<ClientProfile />} />
       <Route path="clients/:id/edit" element={<ClientForm />} />
       <Route path="compliance/:adviserId" element={<AdviserCompliance />} />
+      <Route path="tasks" element={<Tasks />} />
+      <Route path="tasks/new" element={<NewRequest staff />} />
+      <Route path="tasks/:taskId" element={<AdviserTaskDetail />} />
       <Route path="*" element={<div className="card"><h1>Page not found</h1><Link to="/">Return to your clients</Link></div>} />
     </Route>
     </Route>

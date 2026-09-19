@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
-import { Bell, FileText } from 'lucide-react'
+import { Bell, FileText, MessageCircle, ShieldAlert } from 'lucide-react'
 import { listDocuments } from '../../api/documents'
 import { listNotifications, listReminders } from '../../api/reminders'
 import { filterReminders, todayKey } from '../../lib/reminderTable'
 
 export default function ClientHome() {
-  const { user, client, clientError } = useOutletContext()
+  const { user, client, clientError, openAsk } = useOutletContext()
   // Documents sent to the client that they haven't signed yet. undefined while loading.
   const [waiting, setWaiting] = useState(undefined)
   const [documentsError, setDocumentsError] = useState('')
@@ -58,6 +58,15 @@ export default function ClientHome() {
         <Link className="button" to="/account/documents">View your documents</Link>
       </>}
     </section>
+
+    {client && <section className="card">
+      <h2><ShieldAlert size={20} /> Claims and requests</h2>
+      <p>Log a claim and track everything in one place, or use the chat button to ask for something like a change of address.</p>
+      <div className="rs-portal-links">
+        <Link className="button primary" to="/account/claims">My claims and requests</Link>
+        <button type="button" onClick={openAsk}><MessageCircle size={16} /> Ask for something</button>
+      </div>
+    </section>}
 
     {client && summary && <section className="card">
       <h2><Bell size={20} /> Reminders</h2>

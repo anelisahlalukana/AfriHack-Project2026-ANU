@@ -165,7 +165,109 @@ function validateComplianceUpdate(req, res, next) {
   next();
 }
 
+// --- Claims & requests -------------------------------------------------------
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_TASK_NOTE_LENGTH = 2000;
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function validateTaskIdParam(req, res, next) {
+  if (!UUID_PATTERN.test(req.params.taskId || "")) {
+    return res.status(400).json({ error: "The claim or request id in the URL isn't valid" });
+  }
+  if (req.params.fileId !== undefined && !UUID_PATTERN.test(req.params.fileId)) {
+    return res.status(400).json({ error: "The file id in the URL isn't valid" });
+  }
+  next();
+}
+
+// Shared by new claims and new requests: an optional client (advisers only) and form answers.
+function validateTaskBody(req, res) {
+  const { clientId, form, providerId, policyNumber } = req.body || {};
+  if (clientId !== undefined && clientId !== null && !UUID_PATTERN.test(clientId)) {
+    res.status(400).json({ error: "Field 'clientId' isn't a valid client id" });
+    return false;
+  }
+  if (providerId !== undefined && providerId !== null && providerId !== "" && !UUID_PATTERN.test(providerId)) {
+    res.status(400).json({ error: "Choose a provider from the list" });
+    return false;
+  }
+  if (form !== undefined && !isPlainObject(form)) {
+    res.status(400).json({ error: "Field 'form' must be an object of answers" });
+    return false;
+  }
+  if (policyNumber !== undefined && policyNumber !== null && typeof policyNumber !== "string") {
+    res.status(400).json({ error: "Field 'policyNumber' must be text" });
+    return false;
+  }
+  return true;
+}
+
+function validateNewClaimPayload(req, res, next) {
+  if (!validateTaskBody(req, res)) return;
+  if (typeof req.body.category !== "string" || !req.body.category.trim()) {
+    return res.status(400).json({ error: "Choose what kind of claim this is" });
+  }
+  next();
+}
+
+function validateNewRequestPayload(req, res, next) {
+  if (!validateTaskBody(req, res)) return;
+  if (typeof req.body.taskType !== "string" || !req.body.taskType.trim()) {
+    return res.status(400).json({ error: "Choose what you need help with" });
+  }
+  next();
+}
+
+function validateDraftPayload(req, res, next) {
+  if (!validateTaskBody(req, res)) return;
+  const { checklist } = req.body || {};
+  if (checklist !== undefined && !isPlainObject(checklist)) {
+    return res.status(400).json({ error: "Field 'checklist' must be an object" });
+  }
+  next();
+}
+
+function validateTaskUpdatePayload(req, res, next) {
+  const { note, stageKey, visibleToClient, outcome } = req.body || {};
+  if (note !== undefined && note !== null && (typeof note !== "string" || note.length > MAX_TASK_NOTE_LENGTH)) {
+    return res.status(400).json({ error: `Notes must be text of at most ${MAX_TASK_NOTE_LENGTH} characters` });
+  }
+  if (stageKey !== undefined && stageKey !== null && stageKey !== "" && typeof stageKey !== "string") {
+    return res.status(400).json({ error: "Field 'stageKey' must be text" });
+  }
+  if (visibleToClient !== undefined && typeof visibleToClient !== "boolean") {
+    return res.status(400).json({ error: "Field 'visibleToClient' must be true or false" });
+  }
+  if (outcome !== undefined && !["completed", "declined"].includes(outcome)) {
+    return res.status(400).json({ error: "Field 'outcome' must be completed or declined" });
+  }
+  next();
+}
+
+function validateClientActionPayload(req, res, next) {
+  const { date, rating, review } = req.body || {};
+  if (date !== undefined && (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+    return res.status(400).json({ error: "Pick a date" });
+  }
+  if (rating !== undefined && (!Number.isInteger(Number(rating)) || Number(rating) < 1 || Number(rating) > 5)) {
+    return res.status(400).json({ error: "Choose a rating from 1 to 5" });
+  }
+  if (review !== undefined && review !== null && (typeof review !== "string" || review.length > MAX_TASK_NOTE_LENGTH)) {
+    return res.status(400).json({ error: `A review can be at most ${MAX_TASK_NOTE_LENGTH} characters` });
+  }
+  next();
+}
+
 module.exports = {
+  validateTaskIdParam,
+  validateNewClaimPayload,
+  validateNewRequestPayload,
+  validateDraftPayload,
+  validateTaskUpdatePayload,
+  validateClientActionPayload,
   validateDocumentType,
   validateSignaturePayload,
   validateNewUserPayload,
