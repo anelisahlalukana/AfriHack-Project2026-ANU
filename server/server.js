@@ -76,7 +76,7 @@ app.use("/api", catalogRoutes);
 app.use("/api/admin/users", usersRoutes);
 app.use("/api/provider", providerRoutes);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
