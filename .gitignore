@@ -22,3 +22,7 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# Dev 4 local demo data and runtime files
+server/data/
+server/.env

@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "dev:demo": "node server.js --demo",
+    "test": "node --test src/dev4/*.test.js",
+    "push:keys": "web-push generate-vapid-keys --json"
   },
   "keywords": [],
   "author": "",

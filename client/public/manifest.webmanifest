@@ -1,0 +1,9 @@
+{
+  "name": "Royal Square Financial",
+  "short_name": "Royal Square",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f1eeec",
+  "theme_color": "#a30b14",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
