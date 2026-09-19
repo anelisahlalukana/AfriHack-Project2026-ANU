@@ -1,0 +1,27 @@
+import { Link, useLocation, useParams } from 'react-router-dom'
+import ExtendedProfile from '../../components/clients/ExtendedProfile'
+import { ArrowLeft, Pencil, Target } from 'lucide-react'
+import { useClients } from '../../hooks/useClients'
+import { money, totals, goalProgress } from '../../lib/financials'
+import ClientTasksPanel from '../../components/tasks/ClientTasksPanel'
+import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
+export default function ClientProfile() {
+  const { id } = useParams()
+  const location = useLocation()
+  const { data: client, loading, error, retry } = useClients(id)
+  if (loading) return <p role="status">Loading client profile…</p>
+  if (error) return <div className="card" role="alert"><p className="error">Unable to load this client. {error}</p><button onClick={retry}>Try again</button><Link to="/">Back to clients</Link></div>
+  const { assets, liabilities, netWorth } = totals(client.client_financial_items)
+  const maximum = Math.max(assets, liabilities, 1)
+  return <><Link className="back" to={location.state?.from || '/'}><ArrowLeft size={16} /> All clients</Link><header className="page-heading"><div><p className="eyebrow">CLIENT FINANCIAL OVERVIEW</p><h1>{client.first_name} {client.second_name} {client.surname}</h1><p>{client.contact_email || 'No email provided'} · <span className="badge">{client.status}</span></p></div><Link className="button primary" to={`/clients/${id}/edit`}><Pencil size={16} /> Edit financial needs analysis</Link></header>
+    <div className="stats"><article className="card highlight"><span>Net worth</span><strong>{money(netWorth)}</strong><small>Total assets less total liabilities</small></article><article className="card"><span>Total assets</span><strong>{money(assets)}</strong><small>Current recorded asset values</small></article><article className="card"><span>Total liabilities</span><strong>{money(liabilities)}</strong><small>Outstanding balances</small></article></div>
+    <div className="two-columns"><section className="card"><h2>Financial position</h2><p>Assets and liabilities, side by side.</p>{[['Assets', assets], ['Liabilities', liabilities]].map(([label, value]) => <div key={label} className="chart-row"><div><span>{label}</span><b>{money(value)}</b></div><div className="track"><span style={{ width: `${value / maximum * 100}%` }} className={label === 'Assets' ? 'asset-bar' : ''} /></div></div>)}
+      {!client.client_financial_items.length && <p>No financial items yet. Add them in the financial needs analysis.</p>}
+      {client.client_financial_items.map(item => <div className="detail-row" key={item.id}><span>{item.description || item.item_type}<small>{item.category} · {item.item_type}{item.frequency ? ` · ${item.frequency}` : ''}</small></span><b>{money(item.amount)}</b></div>)}
+    </section><section className="card"><h2><Target size={20} /> Goals & milestones</h2><p>Track progress toward what matters most.</p>{!client.client_goals.length && <div className="empty"><p>No goals recorded yet.</p><Link to={`/clients/${id}/edit`}>Add the first goal</Link></div>}{client.client_goals.map(goal => <article className="goal" key={goal.id}><div className="section-heading"><h3>{goal.goal_name}</h3><span className="badge">{goal.status.replaceAll('_', ' ')}</span></div><p>{money(goal.current_progress)} of {money(goal.target_amount)}</p><progress max="100" value={goalProgress(goal)} aria-label={`${goal.goal_name} progress`} /><div className="section-heading"><small>{goalProgress(goal).toFixed(0)}% funded</small><small>{goal.target_date ? `Target: ${goal.target_date}` : 'No target date'}</small></div></article>)}</section></div>
+    <div className="two-columns"><section className="card"><h2>Client details</h2><dl>{[['Mobile', client.contact_mobile], ['Date of birth', client.date_of_birth], ['Nationality', client.nationality], ['Marital status', client.marital_status], ['Occupation', client.occupation], ['Employer', client.employer_name], ['Annual income', money(client.annual_income)], ['Address', client.physical_address], ['Risk profile', client.risk_profile_category], ['Politically exposed', client.is_politically_exposed ? 'Yes' : 'No']].map(([label, value]) => <div className="detail-row" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl></section><section className="card"><h2>Dependants</h2>{!client.client_dependants.length && <p>No dependants recorded.</p>}{client.client_dependants.map(person => <div className="detail-row" key={person.id}><span><b>{person.full_name}</b><small>{person.relationship || 'Relationship not specified'}{person.date_of_birth ? ` · Born ${person.date_of_birth}` : ''}</small></span><span>{person.beneficiary_percentage ?? 0}%<small>Beneficiary allocation</small></span></div>)}</section></div>
+    <ClientTasksPanel clientId={id} />
+    <ExtendedProfile key={client.id} client={client} onSaved={retry} />
+    <DocumentStatusList clientId={id} />
+  </>
+}
