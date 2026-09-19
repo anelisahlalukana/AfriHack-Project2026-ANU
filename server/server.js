@@ -76,13 +76,10 @@ app.use("/api", catalogRoutes);
 app.use("/api/admin/users", usersRoutes);
 app.use("/api/provider", providerRoutes);
 
-const server = app.listen(PORT, "127.0.0.1", () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  if (demo)
-    console.log(
-      "REMINDERS DEMO: fictional identities and financial data; local use only.",
-    );
 });
+
 const tick = () =>
   reminders.service
     .tick()
