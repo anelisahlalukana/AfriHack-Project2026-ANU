@@ -1,0 +1,24 @@
+{
+  "name": "afrihack-project2026-anu",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+  "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\""
+},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anelisahlalukana/AfriHack-Project2026-ANU.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/anelisahlalukana/AfriHack-Project2026-ANU/issues"
+  },
+  "homepage": "https://github.com/anelisahlalukana/AfriHack-Project2026-ANU#readme",
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
