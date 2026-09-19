@@ -4,7 +4,6 @@ const {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_VALUES,
   ACKNOWLEDGE_ONLY_TYPES,
-  CONSENT_VALIDITY_MONTHS,
 } = require("../constants/documentTypes");
 const { ONBOARDING_STATUS, ACTIVE_STATUS } = require("../constants/clientStatuses");
 const { notifyClient, notifyAdviser } = require("./notifications.service");
@@ -194,12 +193,12 @@ async function signDocument(clientId, type, { signature, signerName }, actor) {
     signedAt,
   });
 
-  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt });
+  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt, actor });
 }
 
 // A client signed outside the app (print/scan or a PDF editor) and uploaded the result, so
 // there is nothing to embed: the uploaded file is stored as-is as the signed copy.
-async function uploadSignedDocument(clientId, type, fileBytes) {
+async function uploadSignedDocument(clientId, type, fileBytes, actor) {
   const row = await getDocumentRow(clientId, type);
   return saveSignedCopy({
     clientId,
@@ -208,12 +207,13 @@ async function uploadSignedDocument(clientId, type, fileBytes) {
     bytes: fileBytes,
     signature: null,
     signedAt: new Date().toISOString(),
+    actor,
   });
 }
 
 // Shared by every route to 'signed': stores the signed PDF, marks the document signed, and
 // then checks whether that completes the client's onboarding documents.
-async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt }) {
+async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt, actor }) {
   const signedPath = `${clientId}/${type}/signed.pdf`;
   const { error: uploadError } = await supabaseAdmin.storage
     .from(DOCUMENTS_BUCKET)
@@ -237,6 +237,12 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt 
 
   if (error) throw new Error(error.message);
   if (type === "client_consent") await logConsentSigning(clientId, data, row, actor);
+
+  const allSigned = await activateClientIfAllSigned(clientId);
+  // Re-signing a document that was already signed (e.g. renewing an expired consent) doesn't
+  // complete anything new, so only a first signing can be the one that finishes onboarding.
+  const completedOnboarding = allSigned && row?.status !== "signed";
+  await notifyDocumentSigned(clientId, type, { completedOnboarding });
   return toCamelDocument(data);
 }
 

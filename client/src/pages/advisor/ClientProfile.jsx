@@ -6,6 +6,7 @@ import { ArrowLeft, Pencil, Target } from 'lucide-react'
 import { useClients } from '../../hooks/useClients'
 import { money, totals, goalProgress } from '../../lib/financials'
 import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
+import ClientTasksPanel from '../../components/tasks/ClientTasksPanel'
 export default function ClientProfile() {
   const [complianceRevision, setComplianceRevision] = useState(0)
   const { id } = useParams()

@@ -49,7 +49,7 @@ The existing signing flow overwrites a fixed signed-PDF path and does not preser
 
 ## Verification
 
-Run `npm run build --prefix client`, `npm run lint --prefix client`, and `npm test --prefix client`.
+Run `npm run build --prefix client`, `npm run lint --prefix client`, `npm test --prefix client`, `npm run lint --prefix server` and `npm test --prefix server`. The same checks run on every pull request; see [ci-cd.md](ci-cd.md).
 
 Live Supabase acceptance checks (require configured project and two advisor accounts):
 

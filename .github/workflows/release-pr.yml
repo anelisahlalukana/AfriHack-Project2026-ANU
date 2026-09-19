@@ -1,0 +1,58 @@
+name: Release PR
+
+# Keeps a pull request from development into main open whenever development is ahead of main,
+# so promoting to production is always "review and merge" rather than a direct push.
+on:
+  push:
+    branches: [development]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+jobs:
+  open-release-pr:
+    name: Open development → main PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          # Pull requests opened with the default GITHUB_TOKEN do not start other workflows, so CI
+          # would never run on the release PR. Add a RELEASE_PR_TOKEN secret (a fine-grained
+          # personal access token with Pull requests: write) to make CI and the preview run on it.
+          github-token: ${{ secrets.RELEASE_PR_TOKEN || github.token }}
+          script: |
+            const { owner, repo } = context.repo;
+
+            const open = await github.rest.pulls.list({ owner, repo, state: 'open', base: 'main', head: `${owner}:development` });
+            if (open.data.length > 0) {
+              core.info(`Release PR #${open.data[0].number} is already open.`);
+              return;
+            }
+
+            const comparison = await github.rest.repos.compareCommitsWithBasehead({ owner, repo, basehead: 'main...development' });
+            if (comparison.data.ahead_by === 0) {
+              core.info('development has nothing that main does not.');
+              return;
+            }
+
+            const commits = comparison.data.commits.slice(-20).map((commit) => `- ${commit.commit.message.split('\n')[0]}`);
+            const pr = await github.rest.pulls.create({
+              owner,
+              repo,
+              base: 'main',
+              head: 'development',
+              title: 'Release: development → main',
+              body: [
+                'Promotes `development` to `main`. Merging this deploys to Vercel production.',
+                '',
+                `Includes ${comparison.data.ahead_by} commit(s), most recent last:`,
+                ...commits,
+              ].join('\n'),
+            });
+            core.info(`Opened release PR #${pr.data.number}.`);
