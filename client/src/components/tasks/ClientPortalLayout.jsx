@@ -27,6 +27,7 @@ export default function ClientPortalLayout() {
     <header className="rs-portal-top">
       <NavLink to="/account"><img src="/images/slogan.png" alt="Royal Square Financial" /></NavLink>
       <nav aria-label="Client portal">
+        <NavLink to="/account" end>Home</NavLink>
         <NavLink to="/account/claims" end>My claims & requests</NavLink>
         <NavLink to="/account/claims/new">Report a claim</NavLink>
         <NavLink to="/account/requests/new">Ask for something</NavLink>

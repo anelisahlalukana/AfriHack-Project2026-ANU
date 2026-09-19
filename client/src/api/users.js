@@ -5,8 +5,9 @@ export async function listStaffUsers() {
   return data.users;
 }
 
-export async function createStaffUser({ email, fullName, role }) {
-  const { data } = await http.post("/api/admin/users", { email, fullName, role });
+// providerId: the provider organisation, required when role is 'provider'.
+export async function createStaffUser({ email, fullName, role, providerId }) {
+  const { data } = await http.post("/api/admin/users", { email, fullName, role, providerId });
   return data.user;
 }
 

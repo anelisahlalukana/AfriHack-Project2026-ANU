@@ -4,7 +4,7 @@ import { errorMessage } from '../lib/taskFormat'
 
 // Shared loader: keeps the last result per key, supports retry and local replacement
 // (so a mutation's response can update the screen without refetching).
-function useLoaded(key, load) {
+export function useLoaded(key, load) {
   const [state, setState] = useState({ key: null, data: null, error: '' })
   const [attempt, setAttempt] = useState(0)
 

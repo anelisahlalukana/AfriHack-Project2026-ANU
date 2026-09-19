@@ -94,9 +94,9 @@ async function closeTask(req, res) {
   }
 }
 
-async function simulateProvider(req, res) {
+async function messageProvider(req, res) {
   try {
-    const task = await tasksService.simulateProvider(req.user, req.params.taskId, req.body);
+    const task = await tasksService.messageProvider(req.user, req.params.taskId, req.body);
     res.json({ task });
   } catch (err) {
     res.status(err.status || 500).json({ error: err.message });
@@ -132,7 +132,7 @@ module.exports = {
   postUpdate,
   clientAction,
   closeTask,
-  simulateProvider,
+  messageProvider,
   uploadFile,
   getFileUrl,
 };

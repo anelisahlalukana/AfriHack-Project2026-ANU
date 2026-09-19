@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Mail, UserPlus, Users } from 'lucide-react'
 import { listStaffUsers, createStaffUser, resendStaffInvite } from '../../api/users'
+import { getCatalog } from '../../api/tasks'
 
 const ROLES = [
   { value: 'advisor', label: 'Advisor' },
   { value: 'admin', label: 'Admin' },
+  { value: 'provider', label: 'Provider (insurer portal)' },
 ]
 
 export default function AdminUsers() {
@@ -17,6 +19,19 @@ export default function AdminUsers() {
   const [resendingId, setResendingId] = useState(null)
   const [resendError, setResendError] = useState('')
   const [resendNotice, setResendNotice] = useState('')
+  const [role, setRole] = useState('advisor')
+  const [providers, setProviders] = useState(null)
+  const [providersError, setProvidersError] = useState('')
+
+  // Provider organisations (Santam, Old Mutual, ...) for provider logins.
+  useEffect(() => {
+    if (role !== 'provider' || providers) return undefined
+    let active = true
+    getCatalog()
+      .then(data => { if (active) { setProviders(data.providers); setProvidersError('') } })
+      .catch(error => { if (active) setProvidersError(error.message) })
+    return () => { active = false }
+  }, [role, providers])
 
   useEffect(() => {
     let active = true
@@ -38,9 +53,11 @@ export default function AdminUsers() {
         email: data.get('email').trim(),
         fullName: data.get('full_name').trim(),
         role: data.get('role'),
+        providerId: data.get('role') === 'provider' ? data.get('provider_id') : undefined,
       })
       setNotice('Account created. An email with a password-setup link has been sent.')
       form.reset()
+      setRole('advisor')
       setReloadKey(value => value + 1)
     } catch (error) {
       setFormError(error.message)
@@ -67,8 +84,8 @@ export default function AdminUsers() {
     <header className="page-heading">
       <div>
         <p className="eyebrow">USER MANAGEMENT</p>
-        <h1>Staff accounts</h1>
-        <p>Create logins for advisers and admins — they don't self-register.</p>
+        <h1>Staff and provider accounts</h1>
+        <p>Create logins for advisers, admins and insurers — they don't self-register.</p>
       </div>
     </header>
 
@@ -80,10 +97,16 @@ export default function AdminUsers() {
         <div className="form-grid">
           <label>Full name<input name="full_name" autoComplete="name" required disabled={busy} /></label>
           <label>Email address<input name="email" type="email" autoComplete="email" required disabled={busy} /></label>
-          <label>Role<select name="role" defaultValue="advisor" required disabled={busy}>
+          <label>Role<select name="role" value={role} onChange={event => setRole(event.target.value)} required disabled={busy}>
             {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select></label>
+          {role === 'provider' && <label>Provider<select name="provider_id" defaultValue="" required disabled={busy || !providers}>
+            <option value="" disabled>{providers ? 'Choose the insurer…' : 'Loading…'}</option>
+            {providers?.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select></label>}
         </div>
+        {role === 'provider' && <p className="muted">Provider logins open the provider portal and only see the claims and requests sent to that insurer.</p>}
+        {providersError && <p className="error" role="alert">{providersError}</p>}
         {formError && <p className="error" role="alert">{formError}</p>}
         {notice && <p className="auth-notice" role="status">{notice}</p>}
         <div className="form-actions">
@@ -104,7 +127,7 @@ export default function AdminUsers() {
         <tbody>{users.map(u => <tr key={u.id}>
           <td>{u.fullName || '—'}</td>
           <td>{u.email}</td>
-          <td><span className="badge">{u.role}</span></td>
+          <td><span className="badge">{u.role}</span>{u.organisation && <small className="muted"> {u.organisation}</small>}</td>
           <td>{new Date(u.createdAt).toLocaleDateString()}</td>
           <td><button className="button" onClick={() => resend(u)} disabled={resendingId !== null} aria-label={`Resend password link to ${u.email}`}>
             <Mail size={16} /> {resendingId === u.id ? 'Sending…' : 'Resend link'}

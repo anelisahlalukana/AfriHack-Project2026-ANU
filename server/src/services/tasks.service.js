@@ -225,11 +225,12 @@ async function buildDetail(access, task) {
             canUpdate: active,
             canClose: active,
             nextStage: next ? { key: next.stage_key, label: next.stage_label, actor: next.actor, terminal: next.is_terminal } : null,
-            canSimulateProvider:
-              active &&
-              Boolean(task.provider) &&
-              task.status !== "awaiting_client" &&
-              ((next && next.actor === "provider") || (current?.repeatable && current.actor === "provider")),
+            // The insurer works its own steps in the provider portal; advisers can message it.
+            providerStep: (() => {
+              const action = task.provider ? wf.providerAction(task, stages) : null;
+              return action ? { kind: action.kind, label: action.stage.stage_label } : null;
+            })(),
+            canMessageProvider: Boolean(task.provider) && task.status !== "cancelled",
           }
         : {
             canMessage: task.status !== "cancelled",
@@ -558,10 +559,25 @@ async function cancelDraft(access, taskId) {
   return buildDetail(access, { ...task, ...updated });
 }
 
-async function simulateProvider(access, taskId, body = {}) {
+// Staff: send a message to the product provider (shown in the provider portal). It is
+// logged in provider_events and kept in the audit trail as an internal note.
+async function messageProvider(access, taskId, body = {}) {
   if (access.role !== "staff") throw forbidden();
   const task = await getTaskForAccess(access, taskId);
-  const updated = await mockProvider.simulateProviderEvent(task, { decline: Boolean(body.decline), note: body.note });
+  if (!task.provider) throw badRequest("This request has no product provider");
+  if (task.status === "cancelled" || task.status === "draft") throw conflict("This request is not active");
+  const note = cleanNote(body.note, { required: true });
+  await mockProvider.logEvent(task, task.provider.id, "sent", "message", { note, by: access.label });
+  await addUpdate(task, {
+    stage: task.current_stage,
+    note: `To ${task.provider.name}: ${note}`,
+    actorType: "adviser",
+    actorLabel: access.label,
+    userId: access.userId,
+    kind: "message",
+    visibleToClient: false,
+  });
+  const updated = await patchTask(task.id, {});
   return buildDetail(access, { ...task, ...updated });
 }
 
@@ -578,7 +594,14 @@ async function uploadFile(access, taskId, file, body = {}) {
   if (!file) throw badRequest("Choose a file to upload");
   const task = await getTaskForAccess(access, taskId);
   if (CLOSED_STATUSES.includes(task.status)) throw conflict("This request is closed");
+  const updated = await storeTaskFile(task, file, body, actorFor(access));
+  return buildDetail(access, { ...task, ...updated });
+}
 
+// Saves an uploaded file in the private bucket and records it on the task.
+// actor = { type: client | adviser | provider, label, userId }. Shared with the provider portal.
+async function storeTaskFile(task, file, body, actor) {
+  if (!file) throw badRequest("Choose a file to upload");
   const config = await catalog.getTaskConfig(task);
   const docKey = typeof body.documentKey === "string" ? body.documentKey : null;
   const docConfig = (config?.required_documents || []).find((d) => d.key === docKey) || null;
@@ -590,7 +613,6 @@ async function uploadFile(access, taskId, file, body = {}) {
     .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: false });
   if (uploadError) throw new Error(uploadError.message);
 
-  const actor = actorFor(access);
   const { error } = await supabaseAdmin.from("task_files").insert({
     task_id: task.id,
     file_url: storagePath,
@@ -599,20 +621,24 @@ async function uploadFile(access, taskId, file, body = {}) {
     document_key: docConfig ? docConfig.key : null,
     content_type: file.mimetype,
     size_bytes: file.size,
-    uploaded_by: access.userId,
+    uploaded_by: actor.userId || null,
     actor_type: actor.type,
   });
   if (error) throw new Error(error.message);
 
   if (task.status !== "draft") {
-    await addUpdate(task, { stage: task.current_stage, note: `Uploaded: ${label}`, actorType: actor.type, actorLabel: actor.label, userId: access.userId, kind: "file" });
+    await addUpdate(task, { stage: task.current_stage, note: `Uploaded: ${label}`, actorType: actor.type, actorLabel: actor.label, userId: actor.userId || null, kind: "file" });
   }
-  const updated = await patchTask(task.id, {});
-  return buildDetail(access, { ...task, ...updated });
+  return patchTask(task.id, {});
 }
 
 async function getFileUrl(access, taskId, fileId) {
   const task = await getTaskForAccess(access, taskId);
+  return signTaskFile(task, fileId);
+}
+
+// A 10-minute signed link to one of the task's files.
+async function signTaskFile(task, fileId) {
   assertUuid(fileId, "file id");
   const { data, error } = await supabaseAdmin
     .from("task_files")
@@ -651,7 +677,9 @@ module.exports = {
   completeClientAction: withAccess(completeClientAction),
   closeTask: withAccess(closeTask),
   cancelDraft: withAccess(cancelDraft),
-  simulateProvider: withAccess(simulateProvider),
+  messageProvider: withAccess(messageProvider),
   uploadFile: withAccess(uploadFile),
   getFileUrl: withAccess(getFileUrl),
+  // Shared with the provider portal (providerPortal.service.js).
+  helpers: { summarise, configMaps, storeTaskFile, signTaskFile },
 };

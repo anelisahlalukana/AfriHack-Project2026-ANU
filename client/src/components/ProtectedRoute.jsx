@@ -1,8 +1,8 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { isStaff, isAdmin, accountHome } from '../lib/authRoles'
+import { isStaff, isAdmin, isProvider, accountHome } from '../lib/authRoles'
 
-export default function ProtectedRoute({ staffOnly = false, adminOnly = false, excludeAdmin = false }) {
+export default function ProtectedRoute({ staffOnly = false, adminOnly = false, excludeAdmin = false, providerOnly = false }) {
   const { session, loading } = useAuth()
   const location = useLocation()
 
@@ -11,6 +11,8 @@ export default function ProtectedRoute({ staffOnly = false, adminOnly = false, e
     const from = `${location.pathname}${location.search}${location.hash}`
     return <Navigate to="/login" state={{ from }} replace />
   }
+  // Provider logins only ever see the provider portal, and only they can open it.
+  if (providerOnly !== isProvider(session.user)) return <Navigate to={accountHome(session.user)} replace />
   if (staffOnly && !isStaff(session.user)) return <Navigate to={accountHome(session.user)} replace />
   if (adminOnly && !isAdmin(session.user)) return <Navigate to="/" replace />
   if (excludeAdmin && isAdmin(session.user)) return <Navigate to="/admin" replace />

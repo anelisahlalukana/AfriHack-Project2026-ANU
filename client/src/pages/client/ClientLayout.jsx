@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Outlet } from 'react-router-dom'
-import { Bell, FileText, House, User } from 'lucide-react'
+import { Bell, FileText, House, Inbox, User } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isStaff, accountHome } from '../../lib/authRoles'
 import { getOwnClient } from '../../api/clients'
 
 // Shell for every signed-in client page: a slim top bar, the page, and a bottom
-// navigation bar (Home, Documents, Reminders, Profile). Built mobile-first; the bar floats
+// navigation bar (Home, Claims, Documents, Reminders, Profile). Built mobile-first; the bar floats
 // centred on wider screens. Loads the client's own record once and shares it with
 // the pages through the outlet context.
 export default function ClientLayout() {
@@ -33,6 +33,7 @@ export default function ClientLayout() {
     <main className="client-content"><Outlet context={{ user, client, clientError }} /></main>
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/account" end><House size={22} /> Home</NavLink>
+      <NavLink to="/account/claims"><Inbox size={22} /> Claims</NavLink>
       <NavLink to="/account/documents"><FileText size={22} /> Documents</NavLink>
       <NavLink to="/account/reminders"><Bell size={22} /> Reminders</NavLink>
       <NavLink to="/account/profile"><User size={22} /> Profile</NavLink>
