@@ -4,7 +4,7 @@
 2. Run `supabase/migrations/202609190001_advisor_workspace.sql` in its SQL editor. It creates missing FNA tables, enables advisor-scoped RLS on all four tables, and installs the transactional `save_client_fna` function. Review existing policies and back up production data before applying migrations.
 3. Apply `supabase/migrations/202609190002_client_registration_roles.sql` before enabling sign-ups. It restricts all FNA table operations (including the save RPC) to administrator-provisioned staff roles, in addition to existing record ownership rules.
 4. Enable email/password sign-ups for clients in Supabase Authentication. Enable email confirmation, configure email delivery, and add your app's `/login` URL to the allowed Auth redirect URLs (for local development: `http://localhost:5173/login`). Set the production Site URL when deploying.
-5. Create provider/broker accounts through Supabase Authentication → Users or the server-side Admin API. Set their **app metadata** role to `provider` or `broker` using the Admin API or the SQL example below. Existing advisors need `advisor`. Do not use editable user metadata for roles. Existing client records still require an `advisor_id` matching their assigned staff user's Auth ID.
+5. Create advisor/admin accounts through Supabase Authentication → Users, the server-side Admin API, or `npm run create-admin --prefix server` (bootstraps the first admin). Set their **app metadata** role to `advisor` or `admin` using the Admin API or the SQL example below. Do not use editable user metadata for roles. Existing client records still require an `advisor_id` matching their assigned staff user's Auth ID. (`provider` is not a logged-in role — it's the mocked external insurer/integration layer described in `docs/system_requirments.md`.)
 6. Copy `client/.env.example` to `client/.env.local`, then supply your Supabase URL and publishable/anon key. Never put a service-role key in frontend environment variables.
 7. Run `npm install --prefix client`, then `npm run dev --prefix client`. The three features talk directly to Supabase; the Express server is not required.
 8. For deployment, configure the host to serve `index.html` for frontend paths such as `/clients/:id/edit`.
@@ -27,27 +27,27 @@ Live Supabase acceptance checks (require configured project and two advisor acco
 2. Add a client, two dependants, an asset of 100000, a liability of 25000, and a goal with target 10000 and saved amount 2500. Verify net worth is R75,000 and the goal is 25% funded.
 3. Edit the profile, remove a dependant, change a balance and goal progress, save, and refresh; verify changes persist.
 4. Verify blank required fields, negative amounts, future birth dates, and combined beneficiary allocations above 100% are rejected. Disconnect the network when saving and confirm entered values remain available for retry.
-5. Sign in as a second advisor and confirm the first advisor’s clients are absent. Direct table requests and `save_client_fna` calls for another advisor’s client must be denied. Verify failed child validation rolls back profile changes.
+5. Sign in as a second advisor and confirm the first advisor's clients are absent. Direct table requests and `save_client_fna` calls for another advisor's client must be denied. Verify failed child validation rolls back profile changes. Verify an admin account lands on `/admin`, sees only the placeholder dashboard and User management, and is redirected away from `/`, `/clients/*`, and `/compliance/*`.
 6. Sign out and use browser Back; protected data must remain inaccessible. Check the form and dashboard at mobile widths.
 
 Auth integration follows the [Supabase password sign-in](https://supabase.com/docs/reference/javascript/auth-signinwithpassword) and [auth event](https://supabase.com/docs/reference/javascript/auth-onauthstatechange) APIs. Database authorization is enforced by RLS, independently of frontend route checks.
 
 ## Client registration and staff provisioning
 
-- `/signup` creates client Auth accounts only. `/login` accepts clients, providers, brokers, and existing advisors.
-- Accounts without an administrator-assigned staff role are treated as clients, even if user metadata claims a different role. They land on `/account` and cannot access the advisor workspace or FNA tables.
+- `/signup` creates client Auth accounts only. `/login` accepts clients, advisors, and admins. `provider` is not a logged-in role — see `docs/system_requirments.md`.
+- Accounts without an administrator-assigned staff role are treated as clients, even if user metadata claims a different role. They land on `/account` and cannot access the advisor workspace, admin area, or FNA tables.
 - The client account page confirms successful sign-in. Linking an Auth client to an advisor-managed FNA record and a self-service financial portal are not implemented; no financial records are automatically matched by email.
-- Providers and brokers have no public registration flow. Provision their account and role administratively. For an existing user, run the following in the Supabase SQL editor, substituting the exact Auth user UUID and required role (`provider`, `broker`, or `advisor`):
+- Advisors and admins have no public registration flow. Provision their account and role administratively — either `npm run create-admin --prefix server "email" "Full Name"` (creates an admin, emails a password-setup link via Brevo), the in-app admin User management screen (once at least one admin exists), or directly in the Supabase SQL editor, substituting the exact Auth user UUID and required role (`advisor` or `admin`):
 
 ```sql
 update auth.users
 set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
-  || jsonb_build_object('role', 'broker')
+  || jsonb_build_object('role', 'advisor')
 where id = 'REPLACE_WITH_AUTH_USER_UUID'::uuid;
 ```
 
-Have the staff member sign out and back in after assigning a role so their access token includes it. No service-role key belongs in the browser. Staff roles currently share the existing advisor workspace and can access only records assigned to their own user ID.
+Have the staff member sign out and back in after assigning a role so their access token includes it. No service-role key belongs in the browser. Advisors share the advisor workspace and can access only records assigned to their own user ID; admins can only reach `/admin` and `/admin/users`, never client FNA data.
 
-Verify a newly registered client can confirm email, log in and sign out, but is redirected from `/` and `/clients/new` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = broker` does not grant access. Then verify an administratively provisioned broker/provider can log in to the workspace.
+Verify a newly registered client can confirm email, log in and sign out, but is redirected from `/` and `/clients/new` to `/account`. Verify direct FNA table writes and RPC saves from the client session are denied after both migrations. Verify a client-supplied `user_metadata.role = advisor` does not grant access. Then verify an administratively provisioned advisor can log in to the workspace, and an admin lands on `/admin` instead.
 
 Registration uses [Supabase signUp](https://supabase.com/docs/reference/javascript/auth-signup) and its confirmation-email redirect.

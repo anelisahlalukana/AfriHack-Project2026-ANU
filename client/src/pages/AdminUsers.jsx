@@ -3,9 +3,7 @@ import { UserPlus, Users } from 'lucide-react'
 import { listStaffUsers, createStaffUser } from '../api/users'
 
 const ROLES = [
-  { value: 'provider', label: 'Provider' },
   { value: 'advisor', label: 'Advisor' },
-  { value: 'broker', label: 'Broker' },
   { value: 'admin', label: 'Admin' },
 ]
 
@@ -52,8 +50,8 @@ export default function AdminUsers() {
     <header className="page-heading">
       <div>
         <p className="eyebrow">USER MANAGEMENT</p>
-        <h1>Provider &amp; staff accounts</h1>
-        <p>Create logins for providers, advisors and brokers — they don't self-register.</p>
+        <h1>Staff accounts</h1>
+        <p>Create logins for advisers and admins — they don't self-register.</p>
       </div>
     </header>
 
@@ -65,7 +63,7 @@ export default function AdminUsers() {
         <div className="form-grid">
           <label>Full name<input name="full_name" autoComplete="name" required disabled={busy} /></label>
           <label>Email address<input name="email" type="email" autoComplete="email" required disabled={busy} /></label>
-          <label>Role<select name="role" defaultValue="provider" required disabled={busy}>
+          <label>Role<select name="role" defaultValue="advisor" required disabled={busy}>
             {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select></label>
         </div>
