@@ -43,10 +43,17 @@ const REGISTRATION_DOCUMENT_TYPES = ["fais_disclosure", "confidentiality_agreeme
 // status 'signed'; the signature image is simply optional for these types.
 const ACKNOWLEDGE_ONLY_TYPES = ["fais_disclosure"];
 
+// A client can sign outside the app (print/scan or a PDF editor) and upload the result.
+// PDFs only, unlike task files, which also accept photos and voice notes.
+const SIGNED_UPLOAD_MAX_BYTES = 15 * 1024 * 1024;
+const SIGNED_UPLOAD_TYPES = [/^application\/pdf$/];
+
 module.exports = {
   DOCUMENT_TYPES,
   DOCUMENT_TYPE_VALUES,
   DOCUMENT_STATUSES,
   REGISTRATION_DOCUMENT_TYPES,
   ACKNOWLEDGE_ONLY_TYPES,
+  SIGNED_UPLOAD_MAX_BYTES,
+  SIGNED_UPLOAD_TYPES,
 };

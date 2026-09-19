@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require("../config/supabaseClient");
 const { fillTemplate, embedSignature } = require("../utils/pdfFiller");
-const { DOCUMENT_TYPES } = require("../constants/documentTypes");
+const { DOCUMENT_TYPES, DOCUMENT_TYPE_VALUES } = require("../constants/documentTypes");
+const { ONBOARDING_STATUS, ACTIVE_STATUS } = require("../constants/clientStatuses");
 
 const TEMPLATES_BUCKET = process.env.DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 const DOCUMENTS_BUCKET = process.env.CLIENT_DOCUMENTS_BUCKET || "client-documents";
@@ -182,10 +183,30 @@ async function signDocument(clientId, type, { signature, signerName }) {
     signedAt,
   });
 
+  return saveSignedCopy({ clientId, type, row, bytes: signedBytes, signature, signedAt });
+}
+
+// A client signed outside the app (print/scan or a PDF editor) and uploaded the result, so
+// there is nothing to embed: the uploaded file is stored as-is as the signed copy.
+async function uploadSignedDocument(clientId, type, fileBytes) {
+  const row = await getDocumentRow(clientId, type);
+  return saveSignedCopy({
+    clientId,
+    type,
+    row,
+    bytes: fileBytes,
+    signature: null,
+    signedAt: new Date().toISOString(),
+  });
+}
+
+// Shared by every route to 'signed': stores the signed PDF, marks the document signed, and
+// then checks whether that completes the client's onboarding documents.
+async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt }) {
   const signedPath = `${clientId}/${type}/signed.pdf`;
   const { error: uploadError } = await supabaseAdmin.storage
     .from(DOCUMENTS_BUCKET)
-    .upload(signedPath, signedBytes, { contentType: "application/pdf", upsert: true });
+    .upload(signedPath, bytes, { contentType: "application/pdf", upsert: true });
 
   if (uploadError) throw new Error(uploadError.message);
 
@@ -204,7 +225,39 @@ async function signDocument(clientId, type, { signature, signerName }) {
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
+
+  await activateClientIfAllSigned(clientId);
   return toCamelDocument(data);
+}
+
+// Once all 5 document types are signed, an 'onboarding' client becomes 'active'. The update
+// is conditional on status = 'onboarding', so an already 'active' or 'inactive' client is
+// never touched. The document is already saved by now, so a failure here is logged rather
+// than failing the signature.
+async function activateClientIfAllSigned(clientId) {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("documents")
+      .select("document_type")
+      .eq("client_id", clientId)
+      .eq("status", "signed")
+      .in("document_type", DOCUMENT_TYPE_VALUES);
+
+    if (error) throw new Error(error.message);
+
+    const signed = new Set((data || []).map((row) => row.document_type));
+    if (!DOCUMENT_TYPE_VALUES.every((type) => signed.has(type))) return;
+
+    const { error: updateError } = await supabaseAdmin
+      .from("users")
+      .update({ status: ACTIVE_STATUS })
+      .eq("id", clientId)
+      .eq("status", ONBOARDING_STATUS);
+
+    if (updateError) throw new Error(updateError.message);
+  } catch (err) {
+    console.error(`[documents.service] could not update status for client ${clientId}:`, err.message);
+  }
 }
 
 async function getDownloadUrl(clientId, type) {
@@ -252,6 +305,7 @@ module.exports = {
   listDocuments,
   sendDocument,
   signDocument,
+  uploadSignedDocument,
   getDownloadUrl,
   getConsentStatus,
 };
