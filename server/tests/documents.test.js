@@ -2,14 +2,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 // --- Fake Supabase: an in-memory `documents` / `users` store with just the query shapes the service uses.
-const state = { documents: [], users: [], uploads: [] };
+const state = { documents: [], users: [], uploads: [], notifications: [], notificationsFail: null };
 
 function from(table) {
+  if (table === "notifications" && state.notificationsFail === "throw") throw new Error("connection lost");
   let op = "select";
   let patch = null;
   const filters = [];
+  // Filters on joined columns ("roles.name") are ignored: the fake has no joins.
   const matches = (row) =>
-    filters.every(([col, val, isIn]) => (isIn ? val.includes(row[col]) : row[col] === val));
+    filters.every(([col, val, isIn]) => col.includes(".") || (isIn ? val.includes(row[col]) : row[col] === val));
   const exec = () => {
     const rows = state[table];
     if (op === "insert") {
@@ -29,7 +31,12 @@ function from(table) {
     insert: (p) => ((op = "insert"), (patch = p), builder),
     maybeSingle: async () => ({ data: exec()[0] || null, error: null }),
     single: async () => ({ data: exec()[0] || null, error: null }),
-    then: (resolve, reject) => Promise.resolve({ data: exec(), error: null }).then(resolve, reject),
+    then: (resolve, reject) => {
+      if (table === "notifications" && state.notificationsFail === "error") {
+        return Promise.resolve({ data: null, error: { message: "insert refused" } }).then(resolve, reject);
+      }
+      return Promise.resolve({ data: exec(), error: null }).then(resolve, reject);
+    },
   };
   return builder;
 }
@@ -57,9 +64,18 @@ const { DOCUMENT_TYPE_VALUES } = require("../src/constants/documentTypes");
 
 const CLIENT = "client-1";
 
-function reset({ status = "onboarding", signed = [] } = {}) {
+const ADVISER = "adviser-1";
+
+function reset({ status = "onboarding", signed = [], advisorId = ADVISER } = {}) {
   state.uploads = [];
-  state.users = [{ id: CLIENT, status }];
+  state.notifications = [];
+  state.notificationsFail = null;
+  state.users = [
+    {
+      id: CLIENT, status, role_id: 1, auth_user_id: "auth-1", advisor_id: advisorId,
+      first_name: "Thabo", second_name: null, surname: "Mokoena",
+    },
+  ];
   state.documents = signed.map((type, i) => ({
     id: `documents-${i + 1}`,
     client_id: CLIENT,
@@ -141,4 +157,98 @@ test("validateSignedUpload rejects a missing file, a non-PDF body, and the ackno
   assert.equal(run("broker_appointment", undefined).res.statusCode, 400);
   assert.equal(run("broker_appointment", { buffer: Buffer.from("MZ not a pdf") }).res.statusCode, 400);
   assert.equal(run("fais_disclosure", { buffer: Buffer.from("%PDF-1.7") }).res.statusCode, 400);
+});
+
+// --- Notifications
+const titles = (recipient) => state.notifications.filter((n) => n.recipient === recipient).map((n) => n.title);
+
+test("sending a document notifies the client", async () => {
+  reset();
+  await service.sendDocument(CLIENT, "broker_appointment");
+  assert.deepEqual(state.notifications.map((n) => [n.recipient, n.client_id, n.title]), [
+    ["client", CLIENT, "Broker Appointment is ready for you to review and sign."],
+  ]);
+});
+
+test("a signed document notifies the adviser, and FAIS Disclosure says acknowledged", async () => {
+  reset();
+  await service.uploadSignedDocument(CLIENT, "broker_appointment", Buffer.from("%PDF-x"));
+  state.documents.push({ id: "d9", client_id: CLIENT, document_type: "fais_disclosure", status: "sent", filled_file_url: "f.pdf" });
+  await service.signDocument(CLIENT, "fais_disclosure", { signerName: "Thabo Mokoena" });
+
+  assert.deepEqual(titles("advisor"), [
+    "Thabo Mokoena signed Broker Appointment.",
+    "Thabo Mokoena acknowledged FAIS Disclosure.",
+  ]);
+  assert.ok(state.notifications.every((n) => n.advisor_id === ADVISER && n.client_id === CLIENT));
+  assert.deepEqual(titles("client"), []);
+});
+
+test("the 5th document sends one completion notification to each side, once", async () => {
+  reset({ signed: firstFour });
+  await service.uploadSignedDocument(CLIENT, fifth, Buffer.from("%PDF-x"));
+
+  assert.deepEqual(titles("client"), ["All onboarding documents complete"]);
+  assert.deepEqual(titles("advisor"), [
+    "Thabo Mokoena acknowledged FAIS Disclosure.",
+    "Thabo Mokoena: all onboarding documents complete",
+  ]);
+
+  // Signing the same document again is not a new completion.
+  await service.uploadSignedDocument(CLIENT, fifth, Buffer.from("%PDF-x"));
+  assert.deepEqual(titles("client"), ["All onboarding documents complete"]);
+  assert.equal(titles("advisor").filter((t) => t.includes("all onboarding")).length, 1);
+});
+
+test("documents before the 5th never send the completion notification", async () => {
+  reset({ signed: firstFour.slice(0, 3) });
+  await service.uploadSignedDocument(CLIENT, firstFour[3], Buffer.from("%PDF-x"));
+  assert.deepEqual(titles("client"), []);
+  assert.equal(titles("advisor").length, 1);
+});
+
+test("a client with no adviser just skips the adviser notifications", async () => {
+  reset({ signed: firstFour, advisorId: null });
+  await service.uploadSignedDocument(CLIENT, fifth, Buffer.from("%PDF-x"));
+  assert.deepEqual(titles("advisor"), []);
+  assert.deepEqual(titles("client"), ["All onboarding documents complete"]);
+});
+
+test("a failing notification insert never fails the document action", async () => {
+  const log = console.error;
+  console.error = () => {};
+  try {
+    for (const mode of ["error", "throw"]) {
+      reset({ signed: firstFour });
+      state.notificationsFail = mode;
+      const doc = await service.uploadSignedDocument(CLIENT, fifth, Buffer.from("%PDF-x"));
+      assert.equal(doc.status, "signed");
+      assert.equal(state.users[0].status, "active");
+
+      const sent = await service.sendDocument(CLIENT, "broker_appointment");
+      assert.equal(sent.status, "sent");
+    }
+  } finally {
+    console.error = log;
+  }
+});
+
+test("finishing registration notifies the adviser once, naming what was sent", async () => {
+  const clientsService = require("../src/services/clients.service");
+  reset();
+  const result = await clientsService.finishRegistration("auth-1");
+
+  assert.deepEqual(result.failed, []);
+  assert.deepEqual(titles("advisor"), ["Thabo Mokoena has completed registration"]);
+  assert.equal(
+    state.notifications.find((n) => n.recipient === "advisor").body,
+    "Their FAIS Disclosure and Confidentiality Agreement are ready to review."
+  );
+  // Each starter document also tells the client it is ready.
+  assert.equal(titles("client").length, 2);
+
+  // Running it again sends nothing, so nobody is notified again.
+  await clientsService.finishRegistration("auth-1");
+  assert.equal(titles("advisor").length, 1);
+  assert.equal(titles("client").length, 2);
 });
