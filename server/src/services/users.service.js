@@ -12,7 +12,7 @@ function escapeHtml(value) {
   );
 }
 
-// Staff accounts only (admin/advisor/provider/broker) — clients self-register
+// Staff accounts only (admin/advisor) — clients self-register
 // via signup and aren't managed here.
 async function listStaffUsers() {
   const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: LIST_PAGE_SIZE });

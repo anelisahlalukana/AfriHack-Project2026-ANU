@@ -84,7 +84,9 @@ function validateDocumentType(req, res, next) {
   token from the `Authorization: Bearer <token>` header, attaches `req.user`).
 - Role checks use `requireRole(["admin"])` and read `req.user.app_metadata.role` — never a
   client-supplied role value. Roles live in `server/src/constants/roles.js`
-  (`admin` / `advisor` / `provider` / `broker`); clients have no staff role.
+  (`admin` / `advisor`); clients have no staff role. `provider` is **not** a login role —
+  it's the mocked external insurer/integration layer (see `docs/system_requirments.md`),
+  never a value in `app_metadata.role`.
 - Never trust anything about identity/permissions that came from the request body.
 
 ### No hardcoding
@@ -193,8 +195,10 @@ state management for a form that already fits one of these two patterns.
 ### Auth & role gating
 
 - `hooks/useAuth.js` + `context/AuthContext.jsx` expose the current Supabase `session`.
-- Route-level gating uses `<ProtectedRoute>` (`staffOnly`, `adminOnly` props), not ad hoc
-  checks scattered in page components.
+- Route-level gating uses `<ProtectedRoute>` (`staffOnly`, `adminOnly`, `excludeAdmin`
+  props), not ad hoc checks scattered in page components. There are only two staff roles
+  (`admin`, `advisor`), so `staffOnly excludeAdmin` is how the advisor workspace excludes
+  admin, and `staffOnly adminOnly` is how the admin area excludes everyone else.
 - Role checks (`isStaff`, `isAdmin`) live in `lib/authRoles.js` — always import from there
   rather than re-checking `user.app_metadata.role` inline elsewhere.
 

@@ -5,7 +5,7 @@ const controller = require("../controllers/users.controller");
 
 const router = express.Router();
 
-// Admin-only: providers/advisors/brokers don't self-register, so an admin
+// Admin-only: advisers don't self-register, so an admin
 // provisions their account and Brevo emails them a password-setup link.
 router.use(requireAuth, requireRole(["admin"]));
 
