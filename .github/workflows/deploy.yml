@@ -1,7 +1,8 @@
 name: Deploy
 
 # Pull requests into development or main get a Vercel preview deployment.
-# Merging into main runs the full CI again, then deploys to Vercel production.
+# Merging into main runs the full CI again, then deploys to Vercel production and triggers the
+# Render backend deploy.
 on:
   push:
     branches: [main]
@@ -65,6 +66,18 @@ jobs:
           url=$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Deployed to $url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Check Render secret
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::error::Missing repository secret: RENDER_DEPLOY_HOOK_URL. See docs/ci-cd.md."
+            exit 1
+          fi
+      - name: Deploy to Render
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl --fail --silent --show-error -X POST "$RENDER_DEPLOY_HOOK_URL"
 
   preview:
     name: Deploy preview
