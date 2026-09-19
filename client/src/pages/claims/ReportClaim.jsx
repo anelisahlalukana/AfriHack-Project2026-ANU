@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { ArrowLeft } from 'lucide-react'
 import { useCatalog, useTask } from '../../hooks/useTasks'
-import { cancelDraft, createClaim, submitClaim, updateDraft } from '../../api/tasks'
+import { cancelDraft, submitClaim, updateDraft } from '../../api/tasks'
 import { compactForm, dynamicDefaults } from '../../lib/taskFormat'
 import { Alert } from '../../components/tasks/TaskBits'
 import { SafetyBanner, SceneChecklist } from '../../components/tasks/SceneChecklist'
@@ -14,32 +14,6 @@ import { DocumentsPanel } from '../../components/tasks/DocumentsPanel'
 function Stepper({ step, hasChecklist }) {
   const steps = [hasChecklist && ['checklist', 'At the scene'], ['details', 'Claim details'], ['tracking', 'Tracking']].filter(Boolean)
   return <p className="rs-stepper">{steps.map(([key, label], i) => <span key={key} aria-current={key === step ? 'step' : undefined}>{i + 1}. {label}</span>)}</p>
-}
-
-// Step 1: what kind of claim. Creates a draft straight away so photos can be attached at the scene.
-function ChooseCategory() {
-  const catalog = useCatalog()
-  const navigate = useNavigate()
-  const [busy, setBusy] = useState(null)
-  const [error, setError] = useState('')
-  async function choose(category) {
-    setBusy(category); setError('')
-    try {
-      const task = await createClaim({ category })
-      navigate(`/account/claims/${task.id}/continue`)
-    } catch (error) { setError(error.message); setBusy(null) }
-  }
-  return <>
-    <Link className="back" to="/account/claims"><ArrowLeft size={16} /> My claims & requests</Link>
-    <header className="page-heading"><div><p className="eyebrow">REPORT A CLAIM</p><h1>What happened?</h1><p>Choose the type of claim. We will ask only for what that claim needs.</p></div></header>
-    {catalog.loading && <p role="status">Loading…</p>}
-    <Alert>{catalog.error || error}</Alert>
-    <div className="rs-choices">
-      {catalog.data?.claimCategories.map(category => <button key={category.category} className="rs-choice" onClick={() => choose(category.category)} disabled={Boolean(busy)} aria-pressed={busy === category.category}>
-        <b>{category.label}</b><span>{category.description}</span>
-      </button>)}
-    </div>
-  </>
 }
 
 function DraftEditor({ task, providers, onTaskChange }) {
@@ -110,7 +84,8 @@ function ContinueClaim({ taskId }) {
   return <DraftEditor key={task.data.id} task={task.data} providers={catalog.data.providers} onTaskChange={task.replace} />
 }
 
+// Claims are started from the "Log a claim" dropdown on the claims page; this route only continues a draft.
 export default function ReportClaim() {
   const { taskId } = useParams()
-  return taskId ? <ContinueClaim key={taskId} taskId={taskId} /> : <ChooseCategory />
+  return taskId ? <ContinueClaim key={taskId} taskId={taskId} /> : <Navigate to="/account/claims" replace />
 }

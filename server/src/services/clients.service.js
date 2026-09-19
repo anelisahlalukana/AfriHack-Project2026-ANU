@@ -4,8 +4,9 @@ const { supabaseAdmin } = require("../config/supabaseClient");
 const { sendTransactionalEmail } = require("../utils/brevoClient");
 const { escapeHtml } = require("../utils/escapeHtml");
 const { CLIENT_ROLE_ID } = require("../constants/roles");
-const { REGISTRATION_DOCUMENT_TYPES } = require("../constants/documentTypes");
+const { REGISTRATION_DOCUMENT_TYPES, DOCUMENT_TYPES } = require("../constants/documentTypes");
 const documentsService = require("./documents.service");
+const { notifyAdviser } = require("./notifications.service");
 
 const ONBOARDING_STATUS = "onboarding";
 const CODE_COOLDOWN_MS = 60 * 1000;
@@ -279,7 +280,7 @@ async function loginWithIdNumber({ idNumber, password }) {
 async function finishRegistration(authUserId) {
   const { data: client, error } = await supabaseAdmin
     .from("users")
-    .select("id")
+    .select("id, first_name, second_name, surname, advisor_id")
     .eq("role_id", CLIENT_ROLE_ID)
     .eq("auth_user_id", authUserId)
     .maybeSingle();
@@ -311,6 +312,16 @@ async function finishRegistration(authUserId) {
       console.error(`[clients.service] could not send ${type} to client ${client.id}:`, err.message);
       failed.push(type);
     }
+  }
+
+  // Only when something was actually sent, so running this twice doesn't notify twice.
+  if (sent.length) {
+    const labels = sent.map((type) => DOCUMENT_TYPES.find((d) => d.type === type).label);
+    const name = [client.first_name, client.second_name, client.surname].filter(Boolean).join(" ");
+    await notifyAdviser(client.advisor_id, client.id, {
+      title: `${name} has completed registration`,
+      body: `Their ${labels.join(" and ")} ${labels.length > 1 ? "are" : "is"} ready to review.`,
+    });
   }
 
   return { sent, failed };

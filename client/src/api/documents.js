@@ -18,6 +18,14 @@ export async function signDocument(clientId, type, { signature, signerName }) {
   return data.document;
 }
 
+// A copy signed outside the app (print/scan or a PDF editor), uploaded as the signed PDF.
+export async function uploadSignedDocument(clientId, type, file) {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await http.post(`/api/clients/${clientId}/documents/${type}/upload-signed`, form);
+  return data.document;
+}
+
 export async function getDownloadUrl(clientId, type) {
   const { data } = await http.get(`/api/clients/${clientId}/documents/${type}/download`);
   return data.url;

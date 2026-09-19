@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { FilePlus2, ShieldAlert } from 'lucide-react'
 import { useTaskList } from '../../hooks/useTasks'
 import { formatDateTime, progressText } from '../../lib/taskFormat'
 import { ProgressBar, StatusChip, WaitingChip } from '../../components/tasks/TaskBits'
+import { LogClaimMenu } from '../../components/tasks/LogClaimMenu'
 
 function TaskCard({ task }) {
   const draft = task.status === 'draft'
@@ -30,16 +30,13 @@ export default function MyRequests() {
   const active = tasks.filter(task => !['completed', 'declined'].includes(task.status))
   const done = tasks.filter(task => ['completed', 'declined'].includes(task.status))
   return <>
-    <header className="page-heading">
-      <div><p className="eyebrow">YOUR CLAIMS & REQUESTS</p><h1>Everything you have asked us for</h1><p>Each update shows who sent it and when.</p></div>
-      <div className="rs-row-actions">
-        <Link className="button primary" to="/account/claims/new"><ShieldAlert size={16} /> Report an accident or loss</Link>
-        <Link className="button" to="/account/requests/new"><FilePlus2 size={16} /> Ask for something</Link>
-      </div>
+    <header className="claims-head">
+      <div><p className="eyebrow">YOUR CLAIMS AND REQUESTS</p><h1>My claims and requests</h1><p>Each update shows who sent it and when.</p></div>
+      <LogClaimMenu />
     </header>
     {loading && <p role="status">Loading…</p>}
     {error && <div className="card" role="alert"><p className="error">{error}</p><button onClick={retry}>Try again</button></div>}
-    {data && !tasks.length && <div className="card empty"><h3>Nothing here yet</h3><p>Report a claim or ask us to update your details.</p></div>}
+    {data && !tasks.length && <div className="card empty"><h3>Nothing here yet</h3><p>Use Log a claim at the top right, or the chat button to ask us for something.</p></div>}
     {active.length > 0 && <div className="rs-stack">{active.map(task => <TaskCard key={task.id} task={task} />)}</div>}
     {done.length > 0 && <section className="rs-stack" style={{ marginTop: 28 }}>
       <h2>Closed</h2>

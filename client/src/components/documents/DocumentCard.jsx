@@ -1,28 +1,24 @@
 import { useEffect, useState } from 'react'
-import { getDownloadUrl, sendDocument } from '../../api/documents'
+import { getDownloadUrl } from '../../api/documents'
 import { SignaturePad } from './SignaturePad'
 import { AcknowledgeForm } from './AcknowledgeForm'
+import { UploadSignedForm } from './UploadSignedForm'
 
-// Single-document detail view: shows the filled (unsigned) PDF and lets the
-// signer open the signature pad, or, for the FAIS Disclosure, acknowledge it with a
-// typed name. Rendered as a modal from DocumentStatusList.
-export function DocumentCard({ clientId, documentType, label, status, onClose, onSigned }) {
+// Single-document detail view for the signer (the client): shows the filled (unsigned) PDF and
+// lets them sign in the app with the signature pad, or download it, sign it themselves and upload
+// the signed copy back. The FAIS Disclosure is acknowledged with a typed name instead. Rendered as
+// a modal from DocumentStatusList; advisers never open it (they only send documents).
+export function DocumentCard({ clientId, documentType, label, onClose, onSigned }) {
   const [previewUrl, setPreviewUrl] = useState(null)
   const [error, setError] = useState('')
-  const [signing, setSigning] = useState(false)
+  const [mode, setMode] = useState(null) // null | 'app' | 'upload'
   const acknowledgeOnly = documentType === 'fais_disclosure'
-  const verb = acknowledgeOnly ? 'Acknowledge' : 'Sign'
 
   useEffect(() => {
     let active = true
 
     async function loadPreview() {
       try {
-        if (status === 'not_sent') {
-          // First time this document is opened: generate the filled PDF from
-          // the template. Already-sent/signed documents keep their existing file.
-          await sendDocument(clientId, documentType)
-        }
         const url = await getDownloadUrl(clientId, documentType)
         if (active) { setPreviewUrl(url); setError('') }
       } catch (error) {
@@ -32,7 +28,7 @@ export function DocumentCard({ clientId, documentType, label, status, onClose, o
 
     loadPreview()
     return () => { active = false }
-  }, [clientId, documentType, status])
+  }, [clientId, documentType])
 
   return <div className="modal-backdrop" onClick={onClose}>
     <div className="modal" onClick={event => event.stopPropagation()}>
@@ -42,7 +38,7 @@ export function DocumentCard({ clientId, documentType, label, status, onClose, o
 
       {error && <p className="error" role="alert">{error}</p>}
 
-      {!signing ? (
+      {!mode ? (
         <>
           <div className="doc-preview">
             {previewUrl
@@ -51,21 +47,30 @@ export function DocumentCard({ clientId, documentType, label, status, onClose, o
           </div>
           <div className="form-actions">
             <button type="button" onClick={onClose}>Close</button>
-            <button type="button" className="primary" onClick={() => setSigning(true)}>{verb}</button>
+            {!acknowledgeOnly && <button type="button" onClick={() => setMode('upload')}>Download, sign it yourself, and upload it back</button>}
+            <button type="button" className="primary" onClick={() => setMode('app')}>{acknowledgeOnly ? 'Acknowledge' : 'Sign in the app'}</button>
           </div>
         </>
       ) : acknowledgeOnly ? (
         <AcknowledgeForm
           clientId={clientId}
           documentType={documentType}
-          onCancel={() => setSigning(false)}
+          onCancel={() => setMode(null)}
+          onSigned={onSigned}
+        />
+      ) : mode === 'upload' ? (
+        <UploadSignedForm
+          clientId={clientId}
+          documentType={documentType}
+          previewUrl={previewUrl}
+          onCancel={() => setMode(null)}
           onSigned={onSigned}
         />
       ) : (
         <SignaturePad
           clientId={clientId}
           documentType={documentType}
-          onCancel={() => setSigning(false)}
+          onCancel={() => setMode(null)}
           onSigned={onSigned}
         />
       )}

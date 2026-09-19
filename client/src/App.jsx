@@ -26,7 +26,7 @@ import ClientTaskDetail from './pages/claims/ClientTaskDetail'
 import MyRequests from './pages/claims/MyRequests'
 import NewRequest from './pages/claims/NewRequest'
 import ReportClaim from './pages/claims/ReportClaim'
-import ClientPortalLayout from './components/tasks/ClientPortalLayout'
+import ClientClaimsArea from './pages/client/ClientClaimsArea'
 import ProviderLayout from './pages/provider/ProviderLayout'
 import ProviderInbox from './pages/provider/ProviderInbox'
 import ProviderTaskDetail from './pages/provider/ProviderTaskDetail'
@@ -57,10 +57,10 @@ function WorkspaceLayout() {
       <p className="eyebrow">ADVISOR WORKSPACE</p>
       <hr className="side-divider" />
       <nav>
-        <NavLink to="/" end><LayoutDashboard size={18} /> Client overview</NavLink>
+        <NavLink to="/" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
-        <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
+        <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />
@@ -93,22 +93,20 @@ export default function App() {
     <Route path="/login" element={<Login />} />
     <Route path="/complete-registration" element={<CompleteRegistration />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-
     <Route element={<ProtectedRoute />}>
-      {/* Client home, documents, reminders and profile (bottom navigation). */}
       <Route path="/account" element={<ClientLayout />}>
         <Route index element={<ClientHome />} />
         <Route path="documents" element={<ClientDocuments />} />
         <Route path="reminders" element={<ClientReminders />} />
         <Route path="profile" element={<MyProfile />} />
-      </Route>
-      {/* Client claims and requests: wider pages with their own top navigation. */}
-      <Route element={<ClientPortalLayout />}>
-        <Route path="/account/claims" element={<MyRequests />} />
-        <Route path="/account/claims/new" element={<ReportClaim />} />
-        <Route path="/account/claims/:taskId/continue" element={<ReportClaim />} />
-        <Route path="/account/requests/new" element={<NewRequest />} />
-        <Route path="/account/tasks/:taskId" element={<ClientTaskDetail />} />
+        <Route element={<ClientClaimsArea />}>
+          <Route path="claims" element={<MyRequests />} />
+          <Route path="claims/new" element={<ReportClaim />} />
+          <Route path="claims/:taskId/continue" element={<ReportClaim />} />
+          {/* "Ask for something" is now the chat button; old links land on the claims page. */}
+          <Route path="requests/new" element={<Navigate to="/account/claims" replace />} />
+          <Route path="tasks/:taskId" element={<ClientTaskDetail />} />
+        </Route>
       </Route>
     </Route>
 

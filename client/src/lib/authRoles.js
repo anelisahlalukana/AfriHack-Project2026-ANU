@@ -11,6 +11,8 @@ export function isAdmin(user) {
 export function isProvider(user) {
   return user?.app_metadata?.role === 'provider'
 }
+// Clients land on their Home tab (documents to sign, reminders, links into claims and requests).
+// Providers land in their own portal.
 export function accountHome(user) {
   if (isProvider(user)) return '/provider'
   if (!isStaff(user)) return '/account'

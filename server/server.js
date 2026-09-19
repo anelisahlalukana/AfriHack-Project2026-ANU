@@ -4,6 +4,7 @@ require("dotenv").config({ path: ".env.reminders.local", quiet: true });
 require("dotenv").config({ quiet: true });
 
 const { requireAuth } = require("./src/middleware/auth");
+const { requireClientAccess } = require("./src/middleware/clientAccess");
 const documentsController = require("./src/controllers/documents.controller");
 const documentsRoutes = require("./src/routes/documents.routes");
 const complianceRoutes = require("./src/routes/compliance.routes");
@@ -12,6 +13,7 @@ const catalogRoutes = require("./src/routes/catalog.routes");
 const usersRoutes = require("./src/routes/users.routes");
 const clientsRoutes = require("./src/routes/clients.routes");
 const providerRoutes = require("./src/routes/provider.routes");
+const dashboardRoutes = require("./src/routes/dashboard.routes");
 const { createReminders } = require("./src/reminders");
 const webpush = require("web-push");
 
@@ -57,9 +59,15 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/clients", clientsRoutes);
 app.use("/api/clients/:clientId/documents", documentsRoutes);
-app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
+app.get(
+  "/api/clients/:clientId/consent-status",
+  requireAuth,
+  requireClientAccess,
+  documentsController.getConsentStatus
+);
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
 app.use("/api/tasks", tasksRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api/admin/users", usersRoutes);
 app.use("/api/provider", providerRoutes);

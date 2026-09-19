@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "create-admin": "node scripts/create-admin.js",
     "dev:demo": "node server.js --demo",
-    "test": "node --test tests/*.test.js src/reminders/*.test.js",
+    "test": "node --test tests/*.test.js __tests__/*.test.js",
     "push:keys": "web-push generate-vapid-keys --json"
   },
   "keywords": [],

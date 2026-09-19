@@ -225,3 +225,53 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 /* provider portal */
 .rs-form.rs-needs label{flex:none}
 /* === end claims & requests === */
+/* Client claims: header with the "Log a claim" dropdown, and claim pages fitted to the phone-width client area. */
+.claims-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.claims-head h1{margin:6px 0 8px}
+.claim-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:15;width:min(320px,calc(100vw - 32px));max-height:70vh;overflow:auto;background:#fffdfa;border:1px solid #dfd6cf;border-radius:12px;padding:8px;box-shadow:0 6px 24px rgba(41,35,31,.14);display:flex;flex-direction:column;gap:4px}
+.claim-panel button{border:0;background:transparent;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border-radius:9px;justify-content:flex-start;font-weight:400}
+.claim-panel button:hover:not(:disabled){background:#f7f1ec}
+.claim-panel button b{font-weight:600}
+.client-content .rs-detail{grid-template-columns:1fr}
+.client-content .rs-form .form-grid{grid-template-columns:1fr}
+/* "Ask for something" chat: round button bottom-right; the panel opens as a bottom sheet on phones and a corner card on wider screens. */
+.chat-fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:35;width:58px;height:58px;padding:0;border-radius:50%;background:#a30b14;color:#fff;border:0;box-shadow:0 6px 18px rgba(41,35,31,.3)}
+.chat-fab:hover:not(:disabled){background:#850912;border:0}
+.chat-panel{position:fixed;left:0;right:0;bottom:0;z-index:60;height:min(88vh,640px);display:flex;flex-direction:column;background:#fffdfa;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(41,35,31,.25);overflow:hidden}
+.chat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #dfd6cf}
+.chat-head b{font-family:Georgia,serif;font-size:17px}
+.chat-head button{padding:6px;min-height:36px}
+.chat-log{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f7f2ee}
+.chat-msg{max-width:88%;padding:9px 12px;border-radius:14px;overflow-wrap:anywhere;line-height:1.45;white-space:pre-line;color:#29231f}
+.chat-msg.bot{align-self:flex-start;background:#fff;border:1px solid #dfd6cf;border-bottom-left-radius:4px}
+.chat-msg.user{align-self:flex-end;background:#a30b14;color:#fff;border-bottom-right-radius:4px}
+.chat-link{font-weight:600;color:#a30b14}
+.chat-input{border-top:1px solid #dfd6cf;padding:12px 12px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-height:48%;overflow-y:auto}
+.chat-input button,.chat-input select,.chat-input input,.chat-input textarea{min-height:44px}
+.chat-input textarea{width:100%;border:1px solid #cfc4bd;border-radius:7px;padding:10px 12px;font:inherit;resize:none;background:#fff}
+.chat-chips{display:flex;flex-wrap:wrap;gap:8px}
+.chat-chips button{border-radius:999px;padding:8px 16px}
+.chat-list{display:flex;flex-direction:column;gap:8px}
+.chat-list button{flex-direction:column;align-items:flex-start;gap:2px;text-align:left;justify-content:flex-start;font-weight:400}
+.chat-list button b{font-weight:600}
+.chat-send{display:flex;gap:8px;align-items:flex-end}
+.chat-send input,.chat-send textarea{flex:1}
+.chat-rows{display:flex;flex-direction:column;gap:10px}
+.chat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chat-row input:nth-of-type(1){grid-column:1/-1}
+@media(min-width:720px){
+.chat-fab{right:24px;bottom:100px}
+.chat-panel{left:auto;right:24px;bottom:24px;width:390px;height:min(620px,calc(100vh - 48px));border-radius:16px;border:1px solid #dfd6cf}
+}
+.claims-head .col-menu{flex-shrink:0}
+.claims-head .col-menu>button{white-space:nowrap}
+.client-top .signout{position:absolute;right:12px;top:50%;transform:translateY(-50%);min-height:40px;padding:6px 12px;font-size:13px}
+@media(max-width:359px){.client-top .signout span{display:none}.client-top .signout{padding:6px 10px}}
+.stats .metric{color:inherit;text-decoration:none}
+.stats a.metric:hover{border-color:#cfc4bd}
+.stats .metric small{color:#70635a;font-size:12px}
+.live{display:inline-flex;align-items:center;gap:6px;color:#3c7650;font-size:12px;white-space:nowrap}
+.live i{width:8px;height:8px;border-radius:50%;background:currentColor;animation:live-pulse 2s infinite}
+.live-stale{color:#8f5f0d}.live-stale i{animation:none}
+@keyframes live-pulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){.live i{animation:none}}

@@ -31,6 +31,19 @@ async function signDocument(req, res) {
   }
 }
 
+async function uploadSignedDocument(req, res) {
+  try {
+    const document = await documentsService.uploadSignedDocument(
+      req.params.clientId,
+      req.params.type,
+      req.file.buffer
+    );
+    res.json({ document });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 async function downloadDocument(req, res) {
   try {
     const url = await documentsService.getDownloadUrl(req.params.clientId, req.params.type);
@@ -53,6 +66,7 @@ module.exports = {
   listDocuments,
   sendDocument,
   signDocument,
+  uploadSignedDocument,
   downloadDocument,
   getConsentStatus,
 };

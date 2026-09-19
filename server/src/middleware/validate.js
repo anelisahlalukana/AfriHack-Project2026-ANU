@@ -40,6 +40,23 @@ function validateSignaturePayload(req, res, next) {
   next();
 }
 
+// Runs after singleDocumentFile. The mimetype is client-supplied, so also check the PDF header.
+function validateSignedUpload(req, res, next) {
+  if (ACKNOWLEDGE_ONLY_TYPES.includes(req.params.type)) {
+    return res.status(400).json({
+      error: "This document is acknowledged with your name in the app; it can't be uploaded as a signed copy",
+    });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: "Attach the signed PDF in the 'file' field" });
+  }
+  if (req.file.buffer.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    return res.status(400).json({ error: "The file you uploaded isn't a valid PDF" });
+  }
+
+  next();
+}
+
 function validateNewUserPayload(req, res, next) {
   const { email, fullName, role } = req.body || {};
 
@@ -293,6 +310,7 @@ module.exports = {
   validateClientActionPayload,
   validateDocumentType,
   validateSignaturePayload,
+  validateSignedUpload,
   validateNewUserPayload,
   validateNewClientPayload,
   validateCompleteRegistrationPayload,

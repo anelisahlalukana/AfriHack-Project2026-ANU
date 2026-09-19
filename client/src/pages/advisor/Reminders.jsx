@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Bell, CalendarClock, Check, Plus, TriangleAlert } from 'lucide-react'
+import { Bell, CalendarClock, Check, Plus } from 'lucide-react'
 import { completeReminder, listNotifications, listReminderClients, listReminderRules, listReminders, markNotificationRead } from '../../api/reminders'
 import { PushControl } from '../../components/reminders/PushControl'
 import { AddReminderDialog } from '../../components/reminders/AddReminderDialog'
-import { STATE_LABELS, VIEWS, audienceLabel, countByView, dateLabel, daysUntil, filterReminders, recurrenceLabel, relativeDue, reminderState, sortReminders, stateBadgeClass, todayKey } from '../../lib/reminderTable'
+import { STATE_LABELS, VIEWS, audienceLabel, countByView, dateLabel, filterReminders, recurrenceLabel, relativeDue, reminderState, sortReminders, stateBadgeClass, todayKey } from '../../lib/reminderTable'
 
 const PAGE_SIZE = 25
 const NOTIFICATION_LIMIT = 5
@@ -66,7 +66,6 @@ export default function Reminders() {
   const today = todayKey()
   const nameOf = id => data.clients.find(client => client.id === id)?.name || 'Unknown client'
   const counts = countByView(data.reminders, today)
-  const dueSoon = data.reminders.filter(reminder => ['today', 'upcoming'].includes(reminderState(reminder, today)) && daysUntil(reminder.dueDate, today) <= 7).length
   const unread = data.notifications.filter(notification => !notification.readAt)
   const matching = sortReminders(filterReminders(data.reminders, { view, clientId, query }, today, nameOf), today)
   const rows = matching.slice(0, shown)
@@ -89,12 +88,6 @@ export default function Reminders() {
 
     {notice && <div className="auth-notice" role="status" style={{ marginBottom: 16 }}>{notice}</div>}
     {actionError && <p className="error card" role="alert" style={{ marginBottom: 16 }}>{actionError}</p>}
-
-    <div className="stats">
-      <article className="card"><TriangleAlert /><span>Overdue</span><strong>{counts.overdue}</strong></article>
-      <article className="card"><CalendarClock /><span>Due in the next 7 days</span><strong>{dueSoon}</strong></article>
-      <article className="card"><Bell /><span>Unread notifications</span><strong>{unread.length}</strong></article>
-    </div>
 
     <PushControl />
 

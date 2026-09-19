@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { createSharedService } = require("../services/reminders.service");
-const { createRemindersAuth } = require("../middleware/remindersAuth");
+const { createSharedService } = require("../src/services/reminders.service");
+const { createRemindersAuth } = require("../src/middleware/remindersAuth");
 const client = { id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa", clientId: "bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb", role: "client", name: "Test Client" };
 
 function database(data = [], error = null) {
