@@ -18,7 +18,7 @@
 .client-content .eyebrow{text-align:left;margin:0 0 4px}
 .client-content .card{padding:16px}
 .client-content button,.client-content .button{min-height:44px}
-.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(4,1fr);gap:0;background:#fffdfa;border-top:1px solid #dfd6cf;padding-bottom:env(safe-area-inset-bottom)}
+.bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(5,1fr);gap:0;background:#fffdfa;border-top:1px solid #dfd6cf;padding-bottom:env(safe-area-inset-bottom)}
 .bottom-nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:60px;padding:8px 4px;border-radius:0;font-size:12px;font-weight:550;color:#7a6c62}
 .bottom-nav a:hover{background:none}
 .bottom-nav a.active{background:none;box-shadow:none;color:#a30b14}
@@ -67,3 +67,201 @@ th.num .sort-btn{flex-direction:row-reverse}
 /* Advisor Reminders page: view tabs. */
 .chip-row{display:flex;flex-wrap:wrap;gap:8px}
 .chip-row button{padding:6px 12px;font-size:13px}
+
+/* === claims & requests (feature/claims_flow) ===
+   Tokens and patterns from docs/style_reference/royal-square-dashboard-concepts.html. Managed by scripts/build_claims_flow.sh. */
+:root{
+  --rs-bg:#f1eeec;--rs-card:#fbfaf9;--rs-card-2:#f0ebe8;--rs-border:#dcd4cf;--rs-text:#211c1a;--rs-muted:#6d625c;
+  --rs-taupe:#8a7b72;--rs-taupe-soft:#dad1cb;--rs-red:#b00d17;--rs-red-text:#a30b14;--rs-ok:#3c7650;--rs-warn:#8f5f0d
+}
+
+/* chips */
+.rs-chip{display:inline-flex;align-items:center;gap:5px;padding:1px 9px;border-radius:999px;border:1px solid var(--rs-border);font-size:11.5px;color:var(--rs-muted);white-space:nowrap;background:transparent;line-height:1.7}
+.rs-chip.ok{color:var(--rs-ok)}.rs-chip.warn{color:var(--rs-warn)}.rs-chip.red{color:var(--rs-red-text);border-color:var(--rs-red)}.rs-chip.muted{opacity:.8}
+.rs-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* progress */
+.rs-track{height:6px;border-radius:99px;background:var(--rs-taupe-soft);overflow:hidden}
+.rs-track i{display:block;height:100%;background:var(--rs-red);border-radius:99px}
+.rs-progress{display:flex;flex-direction:column;gap:6px}
+.rs-progress small{color:var(--rs-muted)}
+
+/* "Needs you" call to action */
+.rs-needs{border:1px solid var(--rs-red);box-shadow:inset 3px 0 0 var(--rs-red);background:var(--rs-card)}
+.rs-needs h2{font-size:18px}
+.rs-needs .rs-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.rs-needs label{flex:1 1 220px}
+
+/* safety banner on the roadside checklist */
+.rs-safety{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--rs-red);border-radius:12px;padding:14px 16px;background:#fff6f5}
+.rs-safety b{font-family:Georgia,serif;font-size:16px}
+.rs-safety .rs-calls{display:flex;gap:8px}
+
+/* choice cards (claim type, request type) */
+.rs-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.rs-choice{text-align:left;align-items:flex-start;flex-direction:column;gap:4px;padding:16px;border-radius:12px;background:var(--rs-card);border:1px solid var(--rs-border);min-height:96px}
+.rs-choice:hover{border-color:var(--rs-red);box-shadow:inset 0 0 0 1px var(--rs-red)}
+.rs-choice b{font-family:Georgia,serif;font-size:15px;color:var(--rs-text)}
+.rs-choice span{color:var(--rs-muted);font-weight:400;font-size:13px}
+.rs-choice[aria-pressed="true"]{border-color:var(--rs-red);box-shadow:inset 0 0 0 1px var(--rs-red)}
+
+/* scene checklist */
+.rs-checklist{display:flex;flex-direction:column;gap:10px}
+.rs-check{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--rs-border);border-radius:12px;padding:12px 14px;background:var(--rs-card)}
+.rs-check.done{border-color:#bcd2c2;background:#f5faf6}
+.rs-check .rs-tick{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--rs-taupe);display:grid;place-items:center;padding:0;background:#fff}
+.rs-check.done .rs-tick{background:var(--rs-ok);border-color:var(--rs-ok);color:#fff}
+.rs-check b{display:block}
+.rs-check small{color:var(--rs-muted)}
+.rs-check input[type="text"]{margin-top:6px}
+.rs-check .rs-capture{font-size:12px;padding:6px 10px;white-space:nowrap}
+
+/* stage timeline */
+.rs-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.rs-steps li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:12px;padding-bottom:14px;position:relative}
+.rs-steps li:not(:last-child)::before{content:"";position:absolute;left:10px;top:22px;bottom:0;width:2px;background:var(--rs-taupe-soft)}
+.rs-steps li.done:not(:last-child)::before{background:var(--rs-taupe)}
+.rs-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--rs-taupe-soft);background:#fff;display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--rs-muted)}
+.rs-steps li.done .rs-dot{background:var(--rs-taupe);border-color:var(--rs-taupe);color:#fff}
+.rs-steps li.current .rs-dot{border-color:var(--rs-red);color:var(--rs-red-text)}
+.rs-steps li.current .rs-step-label{font-weight:650}
+.rs-steps li.upcoming .rs-step-label{color:var(--rs-muted)}
+.rs-step-label{display:block}
+.rs-steps small{color:var(--rs-muted);font-size:11.5px}
+
+/* activity feed */
+.rs-feed{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.rs-feed li{border-bottom:1px solid #eee6e0;padding-bottom:12px}
+.rs-feed .rs-who{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--rs-muted)}
+.rs-feed .rs-who b{color:var(--rs-text)}
+.rs-feed p{color:var(--rs-text);margin-top:4px;overflow-wrap:anywhere}
+.rs-feed li.internal{background:#fbf6ea;border:1px dashed #d8c38f;border-radius:10px;padding:10px 12px}
+.rs-feed li.provider b::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--rs-ok);margin-right:6px;vertical-align:middle}
+
+/* documents pack */
+.rs-pack{display:flex;flex-direction:column;gap:2px}
+.rs-pack-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #eee6e0;flex-wrap:wrap}
+.rs-pack-row small{color:var(--rs-muted)}
+.rs-upload{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.rs-upload input[type="file"]{max-width:260px;padding:6px;font-size:12px}
+.rs-files{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.rs-files button{padding:4px 10px;font-size:12px;white-space:nowrap;flex:none}
+
+/* layouts */
+.rs-detail{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+.rs-stack{display:flex;flex-direction:column;gap:20px;min-width:0}
+.rs-kv{display:grid;grid-template-columns:minmax(120px,40%) minmax(0,1fr);gap:8px 16px;margin:0}
+.rs-kv dt{color:var(--rs-muted)}
+.rs-kv dd{margin:0;overflow-wrap:anywhere}
+.rs-form{display:flex;flex-direction:column;gap:16px}
+.rs-form .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rs-form .rs-wide{grid-column:1/-1}
+.rs-form textarea{width:100%;min-height:92px;border:1px solid #cfc4bd;border-radius:7px;padding:10px 12px;font:inherit;resize:vertical;background:#fff}
+.rs-row-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.rs-note{font-size:12.5px;color:var(--rs-muted)}
+.rs-stepper{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--rs-muted)}
+.rs-stepper span[aria-current="step"]{color:var(--rs-red-text);font-weight:650}
+.rs-items{display:flex;flex-direction:column;gap:10px}
+.rs-item-row{display:grid;grid-template-columns:130px minmax(0,1fr) 140px auto;gap:8px;align-items:end}
+
+/* adviser queue */
+.rs-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.rs-tab{border-radius:10px;padding:7px 12px;font-size:13px;background:var(--rs-card-2);white-space:nowrap}
+.rs-tab[aria-selected="true"]{border-color:var(--rs-red);box-shadow:inset 0 0 0 1px var(--rs-red);background:var(--rs-card)}
+.rs-filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.rs-filters label{width:190px}
+.rs-queue tr.waiting-us td:first-child{box-shadow:inset 3px 0 0 var(--rs-red)}
+.rs-queue td{vertical-align:top}
+.rs-queue .rs-ref{font-weight:600;text-decoration:none}
+.rs-queue .rs-ref:hover{text-decoration:underline}
+.rs-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rs-events{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.rs-events li{display:grid;grid-template-columns:78px minmax(0,1fr);gap:8px}
+.rs-events code{font-size:11.5px;color:var(--rs-muted);overflow-wrap:anywhere}
+
+/* client portal chrome */
+.rs-portal{max-width:1100px;margin:0 auto;padding:22px 20px 60px}
+.rs-portal-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:1px solid #ded5ce;margin-bottom:22px}
+.rs-portal-top img{width:150px;border-radius:4px}
+.rs-portal-top nav{flex-direction:row;flex-wrap:wrap;gap:4px}
+.rs-portal-top nav a{padding:8px 10px}
+.rs-portal-top nav a[aria-current="page"]{background:var(--rs-card-2);box-shadow:inset 0 -2px 0 var(--rs-red)}
+.rs-portal-links{display:flex;gap:10px;flex-wrap:wrap}
+
+@media(max-width:900px){
+  .rs-detail{grid-template-columns:1fr}
+  .rs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  .rs-form .form-grid{grid-template-columns:1fr}
+  .rs-check{grid-template-columns:auto minmax(0,1fr)}
+  .rs-check .rs-capture{grid-column:2}
+  .rs-item-row{grid-template-columns:1fr 1fr}
+  .rs-filters label{width:100%}
+  .rs-kv{grid-template-columns:1fr}
+  .rs-portal{padding:16px}
+  .rs-stats{grid-template-columns:1fr}
+}
+
+/* fixes: labels styled as buttons stay horizontal; overrides for App.css defaults */
+label.button{flex-direction:row;display:inline-flex;font-size:13px}
+.stats.rs-stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rs-kv dd{text-align:left;max-width:none}
+.rs-events .rs-chip,.rs-needs>.rs-chip,.rs-portal .card>.rs-chip{align-self:flex-start;justify-content:center}
+.rs-pack-row>span:first-child{flex:1 1 220px}
+@media(max-width:900px){.stats.rs-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.stats.rs-stats{grid-template-columns:1fr}}
+/* rating, checklist ticks (checkbox inputs), fixes */
+.rs-rating{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0}
+.rs-rating legend{font-weight:500;font-size:13px;margin-bottom:6px;width:100%}
+.rs-rating label{flex-direction:row;align-items:center;gap:6px;border:1px solid var(--rs-border);border-radius:8px;padding:8px 14px;cursor:pointer;background:#fff}
+.rs-rating label:has(input:checked){background:var(--rs-red);border-color:var(--rs-red);color:#fff}
+.rs-rating input{width:auto}
+.rs-check .rs-tick{cursor:pointer;color:transparent}
+.rs-check:has(.rs-tick input:checked){border-color:#bcd2c2;background:#f5faf6}
+.rs-check .rs-tick:has(input:checked){background:var(--rs-ok);border-color:var(--rs-ok);color:#fff}
+.rs-check .rs-tick:has(input:focus-visible){outline:2px solid var(--rs-red-text);outline-offset:2px}
+.rs-portal-top img{width:190px;height:auto}
+/* === end claims & requests === */
+/* Client claims: header with the "Log a claim" dropdown, and claim pages fitted to the phone-width client area. */
+.claims-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.claims-head h1{margin:6px 0 8px}
+.claim-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:15;width:min(320px,calc(100vw - 32px));max-height:70vh;overflow:auto;background:#fffdfa;border:1px solid #dfd6cf;border-radius:12px;padding:8px;box-shadow:0 6px 24px rgba(41,35,31,.14);display:flex;flex-direction:column;gap:4px}
+.claim-panel button{border:0;background:transparent;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;border-radius:9px;justify-content:flex-start;font-weight:400}
+.claim-panel button:hover:not(:disabled){background:#f7f1ec}
+.claim-panel button b{font-weight:600}
+.client-content .rs-detail{grid-template-columns:1fr}
+.client-content .rs-form .form-grid{grid-template-columns:1fr}
+/* "Ask for something" chat: round button bottom-right; the panel opens as a bottom sheet on phones and a corner card on wider screens. */
+.chat-fab{position:fixed;right:16px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:35;width:58px;height:58px;padding:0;border-radius:50%;background:#a30b14;color:#fff;border:0;box-shadow:0 6px 18px rgba(41,35,31,.3)}
+.chat-fab:hover:not(:disabled){background:#850912;border:0}
+.chat-panel{position:fixed;left:0;right:0;bottom:0;z-index:60;height:min(88vh,640px);display:flex;flex-direction:column;background:#fffdfa;border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(41,35,31,.25);overflow:hidden}
+.chat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid #dfd6cf}
+.chat-head b{font-family:Georgia,serif;font-size:17px}
+.chat-head button{padding:6px;min-height:36px}
+.chat-log{flex:1;min-height:0;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:#f7f2ee}
+.chat-msg{max-width:88%;padding:9px 12px;border-radius:14px;overflow-wrap:anywhere;line-height:1.45;white-space:pre-line;color:#29231f}
+.chat-msg.bot{align-self:flex-start;background:#fff;border:1px solid #dfd6cf;border-bottom-left-radius:4px}
+.chat-msg.user{align-self:flex-end;background:#a30b14;color:#fff;border-bottom-right-radius:4px}
+.chat-link{font-weight:600;color:#a30b14}
+.chat-input{border-top:1px solid #dfd6cf;padding:12px 12px calc(12px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-height:48%;overflow-y:auto}
+.chat-input button,.chat-input select,.chat-input input,.chat-input textarea{min-height:44px}
+.chat-input textarea{width:100%;border:1px solid #cfc4bd;border-radius:7px;padding:10px 12px;font:inherit;resize:none;background:#fff}
+.chat-chips{display:flex;flex-wrap:wrap;gap:8px}
+.chat-chips button{border-radius:999px;padding:8px 16px}
+.chat-list{display:flex;flex-direction:column;gap:8px}
+.chat-list button{flex-direction:column;align-items:flex-start;gap:2px;text-align:left;justify-content:flex-start;font-weight:400}
+.chat-list button b{font-weight:600}
+.chat-send{display:flex;gap:8px;align-items:flex-end}
+.chat-send input,.chat-send textarea{flex:1}
+.chat-rows{display:flex;flex-direction:column;gap:10px}
+.chat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chat-row input:nth-of-type(1){grid-column:1/-1}
+@media(min-width:720px){
+.chat-fab{right:24px;bottom:100px}
+.chat-panel{left:auto;right:24px;bottom:24px;width:390px;height:min(620px,calc(100vh - 48px));border-radius:16px;border:1px solid #dfd6cf}
+}
+.claims-head .col-menu{flex-shrink:0}
+.claims-head .col-menu>button{white-space:nowrap}
+.client-top .signout{position:absolute;right:12px;top:50%;transform:translateY(-50%);min-height:40px;padding:6px 12px;font-size:13px}
+@media(max-width:359px){.client-top .signout span{display:none}.client-top .signout{padding:6px 10px}}

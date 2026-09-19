@@ -8,6 +8,7 @@ export function isStaff(user) {
 export function isAdmin(user) {
   return user?.app_metadata?.role === 'admin'
 }
+// Clients land on their Home tab (documents to sign, reminders, links into claims and requests).
 export function accountHome(user) {
   if (!isStaff(user)) return '/account'
   return isAdmin(user) ? '/admin' : '/'

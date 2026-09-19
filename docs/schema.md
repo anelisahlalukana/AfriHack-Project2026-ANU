@@ -2,7 +2,7 @@
 -- Table order and constraints may not be valid for execution.
 
 -- One table for all user types (client, provider, advisor). See migration 202609190003.
--- Provider-only columns: organisation_name, provider_type, integration_mode, mock_endpoint, claim_category.
+-- Provider-only columns: organisation_name, provider_type, integration_mode, mock_endpoint, claim_category, product_lines, reference_prefix.
 CREATE TABLE public.roles (
   id smallint NOT NULL,
   name text NOT NULL UNIQUE CHECK (name = lower(name)),
@@ -23,6 +23,8 @@ CREATE TABLE public.users (
   provider_type text,
   integration_mode text,
   mock_endpoint text,
+  product_lines text[],
+  reference_prefix text,
   claim_category text CHECK (claim_category IS NULL OR (claim_category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text]))),
   id_number text,
   date_of_birth date,
@@ -125,15 +127,24 @@ CREATE TABLE public.tasks (
   task_type text NOT NULL,
   title text,
   current_stage text,
-  status text DEFAULT 'open'::text,
+  status text DEFAULT 'open'::text CHECK (status = ANY (ARRAY['draft'::text, 'open'::text, 'awaiting_client'::text, 'completed'::text, 'declined'::text, 'cancelled'::text])),
   data jsonb DEFAULT '{}'::jsonb,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   provider_id uuid,
   claim_category text CHECK (claim_category IS NULL OR (claim_category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text]))),
+  reference text UNIQUE DEFAULT ('RSF-'::text || (nextval('task_reference_seq'::regclass))::text),
+  workflow text CHECK (workflow IS NULL OR (workflow = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text, 'request'::text, 'internal_request'::text]))),
+  policy_number text,
+  created_by uuid,
+  submitted_at timestamp with time zone,
+  closed_at timestamp with time zone,
+  client_rating integer CHECK (client_rating IS NULL OR client_rating >= 1 AND client_rating <= 5),
+  client_review text,
   CONSTRAINT tasks_pkey PRIMARY KEY (id),
   CONSTRAINT tasks_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id),
-  CONSTRAINT tasks_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id)
+  CONSTRAINT tasks_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id),
+  CONSTRAINT tasks_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.task_updates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -142,6 +153,10 @@ CREATE TABLE public.task_updates (
   note text,
   created_by uuid,
   created_at timestamp with time zone DEFAULT now(),
+  actor_type text NOT NULL DEFAULT 'adviser'::text CHECK (actor_type = ANY (ARRAY['client'::text, 'adviser'::text, 'provider'::text, 'system'::text])),
+  actor_label text,
+  update_kind text NOT NULL DEFAULT 'stage_change'::text CHECK (update_kind = ANY (ARRAY['stage_change'::text, 'message'::text, 'file'::text, 'client_action'::text, 'provider_event'::text])),
+  visible_to_client boolean NOT NULL DEFAULT true,
   CONSTRAINT task_updates_pkey PRIMARY KEY (id),
   CONSTRAINT task_updates_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
   CONSTRAINT task_updates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id)
@@ -152,8 +167,15 @@ CREATE TABLE public.task_files (
   file_url text NOT NULL,
   file_type text,
   uploaded_at timestamp with time zone DEFAULT now(),
+  label text,
+  document_key text,
+  content_type text,
+  size_bytes integer,
+  uploaded_by uuid,
+  actor_type text NOT NULL DEFAULT 'client'::text,
   CONSTRAINT task_files_pkey PRIMARY KEY (id),
-  CONSTRAINT task_files_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id)
+  CONSTRAINT task_files_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
+  CONSTRAINT task_files_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id)
 );
 CREATE TABLE public.reminders (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -165,8 +187,11 @@ CREATE TABLE public.reminders (
   recipient text,
   status text DEFAULT 'pending'::text,
   created_at timestamp with time zone DEFAULT now(),
+  task_id uuid,
+  remind_at timestamp with time zone,
   CONSTRAINT reminders_pkey PRIMARY KEY (id),
-  CONSTRAINT reminders_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
+  CONSTRAINT reminders_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id),
+  CONSTRAINT reminders_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -197,8 +222,16 @@ CREATE TABLE public.claim_stages (
   step_order integer NOT NULL,
   stage_key text NOT NULL,
   stage_label text NOT NULL,
-  category text NOT NULL DEFAULT 'motor'::text CHECK (category = ANY (ARRAY['motor'::text, 'other'::text])),
-  CONSTRAINT claim_stages_pkey PRIMARY KEY (category, step_order)
+  category text NOT NULL DEFAULT 'motor'::text CHECK (category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text, 'request'::text, 'internal_request'::text, 'other'::text])),
+  actor text NOT NULL DEFAULT 'adviser'::text CHECK (actor = ANY (ARRAY['client'::text, 'adviser'::text, 'provider'::text])),
+  requires_client_action boolean NOT NULL DEFAULT false,
+  client_action_kind text CHECK (client_action_kind IS NULL OR (client_action_kind = ANY (ARRAY['confirm'::text, 'date'::text, 'upload'::text, 'review'::text]))),
+  client_action_label text,
+  repeatable boolean NOT NULL DEFAULT false,
+  is_terminal boolean NOT NULL DEFAULT false,
+  outcome text CHECK (outcome IS NULL OR (outcome = ANY (ARRAY['completed'::text, 'declined'::text]))),
+  CONSTRAINT claim_stages_pkey PRIMARY KEY (category, step_order),
+  CONSTRAINT claim_stages_category_stage_key_idx UNIQUE (category, stage_key)
 );
 CREATE TABLE public.provider_events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -207,10 +240,38 @@ CREATE TABLE public.provider_events (
   direction text NOT NULL,
   payload jsonb DEFAULT '{}'::jsonb,
   created_at timestamp with time zone DEFAULT now(),
+  event_type text,
   CONSTRAINT provider_events_pkey PRIMARY KEY (id),
   CONSTRAINT provider_events_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
   CONSTRAINT provider_events_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.claim_categories (
+  category text NOT NULL CHECK (category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text])),
+  label text NOT NULL,
+  description text,
+  sort_order integer NOT NULL DEFAULT 0,
+  safety_banner boolean NOT NULL DEFAULT false,
+  police_report_hours integer,
+  scene_checklist jsonb NOT NULL DEFAULT '[]'::jsonb,
+  form_fields jsonb NOT NULL DEFAULT '[]'::jsonb,
+  required_documents jsonb NOT NULL DEFAULT '[]'::jsonb,
+  is_active boolean NOT NULL DEFAULT true,
+  CONSTRAINT claim_categories_pkey PRIMARY KEY (category)
+);
+CREATE TABLE public.request_types (
+  task_type text NOT NULL,
+  label text NOT NULL,
+  description text,
+  sort_order integer NOT NULL DEFAULT 0,
+  workflow text NOT NULL DEFAULT 'request'::text CHECK (workflow = ANY (ARRAY['request'::text, 'internal_request'::text])),
+  requires_provider boolean NOT NULL DEFAULT true,
+  apply_action text CHECK (apply_action IS NULL OR (apply_action = ANY (ARRAY['update_address'::text, 'update_bank_details'::text, 'update_debit_order_day'::text, 'add_financial_items'::text]))),
+  form_fields jsonb NOT NULL DEFAULT '[]'::jsonb,
+  required_documents jsonb NOT NULL DEFAULT '[]'::jsonb,
+  is_active boolean NOT NULL DEFAULT true,
+  CONSTRAINT request_types_pkey PRIMARY KEY (task_type)
+);
+
 -- users.extended_profile (migration 006): additional personal details, work allocation,
 -- rewards programmes, referral, employment/HR, doctor, salary branch code, alternate
 -- banking, extra contact/address information, spouseOrParent, and goals.immediate /

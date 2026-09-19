@@ -3,6 +3,7 @@ import ExtendedProfile from '../../components/clients/ExtendedProfile'
 import { ArrowLeft, Pencil, Target } from 'lucide-react'
 import { useClients } from '../../hooks/useClients'
 import { money, totals, goalProgress } from '../../lib/financials'
+import ClientTasksPanel from '../../components/tasks/ClientTasksPanel'
 import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
 export default function ClientProfile() {
   const { id } = useParams()

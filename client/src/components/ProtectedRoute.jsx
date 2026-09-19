@@ -1,6 +1,6 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { isStaff, isAdmin } from '../lib/authRoles'
+import { isStaff, isAdmin, accountHome } from '../lib/authRoles'
 
 export default function ProtectedRoute({ staffOnly = false, adminOnly = false, excludeAdmin = false }) {
   const { session, loading } = useAuth()
@@ -11,7 +11,7 @@ export default function ProtectedRoute({ staffOnly = false, adminOnly = false, e
     const from = `${location.pathname}${location.search}${location.hash}`
     return <Navigate to="/login" state={{ from }} replace />
   }
-  if (staffOnly && !isStaff(session.user)) return <Navigate to="/account" replace />
+  if (staffOnly && !isStaff(session.user)) return <Navigate to={accountHome(session.user)} replace />
   if (adminOnly && !isAdmin(session.user)) return <Navigate to="/" replace />
   if (excludeAdmin && isAdmin(session.user)) return <Navigate to="/admin" replace />
   return <Outlet key={session.user.id} />
