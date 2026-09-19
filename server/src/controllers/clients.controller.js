@@ -27,4 +27,14 @@ async function completeRegistration(req, res) {
   }
 }
 
-module.exports = { createClient, completeRegistration };
+async function login(req, res) {
+  try {
+    const { id_number, password } = req.body;
+    const session = await clientsService.loginWithIdNumber({ idNumber: id_number, password });
+    res.json({ session });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
+
+module.exports = { createClient, completeRegistration, login };

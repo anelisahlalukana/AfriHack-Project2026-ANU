@@ -79,7 +79,7 @@ export default function CompleteRegistration() {
         <h2>Complete your registration</h2>
         {!params.get('email') && <label>Email address<input name="email" type="email" autoComplete="username" required disabled={busy} value={email} onChange={event => setEmail(event.target.value)} /></label>}
         {params.get('email') && <p>Registering <b>{email}</b></p>}
-        <label>ID / passport number<input name="id_number" autoComplete="off" required disabled={busy} /></label>
+        <label>ID number<input name="id_number" inputMode="numeric" autoComplete="off" pattern="[0-9]{13}" maxLength={13} title="Your ID number must be exactly 13 digits" required disabled={busy} /><small>13 digits. You'll use this to sign in.</small></label>
         <label>New password<input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} /><small>Use at least 8 characters.</small></label>
         <label>Confirm password<input name="confirm_password" type="password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} /></label>
         {error && <p className="error" role="alert">{error}</p>}
