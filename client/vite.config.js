@@ -10,4 +10,9 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  // Component tests only; the plain-function tests in tests/*.test.js run under node --test.
+  test: {
+    environment: 'jsdom',
+    include: ['tests/component/**/*.test.{js,jsx}'],
+  },
 })

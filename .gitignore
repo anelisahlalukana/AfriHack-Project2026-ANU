@@ -22,3 +22,9 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# Local demo data written by `npm run dev:demo`
+server/data/
+
+# Vercel CLI link/build output
+.vercel/
