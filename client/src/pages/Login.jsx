@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ThemeToggle from '../components/ThemeToggle'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -45,6 +46,7 @@ export default function Login() {
   }
 
   return <div className="login-page">
+    <ThemeToggle className="login-theme-toggle" />
     <section className="login-story">
       <img className="login-slogan" src="/images/slogan.png" alt="Royal Square Financial" />
       <p className="eyebrow">PERSONAL ADVICE. LASTING IMPACT.</p>

@@ -3,6 +3,8 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { Inbox, LogOut } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useProviderMe } from '../../hooks/useProvider'
+import { initialsOf } from '../../lib/initials'
+import ThemeToggle from '../../components/ThemeToggle'
 
 // Shell for insurer and product-provider logins. Shows which organisation the login
 // belongs to; pages get it from the outlet context as { me }.
@@ -28,13 +30,19 @@ export default function ProviderLayout() {
   return <div className="app-shell">
     <aside>
       <Link className="side-logo" to="/provider"><img src="/images/slogan.png" alt="Royal Square Financial" /></Link>
-      <p className="side-name">{name}</p>
       <p className="eyebrow">{me.data ? me.data.provider.name.toUpperCase() : 'PROVIDER PORTAL'}</p>
       <hr className="side-divider" />
       <nav>
         <NavLink to="/provider" end><Inbox size={18} /> Claims & requests</NavLink>
       </nav>
       <div className="advisor">
+        <div className="advisor-row">
+          <div className="side-user">
+            <span className="side-avatar" aria-hidden="true">{initialsOf(name)}</span>
+            <span className="side-user-text"><strong title={name}>{name}</strong><small>Provider</small></span>
+          </div>
+          <ThemeToggle />
+        </div>
         <button onClick={logout} disabled={signingOut}><LogOut size={16} /> {signingOut ? 'Signing out…' : 'Sign out'}</button>
         {error && <p role="alert" className="error">{error}</p>}
       </div>

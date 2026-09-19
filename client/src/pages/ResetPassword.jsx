@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ThemeToggle from '../components/ThemeToggle'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
@@ -24,6 +25,7 @@ export default function ResetPassword() {
 
   if (loading) return <p className="loading" role="status">Loading…</p>
   if (!session) return <div className="login-page">
+    <ThemeToggle className="login-theme-toggle" />
     <section className="login-story">
       <p className="eyebrow">ROYAL SQUARE FINANCIAL</p>
       <h1>Link not valid</h1>
@@ -67,6 +69,7 @@ export default function ResetPassword() {
   }
 
   return <div className="login-page">
+    <ThemeToggle className="login-theme-toggle" />
     <section className="login-story">
       <p className="eyebrow">ROYAL SQUARE FINANCIAL</p>
       <h1>Set your password</h1>
