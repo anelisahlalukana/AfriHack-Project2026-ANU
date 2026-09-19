@@ -1,5 +1,5 @@
 import axios from "axios";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 
 // Shared axios instance: attaches the current Supabase session's access
 // token to every request so the Express API's requireAuth middleware can

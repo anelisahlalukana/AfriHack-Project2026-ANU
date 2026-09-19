@@ -1,20 +1,19 @@
-export function createDev4Api({ demoUserId, accessToken } = {}) {
+import axios from "axios";
+import { http } from "./http";
+
+const publicHttp = axios.create({ baseURL: import.meta.env.VITE_API_BASE_URL || "" });
+
+export function createDev4Api({ demoUserId } = {}) {
   return async (path, { method = "GET", body } = {}) => {
-    const response = await fetch(`/api/dev4${path}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...(demoUserId ? { "X-Demo-User": demoUserId } : {}),
-        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    });
-    if (response.status === 204) return null;
-    const data = await response
-      .json()
-      .catch(() => ({ error: "The server returned an unreadable response." }));
-    if (!response.ok) throw new Error(data.error || "Request failed.");
-    return data;
+    try {
+      // Real requests get the current session on every call, including after token refresh.
+      const transport = demoUserId || path === "/config" ? publicHttp : http;
+      const response = await transport.request({ url: `/api/dev4${path}`, method, data: body,
+        headers: demoUserId ? { "X-Demo-User": demoUserId } : undefined });
+      return response.status === 204 ? null : response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || error.message || "Request failed.", { cause: error });
+    }
   };
 }
 

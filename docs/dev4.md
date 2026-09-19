@@ -2,7 +2,23 @@
 
 Branch: `feature/reminders-notifications-glue`.
 
-## Run locally
+## Shared database (normal mode)
+
+Normal app use now stores Dev 4 data in the team's Supabase project. It never falls back to JSON files.
+
+1. Configure server/.env with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, and client/.env with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. Keep all secrets out of Git.
+2. Apply supabase/migrations/202609190010_dev4_shared.sql in the shared project's SQL Editor. It preserves existing data and adds reminder rules, message threads, push subscriptions, mock snapshots, and supporting columns/functions.
+3. Run npm run dev and sign in. Open /workspace, or use Reminders & messages in the adviser navigation.
+
+Identity comes from verified Supabase access tokens. Advisers require app_metadata.role=advisor. Clients need a unique users.auth_user_id or legacy users.client_user_id link to their Auth user; conflicting links are rejected. Matching by email or user-editable metadata is not allowed. Admin accounts retain user management and do not access client conversations.
+
+Existing reminders and notifications tables are reused. New tables/functions are backend-only, with RLS and no browser execution grants. Reminder delivery is transactional and uses database row locks; push dispatch uses expiring database leases. Multiple API processes share the same state. Existing legacy task reminders without rule_id remain owned by the claims module.
+
+Provider values remain explicitly fictional as required by the brief. Live client records and Dev 2 consent are real; mock snapshots never overwrite FNA balances.
+
+Missing migrations produce a setup error rather than silently using demo data. The migration has to be applied before shared reminders/messages can operate.
+
+## Optional isolated demo
 
 Use Node 22.12+ (tested on Node 24). From the repository root:
 
@@ -18,8 +34,7 @@ Two adviser personas and two fictional clients are available in the demo selecto
 Changing personas disables this browser's existing push subscription so updates do
 not follow the wrong account. Enable push again after switching if needed.
 
-`npm run dev` does NOT trust the demo identity header. Until Dev 1's verified
-identity adapter is connected, normal-mode protected routes return 401.
+`npm run dev` verifies real Supabase sessions and uses shared storage.
 The demo refuses to start with `NODE_ENV=production` and binds to loopback.
 Do not expose or tunnel the demo server to a public network.
 
@@ -74,60 +89,13 @@ is not proof a notification was displayed.
 
 ## Integration with Dev 1
 
-The self-contained frontend is `client/src/pages/Dev4Workspace.jsx`.
-`App.jsx` preserves the main branch routes. `Dev4Demo.jsx` hosts the demo separately at `/dev4-demo`. For authenticated integration:
+SharedWorkspace.jsx hosts the signed-in workspace at /workspace. It requests /api/dev4/me for the verified identity and /api/dev4/config for push configuration. The shared axios client attaches the current Supabase access token for every request, including after token refresh.
 
-```jsx
-<Dev4Workspace
-  key={user.id}
-  user={user}
-  accessToken={session.access_token}
-  pushConfig={config.push}
-/>
-```
+Normal createDev4 connects services/dev4.service.js, controllers/dev4.controller.js and routes/dev4.routes.js to the existing backend-only Supabase client. It does not construct the file store. Only the explicit demo mode uses the ignored server/data/dev4-demo.json file and demo identity headers.
 
-Load public configuration from `GET /api/dev4/config`. A verified identity has:
+The existing clients API now reads the shared users table and restricts the queries to client role rows, matching the team's current schema. Client login links are database-managed; new registrations must be linked by the team's onboarding flow before opening private client conversations.
 
-```js
-// Adviser
-{ id: 'auth-user-id', role: 'adviser', name: 'Adviser name' }
-// Client: auth-user ID and client ID may differ
-{ id: 'auth-user-id', clientId: 'client-record-id', role: 'client', name: 'Client name' }
-```
-
-On the server, configure `createDev4` in `server/server.js`:
-
-```js
-const dev4 = createDev4({
-  getUsers: loadPracticeUsers, // async: trusted directory of clients + advisers
-  resolveUser: verifyAuthenticatedUser, // async (req): server-verified identity, or null
-  checkConsent: getCurrentConsent, // Dev 2 contract below
-  store: applicationStore,
-  push,
-  pushPublicKey: process.env.VAPID_PUBLIC_KEY,
-});
-app.locals.dev4 = dev4.service;
-app.use("/api/dev4", dev4.router);
-```
-
-The function names above are adapter contracts, not existing Dev 1 functions.
-Verify the bearer token with Supabase Auth on the server, then resolve its user
-ID against a trusted profile/directory. Never trust a browser-supplied role or
-editable `user_metadata`. Supply BOTH advisers in the directory so shared
-notifications reach both. The service scopes every client request server-side.
-Use `disablePush(api)` before sign-out/account switching; clear the old workspace
-by changing its React key. The `accessToken` prop updates as the session refreshes.
-
-No Supabase table schema has been assumed or created. The included file store
-is for local demos: one Node process, synchronous atomic JSON replacement, no
-at-rest encryption. It is NOT a production database, backup system or a claim
-of POPIA compliance. It cannot coordinate multiple server processes. Demo data
-is stored in ignored `server/data/dev4-demo.json`; normal mode uses a separate
-`dev4.json`. A production store/queue needs database transactions, access
-policies, encryption, retention/backups and durable scheduling before real data.
-The store contract currently has synchronous `data` and `transaction(fn)`;
-a remote SQL implementation must adapt the service to awaited repository
-operations rather than pass an asynchronous callback to this file store.
+Use disablePush(api) before account switching. Shared notification clicks open /workspace#notifications and require sign-in. Push payloads contain no message or financial details.
 
 For onboarding dates such as birthdays/licence expiry, call `addReminder` after
 Dev 1 has saved the date, using a verified adviser/service identity. The initial

@@ -16,6 +16,14 @@ function createDev4({
 } = {}) {
   if (demo && process.env.NODE_ENV === "production")
     throw new Error("Demo identities must not be enabled in production.");
+  if (!demo) {
+    const { supabaseAdmin } = require("../config/supabaseClient");
+    const { getConsentStatus } = require("../services/documents.service");
+    const { createSharedService } = require("../services/dev4.service");
+    const { createSharedRouter } = require("../routes/dev4.routes");
+    const service = createSharedService({ db: supabaseAdmin, checkConsent: getConsentStatus, push, pushPublicKey });
+    return { service, router: createSharedRouter({ service, db: supabaseAdmin }) };
+  }
   const dataStore =
     store ||
     createStore(

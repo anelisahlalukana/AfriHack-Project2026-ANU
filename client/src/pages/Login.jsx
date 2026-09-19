@@ -175,7 +175,7 @@ export default function Login({ signup = false }) {
             )}
           </p>
           <small>
-            Advisers: use your Royal Square account. Registration is for clients
+            Advisers and admins: use your administrator-provided account. Registration is for clients
             only.
           </small>
         </form>

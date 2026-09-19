@@ -1,4 +1,4 @@
-import { http } from "@/api/http";
+import { http } from "./http";
 
 export async function listDocuments(clientId) {
   const { data } = await http.get(`/api/clients/${clientId}/documents`);

@@ -7,6 +7,7 @@ const { requireAuth } = require("./src/middleware/auth");
 const documentsController = require("./src/controllers/documents.controller");
 const documentsRoutes = require("./src/routes/documents.routes");
 const complianceRoutes = require("./src/routes/compliance.routes");
+const usersRoutes = require("./src/routes/users.routes");
 const app = express();
 const PORT = process.env.PORT || 5000;
 const { createDev4 } = require("./src/dev4");
@@ -43,6 +44,8 @@ app.use(express.json({ limit: "10mb" }));
 app.use("/api/clients/:clientId/documents", documentsRoutes);
 app.get("/api/clients/:clientId/consent-status", requireAuth, documentsController.getConsentStatus);
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
+
+app.use("/api/admin/users", usersRoutes);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "Server is running" });

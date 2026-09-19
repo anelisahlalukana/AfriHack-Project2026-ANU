@@ -3,7 +3,7 @@ import Brand from "../components/Brand";
 import ThemeToggle from "../components/ThemeToggle";
 import { Link } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { isStaff } from "../lib/authRoles";
+import { isStaff, accountHome } from "../lib/authRoles";
 
 export default function ClientAccount() {
   const { user, signOut } = useAuth();
@@ -32,13 +32,14 @@ export default function ClientAccount() {
             : ""}
         </h1>
         <p>You are signed in as {user.email}.</p>
+        {!isStaff(user) && <Link className="button primary" to="/workspace">Open reminders and messages</Link>}
         {isStaff(user) ? (
-          <Link className="button primary" to="/">
+          <Link className="button primary" to={accountHome(user)}>
             Open your workspace
           </Link>
         ) : (
           <p>
-            Your client account is ready. Contact your broker or provider to
+            Your client account is ready. Contact your adviser to
             arrange your financial needs analysis.
           </p>
         )}

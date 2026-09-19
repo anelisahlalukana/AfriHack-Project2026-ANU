@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Bell,
   CalendarDays,
@@ -195,6 +196,7 @@ export default function Dev4Workspace({
     <div className="rs-workspace">
       <aside className="rs-sidebar">
         <Brand />
+        {!demo && <Link to="/account">Back to your account</Link>}
         <nav aria-label="Workspace navigation">
           {navigation.map(([id, title, Icon]) => (
             <button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import Dev4Workspace from "./Dev4Workspace";
 import { createDev4Api } from "../api/dev4";
 
@@ -41,16 +42,7 @@ export default function Dev4Demo() {
       </div>
     );
   if (!config.demo)
-    return (
-      <div className="rs-start">
-        <h1>Royal Square</h1>
-        <p>Dev 4 is ready for the team's authentication integration.</p>
-        <p>
-          For the local demo, run <code>npm run dev:demo</code>. See{" "}
-          <code>docs/dev4.md</code> for the verified-user integration contract.
-        </p>
-      </div>
-    );
+    return <Navigate to="/workspace" replace />;
   const user = config.users.find((item) => item.id === userId);
   return (
     <Dev4Workspace

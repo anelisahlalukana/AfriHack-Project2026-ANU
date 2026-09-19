@@ -11,9 +11,35 @@ function docMeta(type) {
   return DOCUMENT_TYPES.find((d) => d.type === type);
 }
 
+function addMonths(isoDate, months) {
+  const date = new Date(isoDate);
+  date.setMonth(date.getMonth() + months);
+  return date.toISOString();
+}
+
+// Excludes signature_data (base64 image data) — nothing consumes it and
+// there's no reason to echo a large blob back on every send/sign response.
+function toCamelDocument(row) {
+  if (!row) return null;
+
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    documentType: row.document_type,
+    status: row.status,
+    templateFileUrl: row.template_file_url,
+    filledFileUrl: row.filled_file_url,
+    signedFileUrl: row.signed_file_url,
+    sentAt: row.sent_at,
+    signedAt: row.signed_at,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+  };
+}
+
 async function getClient(clientId) {
   const { data, error } = await supabaseAdmin
-    .from("clients")
+    .from("users").eq("role_id", 1)
     .select("*")
     .eq("id", clientId)
     .single();
@@ -75,6 +101,10 @@ function clientFillFields(client) {
     contact_email: client.contact_email,
     contact_mobile: client.contact_mobile,
     physical_address: client.physical_address,
+    bank_name: client.bank_name,
+    bank_account_number: client.bank_account_number,
+    bank_account_type: client.bank_account_type,
+    debit_order_day: client.debit_order_day,
   };
 }
 
@@ -124,7 +154,7 @@ async function sendDocument(clientId, type) {
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return toCamelDocument(data);
 }
 
 // Bakes the captured signature into the filled PDF (generating it first if
@@ -165,6 +195,7 @@ async function signDocument(clientId, type, { signature, signerName }) {
     signed_file_url: signedPath,
     signature_data: signature,
     signed_at: signedAt,
+    expires_at: type === "client_consent" ? addMonths(signedAt, CONSENT_VALIDITY_MONTHS) : null,
   };
 
   const { data, error } = row
@@ -172,7 +203,7 @@ async function signDocument(clientId, type, { signature, signerName }) {
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
-  return data;
+  return toCamelDocument(data);
 }
 
 async function getDownloadUrl(clientId, type) {
@@ -204,18 +235,15 @@ async function getConsentStatus(clientId) {
     return { signed: false, expired: null, valid: false, signedAt: null, expiresAt: null };
   }
 
-  const signedAt = new Date(row.signed_at);
-  const expiresAt = new Date(signedAt);
-  expiresAt.setMonth(expiresAt.getMonth() + CONSENT_VALIDITY_MONTHS);
-
-  const expired = Date.now() > expiresAt.getTime();
+  const expiresAt = row.expires_at || addMonths(row.signed_at, CONSENT_VALIDITY_MONTHS);
+  const expired = Date.now() > new Date(expiresAt).getTime();
 
   return {
     signed: true,
     expired,
     valid: !expired,
     signedAt: row.signed_at,
-    expiresAt: expiresAt.toISOString(),
+    expiresAt,
   };
 }
 

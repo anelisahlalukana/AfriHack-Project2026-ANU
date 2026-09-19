@@ -12,7 +12,7 @@ self.addEventListener("push", (event) => {
         body: payload?.body || "You have a new update.",
         tag: payload?.tag || "royal-square-update",
         icon: "/images/logo.jpg",
-        data: { url: "/dev4-demo#notifications" },
+        data: { url: payload?.url === "/dev4-demo#notifications" ? "/dev4-demo#notifications" : "/workspace#notifications" },
       },
     ),
   );
@@ -25,7 +25,8 @@ self.addEventListener("notificationclick", (event) => {
         type: "window",
         includeUncontrolled: true,
       });
-      const url = new URL("/dev4-demo#notifications", self.location.origin).href;
+      const path = event.notification.data?.url === "/dev4-demo#notifications" ? "/dev4-demo#notifications" : "/workspace#notifications";
+      const url = new URL(path, self.location.origin).href;
       for (const windowClient of windows) {
         if (new URL(windowClient.url).origin === self.location.origin) {
           await windowClient.navigate(url);
