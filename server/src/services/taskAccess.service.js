@@ -1,5 +1,5 @@
 const { supabaseAdmin } = require("../config/supabaseClient");
-const { CLIENT_ROLE_ID, ADVISOR_ROLE } = require("../constants/roles");
+const { CLIENT_ROLE_ID, ADVISOR_ROLE, PROVIDER_ROLE, PROVIDER_ROLE_ID } = require("../constants/roles");
 const { forbidden, notFound, badRequest, assertUuid } = require("../utils/httpError");
 
 // Client columns the claims engine needs. Clients are public.users rows with role_id 1.
@@ -12,6 +12,8 @@ const TASK_SELECT = [
   "provider:users!tasks_provider_id_fkey(id, name:organisation_name, reference_prefix, product_lines)",
 ].join(", ");
 
+const UUID_OK = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function clientName(client) {
   return [client?.first_name, client?.surname].filter(Boolean).join(" ") || "Client";
 }
@@ -23,6 +25,9 @@ async function resolveAccess(user) {
   const role = user?.app_metadata?.role;
   if (role === ADVISOR_ROLE) {
     return { role: "staff", userId: user.id, label: user.user_metadata?.full_name || user.email };
+  }
+  if (role === PROVIDER_ROLE) {
+    throw forbidden("Provider logins use the provider portal.");
   }
   if (role) {
     throw forbidden("Admin accounts manage staff and can't open client claims or requests.");
@@ -89,6 +94,43 @@ async function getTaskForAccess(access, taskId) {
   return data;
 }
 
+// Provider portal: the signed-in login must carry role 'provider' and a provider_id
+// that points at a provider organisation (public.users, role_id 2). Both live in
+// app_metadata, which only an admin (service role) can set.
+async function resolveProviderAccess(user) {
+  if (user?.app_metadata?.role !== PROVIDER_ROLE) throw forbidden("The provider portal is for insurers and product providers.");
+  const providerId = user.app_metadata.provider_id;
+  if (typeof providerId !== "string" || !UUID_OK.test(providerId)) {
+    throw forbidden("Your login isn't linked to a provider yet. Ask Royal Square to check it.");
+  }
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, name:organisation_name, reference_prefix, product_lines")
+    .eq("id", providerId)
+    .eq("role_id", PROVIDER_ROLE_ID)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw forbidden("Your login isn't linked to a provider yet. Ask Royal Square to check it.");
+  return {
+    role: "provider",
+    userId: user.id,
+    providerId: data.id,
+    provider: data,
+    label: user.user_metadata?.full_name || user.email,
+  };
+}
+
+// A task sent to this provider. Drafts never count: the client hasn't submitted them.
+async function getTaskForProvider(access, taskId) {
+  assertUuid(taskId, "task id");
+  const { data, error } = await supabaseAdmin.from("tasks").select(TASK_SELECT).eq("id", taskId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data || data.provider_id !== access.providerId || data.status === "draft") {
+    throw notFound("Claim or request not found");
+  }
+  return data;
+}
+
 // For the signed-in user: staff, or which client they are (the client portal uses this).
 async function getMe(user) {
   const access = await resolveAccess(user);
@@ -107,4 +149,6 @@ module.exports = {
   getClientForAccess,
   getTaskForAccess,
   getMe,
+  resolveProviderAccess,
+  getTaskForProvider,
 };

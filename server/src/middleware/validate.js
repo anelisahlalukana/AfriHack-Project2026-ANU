@@ -70,8 +70,12 @@ function validateNewUserPayload(req, res, next) {
   if (typeof fullName !== "string" || fullName.trim().length === 0) {
     return res.status(400).json({ error: "Field 'fullName' is required" });
   }
-  if (!ROLES.includes(role)) {
-    return res.status(400).json({ error: `Field 'role' must be one of: ${ROLES.join(", ")}` });
+  if (!ACCOUNT_ROLES.includes(role)) {
+    return res.status(400).json({ error: `Field 'role' must be one of: ${ACCOUNT_ROLES.join(", ")}` });
+  }
+  const { providerId } = req.body;
+  if (role === PROVIDER_ROLE && (typeof providerId !== "string" || !UUID_PATTERN.test(providerId))) {
+    return res.status(400).json({ error: "Choose which provider this login is for" });
   }
 
   next();

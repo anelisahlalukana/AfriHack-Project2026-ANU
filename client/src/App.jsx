@@ -28,6 +28,9 @@ import MyRequests from './pages/claims/MyRequests'
 import NewRequest from './pages/claims/NewRequest'
 import ReportClaim from './pages/claims/ReportClaim'
 import ClientClaimsArea from './pages/client/ClientClaimsArea'
+import ProviderLayout from './pages/provider/ProviderLayout'
+import ProviderInbox from './pages/provider/ProviderInbox'
+import ProviderTaskDetail from './pages/provider/ProviderTaskDetail'
 import './App.css'
 
 function SignOutBlock({ onSignOut }) {
@@ -105,6 +108,13 @@ export default function App() {
           <Route path="requests/new" element={<Navigate to="/account/claims" replace />} />
           <Route path="tasks/:taskId" element={<ClientTaskDetail />} />
         </Route>
+      </Route>
+    </Route>
+
+    <Route element={<ProtectedRoute providerOnly />}>
+      <Route element={<ProviderLayout />}>
+        <Route path="provider" element={<ProviderInbox />} />
+        <Route path="provider/tasks/:taskId" element={<ProviderTaskDetail />} />
       </Route>
     </Route>
 

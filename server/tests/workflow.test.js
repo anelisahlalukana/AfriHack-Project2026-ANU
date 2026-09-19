@@ -90,3 +90,19 @@ test("document pack reports received and missing documents", () => {
   assert.equal(pack.totalRequired, 2);
   assert.equal(pack.complete, false);
 });
+
+test("the provider can act only on its own open steps", () => {
+  const at = (current_stage, status = "open") => ({ current_stage, status });
+  // After the client confirms the assessment, the insurer submits it.
+  assert.deepEqual(
+    [wf.providerAction(at("vehicle_assessment"), motor).kind, wf.providerAction(at("vehicle_assessment"), motor).stage.stage_key],
+    ["advance", "assessment_submitted"]
+  );
+  // Repairs repeat weekly: the insurer posts updates; the adviser moves the claim on.
+  assert.equal(wf.providerAction(at("repair_in_progress"), motor).kind, "update");
+  // Waiting on the client, with Royal Square, or closed: nothing to do.
+  assert.equal(wf.providerAction(at("vehicle_assessment", "awaiting_client"), motor), null);
+  assert.equal(wf.providerAction(at("assessment_submitted"), motor), null);
+  assert.equal(wf.providerAction(at("closed", "completed"), motor), null);
+  assert.equal(wf.providerAction(at("claim_registered", "draft"), motor), null);
+});

@@ -60,6 +60,18 @@ function waitingOn(task, stages) {
   return next.actor === "provider" ? "provider" : "us";
 }
 
+// What the product provider can do on a task right now: complete its next step
+// ("advance"), post a repeating progress update ("update"), or nothing (null) while
+// the task is with the client or Royal Square, or closed.
+function providerAction(task, stages) {
+  if (task.status !== "open") return null;
+  const current = findStage(stages, task.current_stage);
+  const next = nextStage(stages, task.current_stage);
+  if (next && next.actor === "provider") return { kind: "advance", stage: next };
+  if (current?.repeatable && current.actor === "provider") return { kind: "update", stage: current };
+  return null;
+}
+
 function isOverdue(task, stages, now = Date.now()) {
   if (waitingOn(task, stages) !== "us") return false;
   const updated = new Date(task.updated_at || task.created_at).getTime();
@@ -185,6 +197,7 @@ module.exports = {
   statusForStage,
   progress,
   waitingOn,
+  providerAction,
   isOverdue,
   validateForm,
   validateFinancialItems,
