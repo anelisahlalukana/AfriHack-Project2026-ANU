@@ -303,6 +303,13 @@ function validateHandlerPayload(req, res, next) {
   next();
 }
 
+function validateClientIdParam(req, res, next) {
+  if (!UUID_PATTERN.test(req.params.clientId || "")) {
+    return res.status(400).json({ error: "The client id in the URL isn't valid" });
+  }
+  next();
+}
+
 function validateComplianceIds(req, res, next) {
   for (const name of ["clientId", "adviserId"]) {
     if (req.params[name] !== undefined && !UUID_PATTERN.test(req.params[name])) {
@@ -356,6 +363,7 @@ function validateCpdRecord(req, res, next) {
 module.exports = {
   validateProviderMessagePayload,
   validateHandlerPayload,
+  validateClientIdParam,
   validateComplianceIds,
   validateAuditLimit,
   validateScreening,
