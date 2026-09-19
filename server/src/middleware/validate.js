@@ -39,7 +39,9 @@ function validateNewUserPayload(req, res, next) {
   const { email, fullName, role } = req.body || {};
 
   if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: "A valid 'email' is required" });
+    return res
+      .status(400)
+      .json({ error: "Field 'email' must be a full email address, e.g. name@example.com" });
   }
   if (typeof fullName !== "string" || fullName.trim().length === 0) {
     return res.status(400).json({ error: "Field 'fullName' is required" });

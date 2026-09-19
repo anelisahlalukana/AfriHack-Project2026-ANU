@@ -1,12 +1,29 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.clients (
+-- One table for all user types (client, provider, advisor). See migration 202609190003.
+-- Provider-only columns: organisation_name, provider_type, integration_mode, mock_endpoint, claim_category.
+CREATE TABLE public.roles (
+  id smallint NOT NULL,
+  name text NOT NULL UNIQUE CHECK (name = lower(name)),
+  description text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT roles_pkey PRIMARY KEY (id)
+);
+-- Seeded: 1 = client, 2 = provider, 3 = advisor
+CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
+  role_id smallint NOT NULL DEFAULT 1,
+  auth_user_id uuid UNIQUE,
   advisor_id uuid,
-  first_name text NOT NULL,
+  first_name text,
   second_name text,
-  surname text NOT NULL,
+  surname text,
+  organisation_name text,
+  provider_type text,
+  integration_mode text,
+  mock_endpoint text,
+  claim_category text CHECK (claim_category IS NULL OR (claim_category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text]))),
   id_number text,
   date_of_birth date,
   nationality text,
@@ -27,8 +44,11 @@ CREATE TABLE public.clients (
   bank_account_number text,
   bank_account_type text,
   debit_order_day integer,
-  CONSTRAINT clients_pkey PRIMARY KEY (id),
-  CONSTRAINT clients_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id)
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_role_id_fkey FOREIGN KEY (role_id) REFERENCES public.roles(id),
+  CONSTRAINT users_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id),
+  CONSTRAINT users_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id),
+  CONSTRAINT users_identity_required CHECK (CASE role_id WHEN 1 THEN first_name IS NOT NULL AND surname IS NOT NULL WHEN 2 THEN organisation_name IS NOT NULL ELSE first_name IS NOT NULL END)
 );
 CREATE TABLE public.client_dependants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -39,7 +59,7 @@ CREATE TABLE public.client_dependants (
   id_number text,
   beneficiary_percentage numeric,
   CONSTRAINT client_dependants_pkey PRIMARY KEY (id),
-  CONSTRAINT client_dependants_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT client_dependants_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.client_financial_items (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -52,7 +72,7 @@ CREATE TABLE public.client_financial_items (
   interest_rate numeric,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT client_financial_items_pkey PRIMARY KEY (id),
-  CONSTRAINT client_financial_items_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT client_financial_items_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.client_goals (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -65,7 +85,7 @@ CREATE TABLE public.client_goals (
   status text DEFAULT 'in_progress'::text,
   is_shared boolean DEFAULT false,
   CONSTRAINT client_goals_pkey PRIMARY KEY (id),
-  CONSTRAINT client_goals_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT client_goals_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.documents (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -81,7 +101,7 @@ CREATE TABLE public.documents (
   created_at timestamp with time zone DEFAULT now(),
   expires_at timestamp with time zone,
   CONSTRAINT documents_pkey PRIMARY KEY (id),
-  CONSTRAINT documents_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT documents_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.adviser_compliance (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -111,8 +131,8 @@ CREATE TABLE public.tasks (
   provider_id uuid,
   claim_category text CHECK (claim_category IS NULL OR (claim_category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text]))),
   CONSTRAINT tasks_pkey PRIMARY KEY (id),
-  CONSTRAINT tasks_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
-  CONSTRAINT tasks_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.providers(id)
+  CONSTRAINT tasks_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id),
+  CONSTRAINT tasks_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.task_updates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -145,7 +165,7 @@ CREATE TABLE public.reminders (
   status text DEFAULT 'pending'::text,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT reminders_pkey PRIMARY KEY (id),
-  CONSTRAINT reminders_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT reminders_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -159,7 +179,7 @@ CREATE TABLE public.notifications (
   recipient text DEFAULT 'client'::text,
   advisor_id uuid,
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
-  CONSTRAINT notifications_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id),
+  CONSTRAINT notifications_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id),
   CONSTRAINT notifications_related_task_id_fkey FOREIGN KEY (related_task_id) REFERENCES public.tasks(id),
   CONSTRAINT notifications_related_reminder_id_fkey FOREIGN KEY (related_reminder_id) REFERENCES public.reminders(id),
   CONSTRAINT notifications_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id)
@@ -170,7 +190,7 @@ CREATE TABLE public.goal_participants (
   client_id uuid,
   CONSTRAINT goal_participants_pkey PRIMARY KEY (id),
   CONSTRAINT goal_participants_goal_id_fkey FOREIGN KEY (goal_id) REFERENCES public.client_goals(id),
-  CONSTRAINT goal_participants_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id)
+  CONSTRAINT goal_participants_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.claim_stages (
   step_order integer NOT NULL,
@@ -178,16 +198,6 @@ CREATE TABLE public.claim_stages (
   stage_label text NOT NULL,
   category text NOT NULL DEFAULT 'motor'::text CHECK (category = ANY (ARRAY['motor'::text, 'other'::text])),
   CONSTRAINT claim_stages_pkey PRIMARY KEY (category, step_order)
-);
-CREATE TABLE public.providers (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  provider_type text NOT NULL,
-  integration_mode text DEFAULT 'mock'::text,
-  mock_endpoint text,
-  created_at timestamp with time zone DEFAULT now(),
-  claim_category text CHECK (claim_category IS NULL OR (claim_category = ANY (ARRAY['motor'::text, 'life'::text, 'health'::text, 'funeral'::text, 'personal'::text, 'commercial'::text]))),
-  CONSTRAINT providers_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.provider_events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -198,5 +208,5 @@ CREATE TABLE public.provider_events (
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT provider_events_pkey PRIMARY KEY (id),
   CONSTRAINT provider_events_task_id_fkey FOREIGN KEY (task_id) REFERENCES public.tasks(id),
-  CONSTRAINT provider_events_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.providers(id)
+  CONSTRAINT provider_events_provider_id_fkey FOREIGN KEY (provider_id) REFERENCES public.users(id)
 );
