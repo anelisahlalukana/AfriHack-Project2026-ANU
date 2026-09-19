@@ -114,6 +114,7 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage })
         onSigned={() => {
           setOpenType(null)
           setReloadKey(key => key + 1)
+          onChanged?.()
         }}
       />
     )}

@@ -1,0 +1,10 @@
+const express = require("express");
+const { requireAuth, requireRole } = require("../middleware/auth");
+const { ADVISOR_ROLE } = require("../constants/roles");
+const { validateAuditLimit } = require("../middleware/validate");
+const controller = require("../controllers/compliance.controller");
+const router = express.Router();
+router.use(requireAuth, requireRole([ADVISOR_ROLE]));
+router.get("/summary", controller.getSummary);
+router.get("/audit", validateAuditLimit, controller.getAudit);
+module.exports = router;

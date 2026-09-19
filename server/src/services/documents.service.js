@@ -11,16 +11,13 @@ const { notifyClient, notifyAdviser } = require("./notifications.service");
 
 const TEMPLATES_BUCKET = process.env.DOCUMENT_TEMPLATES_BUCKET || "document-templates";
 const DOCUMENTS_BUCKET = process.env.CLIENT_DOCUMENTS_BUCKET || "client-documents";
+const { addConsentMonths } = require("../utils/complianceRules");
+const { getConsentStatus } = require("./consent.service");
+const { logConsentSigning } = require("./complianceAudit.service");
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
 
 function docMeta(type) {
   return DOCUMENT_TYPES.find((d) => d.type === type);
-}
-
-function addMonths(isoDate, months) {
-  const date = new Date(isoDate);
-  date.setMonth(date.getMonth() + months);
-  return date.toISOString();
 }
 
 // Excludes signature_data (base64 image data) — nothing consumes it and
@@ -175,7 +172,7 @@ async function sendDocument(clientId, type) {
 
 // Bakes the captured signature into the filled PDF (generating it first if
 // the document was never explicitly sent) and stores it as the signed copy.
-async function signDocument(clientId, type, { signature, signerName }) {
+async function signDocument(clientId, type, { signature, signerName }, actor) {
   let row = await getDocumentRow(clientId, type);
   let filledBytes;
 
@@ -231,7 +228,7 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt 
     signed_file_url: signedPath,
     signature_data: signature || null,
     signed_at: signedAt,
-    expires_at: type === "client_consent" ? addMonths(signedAt, CONSENT_VALIDITY_MONTHS) : null,
+    expires_at: type === "client_consent" ? addConsentMonths(signedAt) : null,
   };
 
   const { data, error } = row
@@ -239,12 +236,7 @@ async function saveSignedCopy({ clientId, type, row, bytes, signature, signedAt 
     : await supabaseAdmin.from("documents").insert(payload).select().single();
 
   if (error) throw new Error(error.message);
-
-  const allSigned = await activateClientIfAllSigned(clientId);
-  // Re-signing a document that was already signed (e.g. renewing an expired consent) doesn't
-  // complete anything new, so only a first signing can be the one that finishes onboarding.
-  const completedOnboarding = allSigned && row?.status !== "signed";
-  await notifyDocumentSigned(clientId, type, { completedOnboarding });
+  if (type === "client_consent") await logConsentSigning(clientId, data, row, actor);
   return toCamelDocument(data);
 }
 
@@ -344,25 +336,6 @@ async function signStorageUrl(bucket, path) {
 
   if (error) throw new Error(error.message);
   return data.signedUrl;
-}
-
-async function getConsentStatus(clientId) {
-  const row = await getDocumentRow(clientId, "client_consent");
-
-  if (!row || row.status !== "signed" || !row.signed_at) {
-    return { signed: false, expired: null, valid: false, signedAt: null, expiresAt: null };
-  }
-
-  const expiresAt = row.expires_at || addMonths(row.signed_at, CONSENT_VALIDITY_MONTHS);
-  const expired = Date.now() > new Date(expiresAt).getTime();
-
-  return {
-    signed: true,
-    expired,
-    valid: !expired,
-    signedAt: row.signed_at,
-    expiresAt,
-  };
 }
 
 module.exports = {

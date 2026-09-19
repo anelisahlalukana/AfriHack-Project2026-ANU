@@ -1,6 +1,8 @@
 const { DOCUMENT_TYPE_VALUES, ACKNOWLEDGE_ONLY_TYPES } = require("../constants/documentTypes");
-const { ACCOUNT_ROLES, PROVIDER_ROLE } = require("../constants/roles");
-const { QUALIFICATION_STATUSES, CPD_STATUSES } = require("../constants/complianceStatuses");
+const { ROLES } = require("../constants/roles");
+const { QUALIFICATION_STATUSES } = require("../constants/complianceStatuses");
+const { SCREENING_TYPES, AUDIT_DEFAULT_LIMIT, AUDIT_MAX_LIMIT } = require("../constants/compliance");
+const { southAfricaDate } = require("../utils/complianceRules");
 
 function validateDocumentType(req, res, next) {
   const { type } = req.params;
@@ -148,6 +150,13 @@ function validateUserIdParam(req, res, next) {
 
 function validateComplianceUpdate(req, res, next) {
   const body = req.body || {};
+  const allowed = ["qualificationStatus", "isPoliticallyExposed", "pepDetails", "terrorismFinancingFlag", "terrorismFinancingDetails"];
+  if (!isPlainObject(body) || !Object.keys(body).length || Object.keys(body).some(key => !allowed.includes(key))) {
+    return res.status(400).json({ error: "Supply supported compliance fields. CPD status is calculated from recorded hours." });
+  }
+  if ([body.pepDetails, body.terrorismFinancingDetails].some(value => typeof value === "string" && value.length > 2000)) {
+    return res.status(400).json({ error: "Compliance notes must be at most 2000 characters." });
+  }
 
   if (
     body.qualificationStatus !== undefined &&
@@ -156,11 +165,6 @@ function validateComplianceUpdate(req, res, next) {
     return res.status(400).json({
       error: `Field 'qualificationStatus' must be one of: ${QUALIFICATION_STATUSES.join(", ")}`,
     });
-  }
-  if (body.cpdStatus !== undefined && !CPD_STATUSES.includes(body.cpdStatus)) {
-    return res
-      .status(400)
-      .json({ error: `Field 'cpdStatus' must be one of: ${CPD_STATUSES.join(", ")}` });
   }
   if (body.isPoliticallyExposed !== undefined && typeof body.isPoliticallyExposed !== "boolean") {
     return res.status(400).json({ error: "Field 'isPoliticallyExposed' must be a boolean" });
@@ -282,26 +286,61 @@ function validateClientActionPayload(req, res, next) {
   next();
 }
 
-// Provider portal: a reply to Royal Square (required text) or a new claims handler name.
-function validateProviderMessagePayload(req, res, next) {
-  const { note } = req.body || {};
-  if (typeof note !== "string" || !note.trim() || note.length > MAX_TASK_NOTE_LENGTH) {
-    return res.status(400).json({ error: `Write a message of at most ${MAX_TASK_NOTE_LENGTH} characters` });
+function validateComplianceIds(req, res, next) {
+  for (const name of ["clientId", "adviserId"]) {
+    if (req.params[name] !== undefined && !UUID_PATTERN.test(req.params[name])) {
+      return res.status(400).json({ error: `Invalid ${name} in the URL` });
+    }
   }
   next();
 }
 
-function validateHandlerPayload(req, res, next) {
-  const { name } = req.body || {};
-  if (typeof name !== "string" || !name.trim() || name.trim().length > 120) {
-    return res.status(400).json({ error: "Enter the claims handler's name (at most 120 characters)" });
+function validateAuditLimit(req, res, next) {
+  const raw = req.query.limit;
+  if (raw !== undefined && (typeof raw !== "string" || !/^[1-9]\d*$/.test(raw) || !Number.isSafeInteger(Number(raw)))) {
+    return res.status(400).json({ error: "Audit limit must be a positive integer." });
   }
+  req.auditLimit = Math.min(raw === undefined ? AUDIT_DEFAULT_LIMIT : Number(raw), AUDIT_MAX_LIMIT);
+  next();
+}
+
+function validateScreening(req, res, next) {
+  const body = req.body;
+  if (!isPlainObject(body) || Object.keys(body).some(k => !["screeningType", "simulateFlag"].includes(k)) ||
+    !SCREENING_TYPES.includes(body.screeningType) || (body.simulateFlag !== undefined && typeof body.simulateFlag !== "boolean")) {
+    return res.status(400).json({ error: "Choose a PEP or terrorism financing check; simulateFlag must be a boolean." });
+  }
+  if (body.simulateFlag && process.env.NODE_ENV === "production") {
+    return res.status(400).json({ error: "Simulated flags are disabled in production." });
+  }
+  next();
+}
+
+function validateCpdRecord(req, res, next) {
+  const body = req.body;
+  if (!isPlainObject(body) || Object.keys(body).some(k => !["activity", "hours", "completedOn"].includes(k))) {
+    return res.status(400).json({ error: "Supply activity, hours and completedOn." });
+  }
+  const { activity, hours, completedOn } = body;
+  if (typeof activity !== "string" || !activity.trim() || activity.trim().length > 200) {
+    return res.status(400).json({ error: "Activity must contain 1 to 200 characters." });
+  }
+  if (typeof hours !== "number" || !Number.isFinite(hours) || hours <= 0 || hours > 100 || Math.abs(hours * 100 - Math.round(hours * 100)) > 1e-8) {
+    return res.status(400).json({ error: "Hours must be greater than 0 and at most 100, with up to two decimal places." });
+  }
+  const time = typeof completedOn === "string" && /^\d{4}-\d{2}-\d{2}$/.test(completedOn) ? Date.parse(`${completedOn}T00:00:00Z`) : NaN;
+  if (!Number.isFinite(time) || completedOn < "0001-01-01" || new Date(time).toISOString().slice(0, 10) !== completedOn || completedOn > southAfricaDate()) {
+    return res.status(400).json({ error: "Completion must be a real past-or-today date in YYYY-MM-DD format." });
+  }
+  req.body.activity = activity.trim();
   next();
 }
 
 module.exports = {
-  validateProviderMessagePayload,
-  validateHandlerPayload,
+  validateComplianceIds,
+  validateAuditLimit,
+  validateScreening,
+  validateCpdRecord,
   validateTaskIdParam,
   validateNewClaimPayload,
   validateNewRequestPayload,

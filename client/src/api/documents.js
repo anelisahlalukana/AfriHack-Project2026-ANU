@@ -36,12 +36,5 @@ export async function getConsentStatus(clientId) {
   return data;
 }
 
-export async function getAdviserCompliance(adviserId) {
-  const { data } = await http.get(`/api/advisers/${adviserId}/compliance`);
-  return data.compliance;
-}
-
-export async function updateAdviserCompliance(adviserId, updates) {
-  const { data } = await http.patch(`/api/advisers/${adviserId}/compliance`, updates);
-  return data.compliance;
-}
+// Compatibility exports for existing imports. Compliance requests have one API owner.
+export { getAdviserCompliance, updateAdviserCompliance } from './compliance'

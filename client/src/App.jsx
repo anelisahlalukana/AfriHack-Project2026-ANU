@@ -18,6 +18,7 @@ import Reminders from './pages/advisor/Reminders'
 import ClientProfile from './pages/advisor/ClientProfile'
 import ClientForm from './pages/advisor/ClientForm'
 import AdviserCompliance from './pages/advisor/AdviserCompliance'
+import Compliance from './pages/advisor/Compliance'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
@@ -61,7 +62,7 @@ function WorkspaceLayout() {
         <NavLink to="/clients"><Users size={18} /> Clients</NavLink>
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
-        <NavLink to={`/compliance/${session.user.id}`}><ShieldEllipsis size={18} /> My compliance</NavLink>
+        <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} />
     </aside>
@@ -133,6 +134,7 @@ export default function App() {
       <Route path="clients/new" element={<Navigate to="/clients?add=1" replace />} />
       <Route path="clients/:id" element={<ClientProfile />} />
       <Route path="clients/:id/edit" element={<ClientForm />} />
+      <Route path="compliance" element={<Compliance />} />
       <Route path="compliance/:adviserId" element={<AdviserCompliance />} />
       <Route path="tasks" element={<Tasks />} />
       <Route path="tasks/new" element={<NewRequest staff />} />

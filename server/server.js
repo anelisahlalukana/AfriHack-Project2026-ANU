@@ -8,6 +8,8 @@ const { requireClientAccess } = require("./src/middleware/clientAccess");
 const documentsController = require("./src/controllers/documents.controller");
 const documentsRoutes = require("./src/routes/documents.routes");
 const complianceRoutes = require("./src/routes/compliance.routes");
+const clientComplianceRoutes = require("./src/routes/clientCompliance.routes");
+const complianceDashboardRoutes = require("./src/routes/complianceDashboard.routes");
 const tasksRoutes = require("./src/routes/tasks.routes");
 const catalogRoutes = require("./src/routes/catalog.routes");
 const usersRoutes = require("./src/routes/users.routes");
@@ -66,6 +68,8 @@ app.get(
   documentsController.getConsentStatus
 );
 app.use("/api/advisers/:adviserId/compliance", complianceRoutes);
+app.use("/api/clients/:clientId/compliance", clientComplianceRoutes);
+app.use("/api/compliance", complianceDashboardRoutes);
 app.use("/api/tasks", tasksRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", catalogRoutes);

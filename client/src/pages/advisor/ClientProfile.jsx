@@ -1,11 +1,13 @@
+import { useState } from 'react'
+import ClientComplianceCard from '../../components/compliance/ClientComplianceCard'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import ExtendedProfile from '../../components/clients/ExtendedProfile'
 import { ArrowLeft, Pencil, Target } from 'lucide-react'
 import { useClients } from '../../hooks/useClients'
 import { money, totals, goalProgress } from '../../lib/financials'
-import ClientTasksPanel from '../../components/tasks/ClientTasksPanel'
 import { DocumentStatusList } from '../../components/documents/DocumentStatusList'
 export default function ClientProfile() {
+  const [complianceRevision, setComplianceRevision] = useState(0)
   const { id } = useParams()
   const location = useLocation()
   const { data: client, loading, error, retry } = useClients(id)
@@ -21,6 +23,7 @@ export default function ClientProfile() {
     <div className="two-columns"><section className="card"><h2>Client details</h2><dl>{[['Mobile', client.contact_mobile], ['Date of birth', client.date_of_birth], ['Nationality', client.nationality], ['Marital status', client.marital_status], ['Occupation', client.occupation], ['Employer', client.employer_name], ['Annual income', money(client.annual_income)], ['Address', client.physical_address], ['Risk profile', client.risk_profile_category], ['Politically exposed', client.is_politically_exposed ? 'Yes' : 'No']].map(([label, value]) => <div className="detail-row" key={label}><dt>{label}</dt><dd>{value || '—'}</dd></div>)}</dl></section><section className="card"><h2>Dependants</h2>{!client.client_dependants.length && <p>No dependants recorded.</p>}{client.client_dependants.map(person => <div className="detail-row" key={person.id}><span><b>{person.full_name}</b><small>{person.relationship || 'Relationship not specified'}{person.date_of_birth ? ` · Born ${person.date_of_birth}` : ''}</small></span><span>{person.beneficiary_percentage ?? 0}%<small>Beneficiary allocation</small></span></div>)}</section></div>
     <ClientTasksPanel clientId={id} />
     <ExtendedProfile key={client.id} client={client} onSaved={retry} />
-    <DocumentStatusList clientId={id} />
+    <DocumentStatusList key={id} clientId={id} onChanged={() => setComplianceRevision(n => n + 1)} />
+    <ClientComplianceCard key={`compliance-${id}`} clientId={id} reloadKey={complianceRevision} />
   </>
 }

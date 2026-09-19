@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import CpdBlock from '../compliance/CpdBlock'
 import { ShieldEllipsis } from 'lucide-react'
-import { getAdviserCompliance, updateAdviserCompliance } from '../../api/documents'
+import { getAdviserCompliance, updateAdviserCompliance } from '../../api/compliance'
 
 const QUALIFICATION_STATUSES = [
   { value: 'qualified', label: 'Qualified' },
@@ -27,7 +29,9 @@ function flagBadgeClass(flagged) {
 
 // Adviser-facing compliance status: qualification/CPD standing and
 // PEP / terrorism-financing screening flags, with an edit form.
-export function ComplianceTracker({ adviserId }) {
+export function ComplianceTracker({ adviserId, onChanged }) {
+  const { session } = useAuth()
+  const canEdit = session?.user.id === adviserId
   const [compliance, setCompliance] = useState(null)
   const [form, setForm] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -55,7 +59,6 @@ export function ComplianceTracker({ adviserId }) {
     try {
       const updated = await updateAdviserCompliance(adviserId, {
         qualificationStatus: form.qualificationStatus,
-        cpdStatus: form.cpdStatus,
         isPoliticallyExposed: form.isPoliticallyExposed,
         pepDetails: form.pepDetails,
         terrorismFinancingFlag: form.terrorismFinancingFlag,
@@ -65,6 +68,7 @@ export function ComplianceTracker({ adviserId }) {
       setForm(updated)
       setEditing(false)
       setReloadKey(key => key + 1)
+      onChanged?.()
     } catch (error) {
       setError(error.message)
     } finally {
@@ -75,12 +79,13 @@ export function ComplianceTracker({ adviserId }) {
   if (!compliance) {
     return <section className="card">
       <header className="section-heading"><div><h2><ShieldEllipsis size={20} /> Compliance</h2></div></header>
-      <p>{error || 'Loading…'}</p>
+      <p role={error ? 'alert' : 'status'}>{error || 'Loading…'}</p>
+      {error && <button onClick={() => setReloadKey(key => key + 1)}>Retry</button>}
     </section>
   }
 
   return <section className="card">
-    <header className="section-heading"><div><h2><ShieldEllipsis size={20} /> Compliance</h2><p>Qualification, CPD and screening status</p></div></header>
+    <header className="section-heading"><div><h2><ShieldEllipsis size={20} /> Compliance</h2><p>Qualification, CPD and adviser declarations</p></div></header>
     {error && <p className="error" role="alert">{error}</p>}
 
     {!editing ? (
@@ -96,14 +101,14 @@ export function ComplianceTracker({ adviserId }) {
               {CPD_STATUSES.find(s => s.value === compliance.cpdStatus)?.label || compliance.cpdStatus}
             </span>
           </div></div>
-          <div><small>PEP check</small><div style={{ marginTop: 4 }}>
+          <div><small>Adviser PEP declaration</small><div style={{ marginTop: 4 }}>
             <span className={flagBadgeClass(compliance.isPoliticallyExposed)}>
-              {compliance.isPoliticallyExposed ? 'Flagged' : 'Clear'}
+              {compliance.isPoliticallyExposed ? 'Flagged' : 'Not declared'}
             </span>
           </div></div>
-          <div><small>Terrorism financing check</small><div style={{ marginTop: 4 }}>
+          <div><small>Adviser terrorism-financing flag</small><div style={{ marginTop: 4 }}>
             <span className={flagBadgeClass(compliance.terrorismFinancingFlag)}>
-              {compliance.terrorismFinancingFlag ? 'Flagged' : 'Clear'}
+              {compliance.terrorismFinancingFlag ? 'Flagged' : 'Not flagged'}
             </span>
           </div></div>
         </div>
@@ -115,9 +120,9 @@ export function ComplianceTracker({ adviserId }) {
           </div>
         )}
 
-        <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+        {canEdit && <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
           <button type="button" className="primary" onClick={() => setEditing(true)}>Edit</button>
-        </div>
+        </div>}
       </>
     ) : (
       <form className="form-stack" onSubmit={handleSave}>
@@ -130,14 +135,7 @@ export function ComplianceTracker({ adviserId }) {
               {QUALIFICATION_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
             </select>
           </label>
-          <label>CPD status
-            <select
-              value={form.cpdStatus}
-              onChange={event => setForm({ ...form, cpdStatus: event.target.value })}
-            >
-              {CPD_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </label>
+
         </div>
 
         <div>
@@ -192,5 +190,9 @@ export function ComplianceTracker({ adviserId }) {
         </div>
       </form>
     )}
+    <CpdBlock adviserId={adviserId} cpd={compliance.cpd} canEdit={canEdit} onChanged={() => {
+      setReloadKey(key => key + 1)
+      onChanged?.()
+    }} />
   </section>
 }

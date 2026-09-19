@@ -1,5 +1,35 @@
 # Advisor workspace setup
 
+## Compliance module setup
+
+The compliance implementation adds `/compliance` to the advisor sidebar and keeps `/compliance/:adviserId` working. It needs the Express server and the shared Supabase database; `--demo` only substitutes the existing reminders backend, not compliance.
+
+1. Configure `server/.env` with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Configure `client/.env.local` from `client/.env.example`; set the same project's public URL/key and the Express API URL. Never put the service-role key in client configuration.
+2. Confirm the database already has the `users`, `roles`, `documents`, and `adviser_compliance` tables in `docs/schema.md`. The historic migrations are not a complete fresh-database bootstrap (001/002 reference the older `clients` model). Do not run the entire history blindly against an empty or existing database.
+3. Review and apply `supabase/migrations/202609190012_compliance.sql` to a disposable copy first, then the shared project through its SQL editor/deployment process. This creates three tables and the transactional `compliance_record_change` function. It also removes direct browser access to existing adviser compliance, so all writes go through advisor/self-checked API routes. New compliance tables must not already have end-user RLS policies; the migration rejects that mismatch.
+4. Run `npm ci --prefix server` and `npm ci --prefix client`. In separate terminals run `npm run dev --prefix server` and `npm run dev --prefix client`. Sign in as an Auth user whose app metadata role is `advisor`, then open `/compliance`.
+5. Document signing still needs the existing PDF templates in `DOCUMENT_TEMPLATES_BUCKET` (default `document-templates`) and private generated files in `CLIENT_DOCUMENTS_BUCKET` (default `client-documents`). This module does not convert or upload the supplied Word templates. Bucket/object access and actual signatures must be checked with real configured storage.
+
+Run the four automated checks: `npm test --prefix server`, `npm test --prefix client`, `npm run lint --prefix client`, and `npm run build --prefix client`. No new test glob or dependency is required.
+
+### Compliance acceptance checks on a disposable configured project
+
+- Apply migration 012 twice. Confirm anon/authenticated cannot access the new tables or execute the mutation RPC, and service-role audit UPDATE/DELETE/TRUNCATE is denied. Check that a failed audit insert rolls back a screening/adviser/CPD mutation. Database owners can change schema controls; append-only does not mean tamper-proof.
+- As adviser A, read adviser B's compliance but verify B's PATCH/CPD routes return 403. Clients/admins must get 403 on all compliance-specific routes; signed-out callers get 401. A UUID belonging to a non-adviser must not create an adviser-compliance record.
+- Run both client screening checks; verify source is visibly mocked. Declared PEP overrides a previous clear result. Only explicit `simulateFlag: true` forces a demo flag; it is refused in production. The mock provider remains a mock even without that flag.
+- Sign/renew consent on the existing document page and confirm the client card refreshes. Verify the signing audit uses the authenticated actor, not the typed signature name. There is deliberately no duplicate signature/consent implementation.
+- Attempt a financial refresh with valid, expired, missing, and malformed/duplicate consent, and with unavailable audit storage. Only valid consent with a persisted authorization audit may proceed. An allowed audit means authorization, not proof that the later snapshot write succeeded. If both verification and audit storage fail, the request is blocked and a server-side error is logged.
+- Add fractional CPD hours, test 18 hours, prior-cycle records, June rollover and concurrent submissions. The API derives current-cycle totals on every read; stored `cpd_status` is only a cache. Previous-cycle shortfalls are not automatically labelled overdue where historic evidence is absent.
+- Check dashboard counts with more than one API page of records, search/filter/empty/error states, client audit filtering, and phone/desktop layouts. All-client compliance visibility does not change claims/profile ownership rules.
+
+### Prototype policies and known limits
+
+Annual consent renewal and an 18-hour CPD target are prototype policies awaiting Royal Square's confirmation. The supplied consent wording continues until written cancellation; no withdrawal workflow is implemented here. Qualifications and CPD are self-recorded; PEP/terrorism screening is simulated. A compliant badge covers the tracked client controls only.
+
+The existing signing flow overwrites a fixed signed-PDF path and does not preserve document versions. Duplicate document rows are flagged as action required rather than repaired. Signature history/versioning, full document execution requirements, licence-specific CPD targets and complete regulatory certification remain outside this change.
+
+## Existing advisor workspace setup
+
 1. Create a Supabase project (or use the existing project with the tables in `docs/schema.md`).
 2. Run `supabase/migrations/202609190001_advisor_workspace.sql` in its SQL editor. It creates missing FNA tables, enables advisor-scoped RLS on all four tables, and installs the transactional `save_client_fna` function. Review existing policies and back up production data before applying migrations.
 3. Apply `supabase/migrations/202609190002_client_registration_roles.sql` before enabling sign-ups. It restricts all FNA table operations (including the save RPC) to administrator-provisioned staff roles, in addition to existing record ownership rules.

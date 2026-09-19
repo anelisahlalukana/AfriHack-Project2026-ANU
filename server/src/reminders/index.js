@@ -18,10 +18,10 @@ function createReminders({
     throw new Error("Demo identities must not be enabled in production.");
   if (!demo) {
     const { supabaseAdmin } = require("../config/supabaseClient");
-    const { getConsentStatus } = require("../services/documents.service");
+    const { checkFinancialPullConsent } = require("../services/compliance.service");
     const { createSharedService } = require("../services/reminders.service");
     const { createSharedRouter } = require("../routes/reminders.routes");
-    const service = createSharedService({ db: supabaseAdmin, checkConsent: getConsentStatus, push, pushPublicKey });
+    const service = createSharedService({ db: supabaseAdmin, checkConsent: checkFinancialPullConsent, push, pushPublicKey });
     return { service, router: createSharedRouter({ service, db: supabaseAdmin }) };
   }
   const dataStore =
