@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { FileText } from 'lucide-react'
-import { listDocuments, getDownloadUrl } from '../../api/documents'
+import { listDocuments, getDownloadUrl, sendDocument } from '../../api/documents'
+import { useAuth } from '../../hooks/useAuth'
+import { isStaff } from '../../lib/authRoles'
 import { DocumentCard } from './DocumentCard'
 
 const STATUS_LABEL = {
@@ -23,7 +25,12 @@ const ACKNOWLEDGE_TYPE = 'fais_disclosure'
 // `onlySent` hides documents that haven't been sent yet (used on the client's own
 // account page, where only what's actually been sent to them should show).
 // `emptyMessage` is shown when there is nothing to list.
+// Advisers (staff) only send documents; the client is the signer. So advisers get a "Send to
+// client" action and never the sign/upload options, and clients never get "Send".
 export function DocumentStatusList({ clientId, onlySent = false, emptyMessage }) {
+  const { user } = useAuth()
+  const isAdviser = isStaff(user)
+  const [sendingType, setSendingType] = useState(null)
   const [documents, setDocuments] = useState(null)
   const [error, setError] = useState('')
   const [openType, setOpenType] = useState(null)
@@ -43,6 +50,19 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage })
       window.open(url, '_blank', 'noopener,noreferrer')
     } catch (error) {
       setError(error.message)
+    }
+  }
+
+  async function handleSend(type) {
+    setSendingType(type)
+    try {
+      await sendDocument(clientId, type)
+      setError('')
+      setReloadKey(key => key + 1)
+    } catch (error) {
+      setError(error.message)
+    } finally {
+      setSendingType(null)
     }
   }
 
@@ -70,19 +90,26 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage })
           >
             View
           </button>
-          <button type="button" className="primary" onClick={() => setOpenType(doc.documentType)}>
-            {acknowledge ? 'Acknowledge' : 'Sign'}
-          </button>
+          {isAdviser
+            ? doc.status === 'not_sent' && (
+              <button type="button" className="primary" disabled={sendingType === doc.documentType} onClick={() => handleSend(doc.documentType)}>
+                {sendingType === doc.documentType ? 'Sending…' : 'Send to client'}
+              </button>
+            )
+            : (
+              <button type="button" className="primary" onClick={() => setOpenType(doc.documentType)}>
+                {acknowledge ? 'Acknowledge' : 'Sign'}
+              </button>
+            )}
         </span>
       </div>
     })}
 
-    {openDoc && (
+    {openDoc && !isAdviser && (
       <DocumentCard
         clientId={clientId}
         documentType={openDoc.documentType}
         label={openDoc.label}
-        status={openDoc.status}
         onClose={() => setOpenType(null)}
         onSigned={() => {
           setOpenType(null)

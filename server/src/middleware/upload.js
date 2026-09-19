@@ -1,25 +1,42 @@
 const multer = require("multer");
 const { MAX_UPLOAD_BYTES, ALLOWED_UPLOAD_TYPES } = require("../constants/taskConfig");
+const { SIGNED_UPLOAD_MAX_BYTES, SIGNED_UPLOAD_TYPES } = require("../constants/documentTypes");
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
-  fileFilter(req, file, cb) {
-    if (ALLOWED_UPLOAD_TYPES.some((pattern) => pattern.test(file.mimetype))) return cb(null, true);
-    cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "file"));
-  },
-});
-
-// One file in the `file` field: a photo, PDF or voice note. Multer errors become a clear 400.
-function singleTaskFile(req, res, next) {
-  upload.single("file")(req, res, (err) => {
-    if (!err) return next();
-    const error =
-      err.code === "LIMIT_FILE_SIZE"
-        ? `Files must be ${Math.round(MAX_UPLOAD_BYTES / (1024 * 1024))} MB or smaller`
-        : "Upload a photo, PDF or voice note";
-    res.status(400).json({ error });
+// Builds a middleware that accepts one file in the `file` field. Multer errors become a clear 400.
+function singleFileUpload({ maxBytes, allowedTypes, wrongTypeMessage }) {
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: maxBytes, files: 1 },
+    fileFilter(req, file, cb) {
+      if (allowedTypes.some((pattern) => pattern.test(file.mimetype))) return cb(null, true);
+      cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", "file"));
+    },
   });
+
+  return function (req, res, next) {
+    upload.single("file")(req, res, (err) => {
+      if (!err) return next();
+      const error =
+        err.code === "LIMIT_FILE_SIZE"
+          ? `Files must be ${Math.round(maxBytes / (1024 * 1024))} MB or smaller`
+          : wrongTypeMessage;
+      res.status(400).json({ error });
+    });
+  };
 }
 
-module.exports = { singleTaskFile };
+// A photo, PDF or voice note.
+const singleTaskFile = singleFileUpload({
+  maxBytes: MAX_UPLOAD_BYTES,
+  allowedTypes: ALLOWED_UPLOAD_TYPES,
+  wrongTypeMessage: "Upload a photo, PDF or voice note",
+});
+
+// A signed copy of a compliance document: PDF only.
+const singleDocumentFile = singleFileUpload({
+  maxBytes: SIGNED_UPLOAD_MAX_BYTES,
+  allowedTypes: SIGNED_UPLOAD_TYPES,
+  wrongTypeMessage: "Upload the signed document as a PDF file",
+});
+
+module.exports = { singleTaskFile, singleDocumentFile };
