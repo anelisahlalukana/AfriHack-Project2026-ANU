@@ -1,13 +1,18 @@
-// Simulated product-provider integration. Royal Square confirmed no real insurer
-// APIs are available for the hackathon, so every exchange is mocked, but each one
-// is logged in provider_events so the pass-through is visible in the data.
+// The product-provider side of a claim or request. Royal Square confirmed no real
+// insurer APIs are available for the hackathon, so:
+//   * the insurer's automatic API replies (claim registered, request received) are
+//     mocked here and happen straight away on submit, and
+//   * everything a person at the insurer does (complete a step, post a weekly
+//     update, decline, reply) comes from the provider portal (providerPortal.service.js).
+// Every exchange is logged in provider_events so the pass-through is visible in the data.
 const crypto = require("crypto");
 const { supabaseAdmin } = require("../config/supabaseClient");
-const { MOCK_HANDLERS } = require("../constants/taskConfig");
+const { MOCK_HANDLERS, CLOSED_STATUSES } = require("../constants/taskConfig");
 const { moveToStage, stagesFor, addUpdate, patchTask } = require("./workflow.service");
-const { findStage, nextStage, declinedStage, mainSteps } = require("../utils/workflow");
-const { badRequest } = require("../utils/httpError");
+const { declinedStage, mainSteps, providerAction } = require("../utils/workflow");
+const { badRequest, conflict } = require("../utils/httpError");
 
+// direction: 'sent' (Royal Square -> provider) or 'received' (provider -> Royal Square).
 async function logEvent(task, providerId, direction, eventType, payload) {
   const { error } = await supabaseAdmin.from("provider_events").insert({
     task_id: task.id,
@@ -19,8 +24,9 @@ async function logEvent(task, providerId, direction, eventType, payload) {
   if (error) throw new Error(error.message);
 }
 
-function providerActor(provider) {
-  return { type: "provider", label: provider?.name || "Product provider" };
+// Clients see the organisation, not the person at the insurer.
+function providerActor(provider, userId = null) {
+  return { type: "provider", label: provider?.name || "Product provider", userId };
 }
 
 function referenceNumber(provider) {
@@ -41,7 +47,8 @@ function outboundPayload(task) {
   };
 }
 
-// Claim submitted -> insurer returns a claim number and a claims handler (step 1, every category).
+// Claim submitted -> the insurer's system returns a claim number and assigns a
+// claims handler (step 1, every category). The handler can be changed in the portal.
 async function registerClaim(task, provider) {
   await logEvent(task, provider.id, "sent", "claim_submitted", outboundPayload(task));
 
@@ -77,49 +84,48 @@ async function submitRequest(task, provider) {
   });
 }
 
-// Demo control: the insurer pushes the next update it is responsible for
-// (authorisation, weekly repair update, payment, decline).
-async function simulateProviderEvent(task, { decline = false, note } = {}) {
+function cleanText(note) {
+  return typeof note === "string" && note.trim() ? note.trim().slice(0, 2000) : null;
+}
+
+// The provider completes its next step, or posts an update on a repeating step
+// (weekly repair updates). `by` is the person at the provider, for the audit log.
+async function respond(task, { note, by } = {}) {
   const provider = task.provider;
   if (!provider) throw badRequest("This request has no product provider");
-  if (["completed", "declined", "cancelled", "draft"].includes(task.status)) {
-    throw badRequest("This request is not active");
-  }
+  if (task.status === "awaiting_client") throw conflict("This step is waiting on the client.");
 
   const stages = await stagesFor(task);
-  const actor = providerActor(provider);
-  const cleanNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 2000) : null;
+  const action = providerAction(task, stages);
+  if (!action) throw conflict(`Nothing is waiting on ${provider.name} right now.`);
 
-  if (decline) {
-    const declined = declinedStage(stages);
-    await logEvent(task, provider.id, "received", "declined", { note: cleanNote });
-    return moveToStage(task, declined.stage_key, actor, {
-      note: cleanNote || `${provider.name} declined this ${task.task_type === "claim" ? "claim" : "request"}.`,
-    });
-  }
+  const actor = providerActor(provider, by?.userId);
+  const text = cleanText(note);
 
-  const current = findStage(stages, task.current_stage);
-  const next = nextStage(stages, task.current_stage);
-
-  // A repeatable provider step (weekly repair updates) posts an update without moving on,
-  // unless the provider's next step is also theirs and the adviser asked to advance.
-  if (current?.repeatable && current.actor === "provider" && (!next || next.actor !== "provider")) {
-    const update = cleanNote || `Weekly update from ${provider.name}: work is progressing as planned.`;
-    await logEvent(task, provider.id, "received", "progress_update", { note: update });
-    await addUpdate(task, { stage: current.stage_key, note: update, actorType: "provider", actorLabel: provider.name, kind: "provider_event" });
+  if (action.kind === "update") {
+    const update = text || `Update from ${provider.name}: work is progressing as planned.`;
+    await logEvent(task, provider.id, "received", "progress_update", { note: update, by: by?.label || null });
+    await addUpdate(task, { stage: action.stage.stage_key, note: update, actorType: "provider", actorLabel: provider.name, userId: by?.userId || null, kind: "provider_event" });
     return patchTask(task.id, {});
   }
 
-  if (task.status === "awaiting_client") {
-    throw badRequest("This step is waiting on the client before the provider can respond.");
-  }
-  if (!next || next.actor !== "provider") {
-    const who = next ? (next.actor === "client" ? "the client" : "Royal Square") : "nobody";
-    throw badRequest(`The next step is for ${who}, not ${provider.name}.`);
-  }
-
-  await logEvent(task, provider.id, "received", next.stage_key, { note: cleanNote });
-  return moveToStage(task, next.stage_key, actor, { note: cleanNote || next.stage_label });
+  await logEvent(task, provider.id, "received", action.stage.stage_key, { note: text, by: by?.label || null });
+  return moveToStage(task, action.stage.stage_key, actor, { note: text || action.stage.stage_label });
 }
 
-module.exports = { registerClaim, submitRequest, simulateProviderEvent };
+// The provider declines the claim or request. A reason is required: the client sees it.
+async function decline(task, { note, by } = {}) {
+  const provider = task.provider;
+  if (!provider) throw badRequest("This request has no product provider");
+  if (CLOSED_STATUSES.includes(task.status) || task.status === "draft") throw conflict("This request is not active");
+  const reason = cleanText(note);
+  if (!reason) throw badRequest("Give the reason for declining. The client and Royal Square will see it.");
+
+  const stages = await stagesFor(task);
+  const declined = declinedStage(stages);
+  if (!declined) throw badRequest("This workflow has no declined outcome");
+  await logEvent(task, provider.id, "received", "declined", { note: reason, by: by?.label || null });
+  return moveToStage(task, declined.stage_key, providerActor(provider, by?.userId), { note: reason });
+}
+
+module.exports = { logEvent, providerActor, registerClaim, submitRequest, respond, decline };

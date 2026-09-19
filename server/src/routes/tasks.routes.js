@@ -8,12 +8,14 @@ const {
   validateDraftPayload,
   validateTaskUpdatePayload,
   validateClientActionPayload,
+  validateProviderMessagePayload,
 } = require("../middleware/validate");
 const { ADVISOR_ROLE } = require("../constants/roles");
 const controller = require("../controllers/tasks.controller");
 
 // Mounted at /api/tasks. Advisors and clients share these routes; the service
-// decides what each may see and do. Closing and the mock insurer are advisor-only.
+// decides what each may see and do. Closing and messaging the insurer are advisor-only.
+// Insurers work their side in the provider portal (routes/provider.routes.js).
 const router = express.Router();
 router.use(requireAuth);
 
@@ -29,6 +31,6 @@ router.post("/:taskId/client-action", validateTaskIdParam, validateClientActionP
 router.post("/:taskId/files", validateTaskIdParam, singleTaskFile, controller.uploadFile);
 router.get("/:taskId/files/:fileId/url", validateTaskIdParam, controller.getFileUrl);
 router.post("/:taskId/close", requireRole([ADVISOR_ROLE]), validateTaskIdParam, validateTaskUpdatePayload, controller.closeTask);
-router.post("/:taskId/mock-provider/event", requireRole([ADVISOR_ROLE]), validateTaskIdParam, validateTaskUpdatePayload, controller.simulateProvider);
+router.post("/:taskId/provider-messages", requireRole([ADVISOR_ROLE]), validateTaskIdParam, validateProviderMessagePayload, controller.messageProvider);
 
 module.exports = router;

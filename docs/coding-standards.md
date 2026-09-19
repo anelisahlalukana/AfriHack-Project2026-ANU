@@ -100,9 +100,10 @@ Write the message for the person using the app, not a stack trace — e.g.
   token from the `Authorization: Bearer <token>` header, attaches `req.user`).
 - Role checks use `requireRole(["admin"])` and read `req.user.app_metadata.role` — never a
   client-supplied role value. Roles live in `server/src/constants/roles.js`
-  (`admin` / `advisor`); clients have no staff role. `provider` is **not** a login role —
-  it's the mocked external insurer/integration layer (see `docs/system_requirments.md`),
-  never a value in `app_metadata.role`.
+  (`admin` / `advisor`); clients have no staff role. Insurers sign in to the provider
+  portal with `app_metadata.role = 'provider'` plus `app_metadata.provider_id` (their
+  organisation's `users` row, `role_id` 2). They are not staff: provider routes use
+  `requireRole(["provider"])` and the service checks `provider_id` on every call.
 - Never trust anything about identity/permissions that came from the request body.
 
 ### No hardcoding

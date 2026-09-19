@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isStaff, isAdmin, accountHome, loginDestination } from '../src/lib/authRoles.js'
+import { isStaff, isAdmin, isProvider, accountHome, loginDestination } from '../src/lib/authRoles.js'
 
 test('public accounts, editable metadata, and non-staff roles cannot grant staff access', () => {
   for (const user of [
@@ -8,11 +8,11 @@ test('public accounts, editable metadata, and non-staff roles cannot grant staff
     {},
     { user_metadata: { role: 'advisor' } },
     { app_metadata: { role: 'client' } },
-    { app_metadata: { role: 'provider' } }, // mocked integration layer, never a login role
     { app_metadata: { role: 'broker' } }, // merged into 'advisor'
     { app_metadata: { role: 'unexpected' } },
   ]) {
     assert.equal(isStaff(user), false)
+    assert.equal(isProvider(user), false)
     assert.equal(accountHome(user), '/account')
     assert.equal(loginDestination(user, '/clients/new'), '/account')
   }
@@ -37,4 +37,17 @@ test('login redirects reject external destinations and auth loops', () => {
   for (const from of ['https://example.com', '//example.com', '/\\example.com', '/login', '/signup?next=test', null, {}]) {
     assert.equal(loginDestination(user, from), '/')
   }
+})
+test('providers are not staff and only land in the provider portal', () => {
+  const user = { app_metadata: { role: 'provider', provider_id: 'x' } }
+  assert.equal(isStaff(user), false)
+  assert.equal(isProvider(user), true)
+  assert.equal(accountHome(user), '/provider')
+  assert.equal(loginDestination(user, null), '/provider')
+  assert.equal(loginDestination(user, '/provider/tasks/123'), '/provider/tasks/123')
+  for (const from of ['/clients/new', '/account', '/admin', '/providers', 'https://example.com']) {
+    assert.equal(loginDestination(user, from), '/provider')
+  }
+  // Only app_metadata counts: a user can edit user_metadata themselves.
+  assert.equal(isProvider({ user_metadata: { role: 'provider' } }), false)
 })

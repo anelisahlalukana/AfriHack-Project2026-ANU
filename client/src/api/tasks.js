@@ -64,8 +64,9 @@ export async function closeTask(taskId, body) {
   return data.task;
 }
 
-export async function simulateProviderEvent(taskId, body = {}) {
-  const { data } = await http.post(`/api/tasks/${taskId}/mock-provider/event`, body);
+// Staff: message the product provider (it appears in the provider portal). { note }
+export async function messageProvider(taskId, body) {
+  const { data } = await http.post(`/api/tasks/${taskId}/provider-messages`, body);
   return data.task;
 }
 

@@ -222,6 +222,8 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .rs-check .rs-tick:has(input:checked){background:var(--rs-ok);border-color:var(--rs-ok);color:#fff}
 .rs-check .rs-tick:has(input:focus-visible){outline:2px solid var(--rs-red-text);outline-offset:2px}
 .rs-portal-top img{width:190px;height:auto}
+/* provider portal */
+.rs-form.rs-needs label{flex:none}
 /* === end claims & requests === */
 /* Client claims: header with the "Log a claim" dropdown, and claim pages fitted to the phone-width client area. */
 .claims-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}

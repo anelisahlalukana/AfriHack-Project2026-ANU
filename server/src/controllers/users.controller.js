@@ -11,11 +11,11 @@ async function listUsers(req, res) {
 
 async function createUser(req, res) {
   try {
-    const { email, fullName, role } = req.body;
-    const user = await usersService.createStaffUser({ email, fullName, role });
+    const { email, fullName, role, providerId } = req.body;
+    const user = await usersService.createStaffUser({ email, fullName, role, providerId });
     res.status(201).json({ user });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(err.status || 500).json({ error: err.message });
   }
 }
 

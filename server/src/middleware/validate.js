@@ -1,5 +1,5 @@
 const { DOCUMENT_TYPE_VALUES, ACKNOWLEDGE_ONLY_TYPES } = require("../constants/documentTypes");
-const { ROLES } = require("../constants/roles");
+const { ACCOUNT_ROLES, PROVIDER_ROLE } = require("../constants/roles");
 const { QUALIFICATION_STATUSES, CPD_STATUSES } = require("../constants/complianceStatuses");
 
 function validateDocumentType(req, res, next) {
@@ -68,8 +68,12 @@ function validateNewUserPayload(req, res, next) {
   if (typeof fullName !== "string" || fullName.trim().length === 0) {
     return res.status(400).json({ error: "Field 'fullName' is required" });
   }
-  if (!ROLES.includes(role)) {
-    return res.status(400).json({ error: `Field 'role' must be one of: ${ROLES.join(", ")}` });
+  if (!ACCOUNT_ROLES.includes(role)) {
+    return res.status(400).json({ error: `Field 'role' must be one of: ${ACCOUNT_ROLES.join(", ")}` });
+  }
+  const { providerId } = req.body;
+  if (role === PROVIDER_ROLE && (typeof providerId !== "string" || !UUID_PATTERN.test(providerId))) {
+    return res.status(400).json({ error: "Choose which provider this login is for" });
   }
 
   next();
@@ -278,7 +282,26 @@ function validateClientActionPayload(req, res, next) {
   next();
 }
 
+// Provider portal: a reply to Royal Square (required text) or a new claims handler name.
+function validateProviderMessagePayload(req, res, next) {
+  const { note } = req.body || {};
+  if (typeof note !== "string" || !note.trim() || note.length > MAX_TASK_NOTE_LENGTH) {
+    return res.status(400).json({ error: `Write a message of at most ${MAX_TASK_NOTE_LENGTH} characters` });
+  }
+  next();
+}
+
+function validateHandlerPayload(req, res, next) {
+  const { name } = req.body || {};
+  if (typeof name !== "string" || !name.trim() || name.trim().length > 120) {
+    return res.status(400).json({ error: "Enter the claims handler's name (at most 120 characters)" });
+  }
+  next();
+}
+
 module.exports = {
+  validateProviderMessagePayload,
+  validateHandlerPayload,
   validateTaskIdParam,
   validateNewClaimPayload,
   validateNewRequestPayload,
