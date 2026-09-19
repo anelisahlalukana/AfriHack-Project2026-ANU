@@ -30,7 +30,7 @@ export default function ClientLayout() {
 
   return <div className="client-shell">
     <header className="client-top"><img src="/images/slogan.png" alt="Royal Square Financial" /></header>
-    <main className="client-content"><Outlet context={{ user, client, clientError }} /></main>
+    <main className="client-content"><Outlet context={{ user, client, clientError, setClient }} /></main>
     <nav className="bottom-nav" aria-label="Main">
       <NavLink to="/account" end><House size={22} /> Home</NavLink>
       <NavLink to="/account/documents"><FileText size={22} /> Documents</NavLink>

@@ -74,3 +74,11 @@ Set-up, in order:
 4. Optional: `CLIENT_ORIGIN` limits which website may call the API (default: `http://localhost:5173`), and `REMINDERS_TICK_MS` changes how often due reminders are fired and waiting push messages are sent (default 30000).
 
 Checks: `npm test --prefix server` (24 tests, no database needed). `node server/scripts/e2e-reminders.js --yes` runs an end-to-end test against the real Supabase project with throwaway accounts and deletes everything it created.
+
+## Extended client profile
+
+Run `supabase/migrations/202609190006_extended_client_profile.sql` against the current `public.users` schema. This adds `extended_profile` JSONB and ownership-checked RPCs to read/save a client's full profile with dependants in a single transaction. No existing rows or financial goals are migrated or deleted on installation.
+
+Clients can edit the full form under **Profile** (`/account/profile`); assigned advisors see the same form on the client profile. The form covers all supplied personal, marital, education, work, rewards, referral, HR, tax, doctor, salary/alternate banking, contact, address and spouse/parent fields. Immediate and long-term planning goals are text lists; financial goals with target balances remain in their existing editor. Dependants reuse existing records and retain IDs after edits. Sign-in ID numbers for linked accounts are read-only in this form.
+
+Apply the migration before loading the updated client profile page. Verify a client and assigned advisor can save and reload additional fields, leading-zero account/branch codes, multiple dependants, and both planning-goal lists. Verify an unrelated user cannot read or save the profile via the RPC. Invalid allocations or dependant data must roll back the entire save. Existing assets, liabilities, financial goals, login linkage and advisor assignment must stay unchanged.

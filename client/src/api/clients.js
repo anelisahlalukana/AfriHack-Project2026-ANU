@@ -34,6 +34,7 @@ export async function finishRegistration() {
 }
 // A signed-in client's own record (null if their login has no client profile). Reads through
 // RLS (client_manage_own_row), which only ever returns the row whose auth_user_id is the caller.
-export const getOwnClient = authUserId => result(supabase.from('users')
-  .select('id, first_name, second_name, surname, id_number, contact_email, contact_mobile, physical_address')
-  .eq('auth_user_id', authUserId).maybeSingle())
+export const getOwnClient = () => result(supabase.rpc('get_client_profile_details', { p_id: null }))
+export const saveProfileDetails = (id, { columns, extra, dependants }) => result(supabase.rpc('save_client_profile_details', {
+  p_id: id, p_columns: columns, p_extra: extra, p_dependants: dependants,
+}))
