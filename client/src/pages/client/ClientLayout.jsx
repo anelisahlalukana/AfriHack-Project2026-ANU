@@ -50,7 +50,7 @@ export default function ClientLayout() {
     </header>
     <main className="client-content">
       {signOutError && <p className="error card" role="alert">{signOutError}</p>}
-      <Outlet context={{ user, client, clientError, openAsk: () => setAskOpen(true) }} />
+      <Outlet context={{ user, client, clientError, setClient, openAsk: () => setAskOpen(true) }} />
     </main>
     {client && <AskChat open={askOpen} onOpen={() => setAskOpen(true)} onClose={() => setAskOpen(false)} name={client.first_name} />}
     <nav className="bottom-nav" aria-label="Main">
