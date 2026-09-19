@@ -26,3 +26,14 @@ export async function loginClient({ idNumber, password }) {
   const { data } = await http.post('/api/clients/login', { id_number: idNumber, password })
   return data.session
 }
+// Sends the client's day-one documents. Called right after their email code is verified;
+// the server never fails this for the client, it just reports which documents couldn't be sent.
+export async function finishRegistration() {
+  const { data } = await http.post('/api/clients/finish-registration')
+  return data
+}
+// A signed-in client's own record (null if their login has no client profile). Reads through
+// RLS (client_manage_own_row), which only ever returns the row whose auth_user_id is the caller.
+export const getOwnClient = authUserId => result(supabase.from('users')
+  .select('id, first_name, second_name, surname, id_number, contact_email, contact_mobile, physical_address')
+  .eq('auth_user_id', authUserId).maybeSingle())

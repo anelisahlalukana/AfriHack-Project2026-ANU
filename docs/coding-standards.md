@@ -27,7 +27,9 @@ server/src/
   config/       client setup (Supabase admin client, ...)
 
 client/src/
-  pages/        one file per route, composes components + hooks
+  pages/        one file per route, composes components + hooks. Role pages live in
+                admin/, advisor/ and client/; pages every role shares (Login, ResetPassword)
+                stay at the top level
   components/   reusable UI, grouped by feature folder (components/documents/*)
   api/          one file per backend resource — axios calls only, no business logic
   hooks/        reusable stateful logic (useAuth, useClients, ...)
@@ -210,7 +212,7 @@ async function submit(event) {
 ```
 
 Forms with dynamic/repeating fields (client onboarding) use `react-hook-form`
-(`useForm`, `useFieldArray`) — see `pages/ClientForm.jsx`. Don't hand-roll controlled-input
+(`useForm`, `useFieldArray`) — see `pages/advisor/ClientForm.jsx`. Don't hand-roll controlled-input
 state management for a form that already fits one of these two patterns.
 
 ### Auth & role gating

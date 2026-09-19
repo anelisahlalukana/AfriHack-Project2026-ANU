@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Plus, ArrowUpRight, Users, Wallet, Target } from 'lucide-react'
-import { useClients } from '../hooks/useClients'
-import { money, totals } from '../lib/financials'
+import { useClients } from '../../hooks/useClients'
+import { money, totals } from '../../lib/financials'
 export default function Dashboard() {
   const { data, loading, error, retry } = useClients()
   const [query, setQuery] = useState('')

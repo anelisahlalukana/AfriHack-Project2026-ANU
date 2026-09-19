@@ -6,15 +6,18 @@ import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
-import CompleteRegistration from './pages/CompleteRegistration'
-import ClientAccount from './pages/ClientAccount'
-import Dashboard from './pages/Dashboard'
-import ClientProfile from './pages/ClientProfile'
-import AddClient from './pages/AddClient'
-import ClientForm from './pages/ClientForm'
-import AdviserCompliance from './pages/AdviserCompliance'
-import AdminDashboard from './pages/AdminDashboard'
-import AdminUsers from './pages/AdminUsers'
+import CompleteRegistration from './pages/client/CompleteRegistration'
+import ClientLayout from './pages/client/ClientLayout'
+import ClientHome from './pages/client/ClientHome'
+import ClientDocuments from './pages/client/ClientDocuments'
+import MyProfile from './pages/client/MyProfile'
+import Dashboard from './pages/advisor/Dashboard'
+import ClientProfile from './pages/advisor/ClientProfile'
+import AddClient from './pages/advisor/AddClient'
+import ClientForm from './pages/advisor/ClientForm'
+import AdviserCompliance from './pages/advisor/AdviserCompliance'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminUsers from './pages/admin/AdminUsers'
 import './App.css'
 
 function SignOutBlock({ onSignOut }) {
@@ -76,7 +79,13 @@ export default function App() {
     <Route path="/login" element={<Login />} />
     <Route path="/complete-registration" element={<CompleteRegistration />} />
     <Route path="/reset-password" element={<ResetPassword />} />
-    <Route element={<ProtectedRoute />}><Route path="/account" element={<ClientAccount />} /></Route>
+    <Route element={<ProtectedRoute />}>
+      <Route path="/account" element={<ClientLayout />}>
+        <Route index element={<ClientHome />} />
+        <Route path="documents" element={<ClientDocuments />} />
+        <Route path="profile" element={<MyProfile />} />
+      </Route>
+    </Route>
 
     <Route element={<ProtectedRoute staffOnly adminOnly />}>
       <Route element={<AdminLayout />}>

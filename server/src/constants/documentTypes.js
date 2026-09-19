@@ -35,4 +35,18 @@ const DOCUMENT_TYPE_VALUES = DOCUMENT_TYPES.map((d) => d.type);
 
 const DOCUMENT_STATUSES = ["not_sent", "sent", "signed", "filed"];
 
-module.exports = { DOCUMENT_TYPES, DOCUMENT_TYPE_VALUES, DOCUMENT_STATUSES };
+// Sent to a client automatically when they finish registering. The other three
+// types are sent later by an adviser.
+const REGISTRATION_DOCUMENT_TYPES = ["fais_disclosure", "confidentiality_agreement"];
+
+// Acknowledged with a typed name instead of a drawn signature. Still ends up as
+// status 'signed'; the signature image is simply optional for these types.
+const ACKNOWLEDGE_ONLY_TYPES = ["fais_disclosure"];
+
+module.exports = {
+  DOCUMENT_TYPES,
+  DOCUMENT_TYPE_VALUES,
+  DOCUMENT_STATUSES,
+  REGISTRATION_DOCUMENT_TYPES,
+  ACKNOWLEDGE_ONLY_TYPES,
+};
