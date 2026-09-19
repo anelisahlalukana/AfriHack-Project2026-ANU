@@ -24,7 +24,7 @@ async function signDocument(req, res) {
     const document = await documentsService.signDocument(req.params.clientId, req.params.type, {
       signature,
       signerName,
-    });
+    }, req.user);
     res.json({ document });
   } catch (err) {
     res.status(500).json({ error: err.message });

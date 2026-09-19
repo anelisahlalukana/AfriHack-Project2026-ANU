@@ -23,7 +23,7 @@ const ACKNOWLEDGE_TYPE = 'fais_disclosure'
 // `onlySent` hides documents that haven't been sent yet (used on the client's own
 // account page, where only what's actually been sent to them should show).
 // `emptyMessage` is shown when there is nothing to list.
-export function DocumentStatusList({ clientId, onlySent = false, emptyMessage }) {
+export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, onChanged }) {
   const [documents, setDocuments] = useState(null)
   const [error, setError] = useState('')
   const [openType, setOpenType] = useState(null)
@@ -87,6 +87,7 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage })
         onSigned={() => {
           setOpenType(null)
           setReloadKey(key => key + 1)
+          onChanged?.()
         }}
       />
     )}
