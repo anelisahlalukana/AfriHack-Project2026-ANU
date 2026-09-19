@@ -3,11 +3,13 @@
 Nothing is pushed straight to `development` or `main`. Work happens on a branch, goes in through a pull request, and only merges once CI is green.
 
 ```
-feature/*  ──PR──▶  development  ──PR──▶  main  ──▶  Vercel production
-              │                     │
+feature/*  ──PR──▶  development  ──PR──▶  main  ──▶  CI  ──▶  Vercel production (client)
+              │                     │                    └──▶  Render production (backend)
               ├─ CI (lint, tests, build)           ├─ CI again on the merged commit
-              └─ Vercel preview + URL comment      └─ deploy to production
+              └─ Vercel preview + URL comment      └─ deploy client and backend to production
 ```
+
+The client and the backend share one gate: both production deploys run from the same job in [deploy.yml](../.github/workflows/deploy.yml), and only after CI has passed. Neither host deploys on its own.
 
 ## What runs when
 
@@ -15,7 +17,7 @@ feature/*  ──PR──▶  development  ──PR──▶  main  ──▶  V
 | --- | --- | --- |
 | [ci.yml](../.github/workflows/ci.yml) | PR into `development` or `main` | **Client:** lint, unit tests, component tests, production build. **Server:** lint, tests, and a boot smoke test that starts `server.js` and calls `/api/health`. A final **CI passed** job summarises the result; that is the check to require. |
 | [deploy.yml](../.github/workflows/deploy.yml) | PR into `development` or `main` | Builds and deploys a Vercel **preview** and comments the URL on the PR (updated on every push). |
-| [deploy.yml](../.github/workflows/deploy.yml) | Merge / push to `main` | Runs CI again, then deploys to Vercel **production**. A failing CI blocks the deploy. |
+| [deploy.yml](../.github/workflows/deploy.yml) | Merge / push to `main` | Runs CI again, then deploys the client to Vercel **production** and triggers the backend deploy on Render. A failing CI blocks both. |
 | [release-pr.yml](../.github/workflows/release-pr.yml) | Push to `development` | Opens a `development` → `main` pull request if `development` is ahead and none is open. Optional; delete the file if you would rather open release PRs by hand. |
 
 ## One-time setup
@@ -27,7 +29,7 @@ feature/*  ──PR──▶  development  ──PR──▶  main  ──▶  V
 3. Under **Settings → Environment Variables**, add these for **both Production and Preview**:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_API_BASE_URL`: the public URL of the backend (see [The backend](#the-backend-is-not-deployed-by-this-pipeline)).
+   - `VITE_API_BASE_URL`: the public URL of the backend (see [The backend](#the-backend-deploys-through-this-pipeline)).
 4. Vercel's own Git integration is switched off by `client/vercel.json` (`git.deploymentEnabled: false`), so the workflows are the only thing that deploys. That is what lets CI gate production.
 
 ### 2. GitHub repository secrets
@@ -39,9 +41,10 @@ In **Settings → Secrets and variables → Actions**, add:
 | `VERCEL_TOKEN` | Vercel → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | `.vercel/project.json` after running `vercel link` in the repo root (`orgId`), or Vercel team settings |
 | `VERCEL_PROJECT_ID` | Same file (`projectId`), or the project's Settings → General |
+| `RENDER_DEPLOY_HOOK_URL` | Render → the backend service → Settings → Deploy Hook |
 | `RELEASE_PR_TOKEN` *(optional)* | A fine-grained personal access token with **Pull requests: read and write** on this repo. Without it, the auto-opened release PR is created but GitHub does not start CI on it (a GitHub rule for PRs opened with the built-in token). Close and reopen the PR to trigger CI, or add the token. |
 
-Until the three Vercel secrets exist, PR previews are skipped with a warning and the production job fails with a message naming what is missing.
+Until the three Vercel secrets exist, PR previews are skipped with a warning and the production job fails with a message naming what is missing. The production job also fails, with a message naming the secret, if `RENDER_DEPLOY_HOOK_URL` is missing; it never silently skips the backend deploy. Treat the hook URL as a secret: anyone who has it can trigger a deploy. If it leaks, regenerate it in Render and update the GitHub secret.
 
 ### 3. GitHub settings that enforce "PR only, no direct push"
 
@@ -76,14 +79,20 @@ done
 
 Branch protection on a private repository needs a paid GitHub plan; on a free plan private repository the rules can be created but are not enforced.
 
-## The backend is not deployed by this pipeline
+## The backend deploys through this pipeline
 
-Only the React client (`client/`) goes to Vercel. `server/` is a long-running Express process with an in-process reminder scheduler, and it binds to `127.0.0.1`, so it does not fit Vercel's serverless functions without a rewrite. Host it somewhere that runs a Node process (Render, Railway, Fly.io, a VPS, ...) and then:
+The React client (`client/`) goes to Vercel. `server/` is a long-running Express process with an in-process reminder scheduler, and it binds to `127.0.0.1`, so it does not fit Vercel's serverless functions; it runs as a Node service on Render.
 
-- set `VITE_API_BASE_URL` in Vercel to that server's public URL;
-- set `CLIENT_ORIGIN` on the server to the production Vercel URL, because the API only allows CORS from that origin. Preview URLs change on every deploy, so previews will only reach the API if their origin is allowed too.
+The backend goes through the same gate as the client. After CI passes on a push to `main`, the `production` job in [deploy.yml](../.github/workflows/deploy.yml) deploys the client to Vercel and then calls the service's Render **deploy hook** (`RENDER_DEPLOY_HOOK_URL`), which tells Render to build and deploy the backend. A failing CI blocks both, and a failed Vercel deploy stops the job before the hook is called.
 
-CI still lints, tests and boot-tests the server on every PR; only the deployment is separate.
+**Turn off Render's Auto-Deploy.** In Render → the backend service → Settings → Build & Deploy, set **Auto-Deploy** to off. If it stays on, Render deploys directly on every push to the tracked branch regardless of the CI result, and the gate above means nothing. The deploy hook still works with Auto-Deploy off; that is the only way the backend should deploy.
+
+Things to know:
+
+- The hook only queues the deploy. The workflow step succeeds as soon as Render accepts the request, so a build or start-up failure on Render shows in Render's dashboard, not in the GitHub run. CI's boot smoke test is what protects against a server that doesn't start.
+- Preview deployments are Vercel only. There is no Render preview environment.
+- Set `VITE_API_BASE_URL` in Vercel to the Render service's public URL.
+- Set `CLIENT_ORIGIN` on the server (in Render's environment settings) to the production Vercel URL, because the API only allows CORS from that origin. Preview URLs change on every deploy, so previews will only reach the API if their origin is allowed too.
 
 ## Running the checks locally
 
@@ -101,4 +110,4 @@ cd server && npm ci && npm run lint && npm test
 
 ## Rolling back
 
-Production is a normal Vercel deployment. To roll back, promote an earlier deployment in the Vercel dashboard (**Deployments → ⋯ → Promote to Production**), then fix forward through a pull request. Reverting the merge on `main` also works and redeploys through the same pipeline.
+Production is a normal Vercel deployment. To roll back, promote an earlier deployment in the Vercel dashboard (**Deployments → ⋯ → Promote to Production**), then fix forward through a pull request. Reverting the merge on `main` also works and redeploys through the same pipeline. The backend rolls back separately, from the service's deploy history in the Render dashboard.
