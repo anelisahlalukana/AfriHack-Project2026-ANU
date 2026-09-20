@@ -29,5 +29,3 @@ Based on the brief, the transcript, and Vusi's Q&A follow-up — note there are 
 - Provider portal (`/provider`): each insurer's login sees only the claims and requests sent to it, completes its own steps, posts progress updates, declines with a reason, reassigns the claims handler, uploads documents and messages Royal Square
 - Receives document/data pass-through (API, direct integration, or file transfer) — the brief's stated "more automatic pass-through, more useful" principle
 - Client Consent-driven data pull (aggregator/bank/pension/insurer) feeding the net-worth dashboard
-
-Want me to fold this into the project doc, or leave it as a standalone answer here?
