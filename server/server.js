@@ -19,35 +19,17 @@ const dashboardRoutes = require("./src/routes/dashboard.routes");
 const auditLogRoutes = require("./src/routes/auditLog.routes");
 const reportsRoutes = require("./src/routes/reports.routes");
 const { createReminders } = require("./src/reminders");
-const webpush = require("web-push");
+const { createPushSender } = require("./src/utils/pushSender");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 const demo = process.argv.includes("--demo");
-let push;
-const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = process.env;
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT) {
-  try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-    push = (subscription, payload) =>
-      webpush.sendNotification(subscription, JSON.stringify(payload), {
-        TTL: 86400,
-        timeout: 10000,
-      });
-  } catch (error) {
-    console.warn(`[Reminders] Push notifications are OFF: invalid VAPID settings (${error.message}).`);
-  }
-} else if (VAPID_PUBLIC_KEY || VAPID_PRIVATE_KEY || VAPID_SUBJECT) {
-  console.warn(
-    "[Reminders] Push notifications are OFF: set VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT " +
-      "(a contact such as mailto:you@example.com) in server/.env. Generate keys with `npm run push:keys`.",
-  );
-}
+const push = createPushSender();
 const reminders = createReminders({
   demo,
   push,
-  pushPublicKey: push ? VAPID_PUBLIC_KEY : "",
+  pushPublicKey: push ? process.env.VAPID_PUBLIC_KEY : "",
 });
 app.locals.reminders = reminders.service;
 

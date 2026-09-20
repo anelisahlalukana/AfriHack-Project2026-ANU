@@ -210,6 +210,17 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_related_reminder_id_fkey FOREIGN KEY (related_reminder_id) REFERENCES public.reminders(id),
   CONSTRAINT notifications_advisor_id_fkey FOREIGN KEY (advisor_id) REFERENCES auth.users(id)
 );
+-- Web Push subscriptions, one row per device (migration 202609190010). user_id is the Supabase auth
+-- user, which is public.users.auth_user_id, NOT public.users.id. Server-only: RLS is on and the
+-- browser roles have no grants. Read by reminders.service.js and notifications.service.js.
+CREATE TABLE public.push_subscriptions (
+  endpoint text NOT NULL,
+  user_id uuid NOT NULL,
+  keys jsonb NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT push_subscriptions_pkey PRIMARY KEY (endpoint),
+  CONSTRAINT push_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
 CREATE TABLE public.goal_participants (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   goal_id uuid,

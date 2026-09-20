@@ -45,7 +45,7 @@ Clients and the workspace both work on a phone. There is a light and a dark them
 | Client | React 19, Vite 8, React Router 7, Recharts, react-hook-form, axios, lucide-react, plain CSS |
 | Server | Node.js, Express 5, `@supabase/supabase-js` (service role), pdf-lib, multer, web-push |
 | Data | Supabase: Postgres with row-level security, Auth and Storage |
-| Email | Brevo transactional email (invitations, verification codes, password setup) |
+| Email | Brevo transactional email (invitations, verification codes, password setup, and a copy of each client notification) |
 | AI (optional) | Google Gemini for report wording; everything works without it |
 | Tests | `node:test` (server and client logic), Vitest with Testing Library (components), ESLint |
 | Delivery | GitHub Actions for CI, Vercel for the client, Render for the server |
@@ -170,7 +170,7 @@ real Supabase project. Brevo and Gemini are optional for local work.
 | `CLIENT_ORIGIN` | no | `http://localhost:5173` | The site allowed to call the API (CORS). Set it to the deployed client URL |
 | `CLIENT_APP_URL` | no | `http://localhost:5173` | Base URL in emailed client links |
 | `ADMIN_INVITE_REDIRECT_URL` | no | `http://localhost:5173/reset-password` | Where staff password-setup links land |
-| `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` | for email | name: `Royal Square Financial` | Invitations, verification codes and password setup |
+| `BREVO_API_KEY`, `BREVO_SENDER_EMAIL`, `BREVO_SENDER_NAME` | for email | name: `Royal Square Financial` | Invitations, verification codes, password setup and email copies of client notifications. Without a key and sender, client notifications simply skip the email |
 | `DOCUMENT_TEMPLATES_BUCKET` | no | `document-templates` | Storage bucket holding the PDF templates |
 | `CLIENT_DOCUMENTS_BUCKET` | no | `client-documents` | Private bucket for filled and signed documents |
 | `TASK_FILES_BUCKET` | no | `task-files` | Bucket for claim and request attachments |
