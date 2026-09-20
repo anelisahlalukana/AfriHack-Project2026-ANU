@@ -136,7 +136,7 @@ Under `/api/reports`, access **Adviser** or **Admin**. See [reports.md](reports.
 | `POST /ask` | A plain-English question, answered with a chart |
 | `POST /run` | Run a named template with parameters. Also used by the dashboard's work-over-time chart |
 | `POST /query` | Run a structured custom query |
-| `POST /generate` | Turn a result into a written report |
+| `POST /generate` | Turn a result into a written report. For reports that can name the clients behind their numbers, an adviser also gets a `contacts` list (see [reports.md](reports.md#who-to-contact)) |
 
 ## Admin
 

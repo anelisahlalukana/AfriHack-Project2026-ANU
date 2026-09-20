@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Download, FileText, RotateCw, Search, Sparkles } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdmin } from '../../lib/authRoles'
@@ -225,6 +226,17 @@ export default function Reports() {
       {report.meaning && <section className="rpt-meaning" aria-labelledby="rpt-meaning-title">
         <h3 id="rpt-meaning-title">What this means for the business</h3>
         {storyParagraphs(report.meaning).map((text, i) => <p key={i}>{text}</p>)}
+        {report.contacts?.clients?.length > 0 && <div className="rpt-contacts" aria-labelledby="rpt-contacts-title">
+          <h4 id="rpt-contacts-title">{report.contacts.title}</h4>
+          <p className="rpt-contacts-intro">{report.contacts.intro}</p>
+          <ol>
+            {report.contacts.clients.map(client => <li key={client.id}>
+              {admin ? <b>{client.name}</b> : <Link className="client-name" to={`/clients/${client.id}`}>{client.name}</Link>}
+              <span>{client.detail}</span>
+            </li>)}
+          </ol>
+          {report.contacts.total > report.contacts.clients.length && <small className="muted">Showing the {report.contacts.clients.length} most urgent of {report.contacts.total}.</small>}
+        </div>}
       </section>}
       <footer className="rpt-footnote">
         Figures from the Royal Square workspace at the time shown.{report.writtenBy === 'template' ? ' Summary written automatically from the figures.' : ' Summary drafted by AI from aggregated figures; check before sharing.'}

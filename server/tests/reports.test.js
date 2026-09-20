@@ -790,3 +790,151 @@ test("money questions reach the money reports or a money query", async () => {
   const big = await s.ask(adviser(A1), "list motor claims over R40k");
   assert.deepEqual(big.rows.map((r) => r.reference), ["RSF-T1"]);
 });
+
+// ---------------------------------------------------------------- who to contact
+const C4 = "c4c4c4c4-0000-4000-8000-000000000004";
+const withDeficitClient = (data, { id = C4, first = "Lerato", surname = "Khumalo", advisor = A1, income = 20000, expense = 29000 } = {}) => {
+  data.users.push({ id, role_id: 1, advisor_id: advisor, first_name: first, surname, status: "active", created_at: daysAgo(100) });
+  data.client_financial_items.push(
+    { id: `FI-${id}`, client_id: id, category: "income", amount: income, frequency: "monthly" },
+    { id: `FE-${id}`, client_id: id, category: "expense", amount: expense, frequency: "monthly" }
+  );
+  return data;
+};
+
+test("the cash flow report names the clients spending more than they earn, biggest shortfall first", async () => {
+  const r = await service(withDeficitClient(seed())).run(adviser(A1), "monthly_cash_flow", {});
+
+  assert.match(r.headline, /2 clients spend more than they earn/);
+  assert.equal(r.contacts.total, 2, "the list is the same clients the headline counts");
+  assert.deepEqual(r.contacts.clients.map((c) => [c.id, c.name]), [[C4, "Lerato Khumalo"], [C2, "Sibusiso Dlaminiberg"]]);
+  assert.match(r.contacts.clients[0].detail, /R\s?9\s?000 more than they earn each month \(R\s?20\s?000 in, R\s?29\s?000 out\)/);
+  assert.match(r.contacts.clients[1].detail, /R\s?5\s?000 more than they earn/);
+  assert.match(r.contacts.title, /spending more than they earn/);
+  assert.ok(r.contacts.intro && r.contacts.order);
+});
+
+test("with nobody in deficit there is no list, and the report still works", async () => {
+  const r = await service().run(adviser(A2), "monthly_cash_flow", {});
+  assert.equal(r.contacts, undefined);
+  assert.match(r.headline, /no client spends more than they earn/);
+});
+
+test("an adviser's list only ever holds their own clients", async () => {
+  const data = withDeficitClient(withDeficitClient(seed()), { id: "c5c5c5c5-0000-4000-8000-000000000005", first: "Nomsa", surname: "Zondi", advisor: A2, expense: 60000 });
+  const mine = await service(data).run(adviser(A1), "monthly_cash_flow", {});
+  const theirs = await service(data).run(adviser(A2), "monthly_cash_flow", {});
+
+  assert.deepEqual(mine.contacts.clients.map((c) => c.name), ["Lerato Khumalo", "Sibusiso Dlaminiberg"]);
+  assert.deepEqual(theirs.contacts.clients.map((c) => c.name), ["Nomsa Zondi"]);
+});
+
+test("admins never get a list of clients, only the aggregate report", async () => {
+  const data = withDeficitClient(seed());
+  const ran = await service(data).run(ADMIN, "monthly_cash_flow", {});
+  const written = await service(data).generate(ADMIN, "monthly_cash_flow", {});
+
+  for (const r of [ran, written]) {
+    assert.equal(r.contacts, undefined);
+    assert.ok(!JSON.stringify(r).includes("Khumalo") && !JSON.stringify(r).includes("Dlaminiberg"), "no client name in an admin's report");
+  }
+});
+
+test("a written report carries the list and its business reading points to it", async () => {
+  const r = await service(withDeficitClient(seed())).generate(adviser(A1), "monthly_cash_flow", {});
+
+  assert.equal(r.contacts.total, 2);
+  assert.deepEqual(r.contacts.clients.map((c) => c.name), ["Lerato Khumalo", "Sibusiso Dlaminiberg"]);
+  assert.match(r.meaning, /The 2 clients to contact are listed below, biggest monthly shortfall first\./);
+  assert.ok(!r.meaning.includes("Khumalo"), "the reading points at the list; it does not repeat the names");
+});
+
+test("the model is told a list exists and how long it is, but never who is on it", async () => {
+  const sent = [];
+  const llm = {
+    enabled: true,
+    generateJson: async (system, message) => {
+      sent.push({ system, message });
+      return { title: "Cash flow", narrative: "Two clients spend more than they earn.", meaning: "Two clients are in deficit, so work through the clients listed below." };
+    },
+  };
+  const r = await service(withDeficitClient(seed()), llm).generate(adviser(A1), "monthly_cash_flow", {});
+
+  const payload = JSON.parse(sent.find((s) => s.message.includes("follow_up")).message);
+  assert.deepEqual(payload.follow_up, { who: "Clients spending more than they earn", count: 2 });
+  assert.match(sent[0].system, /follow_up/, "the prompt explains the field");
+  for (const secret of ["Lerato", "Khumalo", "Sibusiso", "Dlaminiberg", "R 9", "9 000"]) {
+    assert.ok(!sent.some((s) => s.message.includes(secret)), `the model was sent ${secret}`);
+  }
+  // The model's own wording is kept, and the names arrive on the way out.
+  assert.equal(r.meaning, "Two clients are in deficit, so work through the clients listed below.");
+  assert.equal(r.writtenBy, "ai");
+  assert.deepEqual(r.contacts.clients.map((c) => c.name), ["Lerato Khumalo", "Sibusiso Dlaminiberg"]);
+});
+
+test("no report an adviser generates sends a client name or ID number to the model", async () => {
+  const sent = [];
+  const llm = { enabled: true, generateJson: async (system, message) => (sent.push(message), { title: "t", narrative: "n" }) };
+  const data = withDeficitClient(seed());
+  for (const t of TEMPLATES) await service(data, llm).generate(adviser(A1), t.id, {});
+
+  const all = sent.join("\n");
+  assert.ok(sent.length >= TEMPLATES.length);
+  for (const secret of [...SECRET_NAMES, ...SECRET_IDS, "Lerato", "Khumalo"]) assert.ok(!all.includes(secret), `model payload contained ${secret}`);
+});
+
+test("only the main report carries a list: related views never do", async () => {
+  const data = withDeficitClient(seed());
+  for (const t of TEMPLATES) {
+    const r = await service(data).generate(adviser(A1), t.id, {});
+    for (const view of r.related) assert.equal(view.contacts, undefined, `${t.id} related view leaked a list`);
+  }
+});
+
+test("the list is capped at 15 names, with the true total kept", async () => {
+  const data = seed();
+  for (let i = 0; i < 20; i += 1) {
+    withDeficitClient(data, { id: `d${String(i).padStart(7, "0")}-0000-4000-8000-000000000000`, first: `Client${i}`, surname: "Bulk", expense: 21000 + i * 100 });
+  }
+  const r = await service(data).run(adviser(A1), "monthly_cash_flow", {});
+
+  assert.equal(r.contacts.total, 21, "20 new clients plus the one already in deficit");
+  assert.equal(r.contacts.clients.length, 15);
+  // Sibusiso is R5 000 short; the bulk clients are R1 000 to R2 900 short, so the biggest shortfall leads.
+  assert.equal(r.contacts.clients[0].name, "Sibusiso Dlaminiberg");
+  assert.equal(r.contacts.clients[1].name, "Client19 Bulk");
+  assert.equal(r.contacts.clients.at(-1).name, "Client6 Bulk", "the 15th name is the 14th-largest bulk shortfall");
+  assert.match(r.headline, /21 clients spend more than they earn/);
+});
+
+test("clients behind on a goal are listed, widest gap first, and on-track ones are not", async () => {
+  const r = await service().run(adviser(A1), "goal_progress", {});
+
+  // C2's education goal is at 0% with its target date almost here; C1's retirement goal is on track.
+  assert.deepEqual(r.contacts.clients.map((c) => c.name), ["Sibusiso Dlaminiberg"]);
+  assert.match(r.contacts.clients[0].detail, /Education: 0% saved, \d+% of the time gone/);
+  const other = await service().run(adviser(A2), "goal_progress", {});
+  assert.deepEqual(other.contacts.clients.map((c) => c.name), ["Zanelethu Ndlovukazi"]);
+});
+
+test("clients with overdue reminders are listed, longest overdue first", async () => {
+  const r = await service().run(adviser(A1), "overdue_reminders", {});
+
+  assert.deepEqual(r.contacts.clients.map((c) => c.name), ["Thandiwe Mokoenaville", "Sibusiso Dlaminiberg"]);
+  assert.match(r.contacts.clients[0].detail, /4 days overdue/);
+  assert.match(r.contacts.clients[1].detail, /1 day overdue/);
+});
+
+test("clients who still owe a signature are listed, longest wait first", async () => {
+  const r = await service().run(adviser(A1), "documents_awaiting_signature", {});
+
+  assert.deepEqual(r.contacts.clients.map((c) => c.name), ["Sibusiso Dlaminiberg"]);
+  assert.match(r.contacts.clients[0].detail, /Client Consent, waiting 9 days/);
+});
+
+test("the question 'How many clients spend more than they earn each month?' opens the cash flow report with its list", async () => {
+  const r = await service(withDeficitClient(seed())).ask(adviser(A1), "How many clients spend more than they earn each month?");
+
+  assert.equal(r.template.id, "monthly_cash_flow");
+  assert.equal(r.contacts.total, 2);
+});
