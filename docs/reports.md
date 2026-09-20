@@ -25,9 +25,13 @@ Endpoints (all `requireAuth` + `requireRole(["advisor","admin"])`, mounted at `/
 - `POST /run { template_id, parameters }` – runs a template directly. No model; chips always work.
 - `POST /generate { template_id, parameters }` (or `{ query }`) – re-runs the query server-side, then builds
   the written report: up to three key figures, a short two-paragraph story (what happened, then what the
-  related charts add and what to do), the main chart, and one or two related charts
-  (`server/src/reports/related.js`). The model sees only aggregated rows of the main and related charts;
-  without it the story is written from the figures.
+  related charts add and what to do), the main chart, one or two related charts
+  (`server/src/reports/related.js`), and a closing "What this means for the business" paragraph
+  (`meaning`) – how healthy the result is, what it does to revenue, retention, workload, provider
+  dependency or regulatory exposure, and the decision or next step the numbers support. The model sees
+  only aggregated rows of the main and related charts; without it the story and the business reading are
+  written from the figures (`fallbackMeaning`, framed per report category by `CATEGORY_LENS`). Percentage
+  splits are withheld below `MEANINGFUL_COUNT` records, so thin data is never presented as a pattern.
 
 ## Configuration (`server/.env`)
 
@@ -38,7 +42,9 @@ REPORTS_LLM_TIMEOUT_MS=10000  # optional; keep below the browser's 15s timeout
 ```
 
 Without a key, or if Gemini is slow or returns bad JSON, intent falls back to keyword matching
-("Closest match" label) and the narrative is a templated sentence built from the top rows.
+("Closest match" label), and the narrative and the business reading are templated from the top rows.
+A model reply that omits `meaning` keeps its own story and takes the templated business reading, so the
+section is always present.
 
 ## Scope and privacy
 
