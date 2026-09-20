@@ -11,7 +11,7 @@ coding patterns see [coding-standards.md](coding-standards.md); for the tables s
 | **Client app** | `client/` | React single-page app for advisers, clients, insurers and admins. Also the PWA (service worker, manifest) |
 | **API** | `server/` | Express. Holds the service-role key, talks to Brevo and the push services, enforces roles, runs the reminder scheduler |
 | **Supabase** | hosted | Postgres with row-level security, Auth (every login) and Storage (documents and attachments) |
-| **Brevo** | external | Transactional email: client invitations, verification codes, staff password setup |
+| **Brevo** | external | Transactional email: client invitations, verification codes, staff password setup, and an email copy of each client notification |
 | **Gemini** | external, optional | Wording for AI-assisted reports. Every report also works without it |
 
 The browser has two ways to reach data:
@@ -113,6 +113,11 @@ automatically, and everything an insurer does happens in the provider portal. Se
 A reminder rule and a reminder row live in Postgres. Every 30 seconds the server calls
 `reminders_run_reminders()`, which turns due reminders into notifications, then delivers waiting push
 messages. Delivery details, validation and limits are in [pwa.md](pwa.md).
+
+Separately, an in-app notification created for a client (a document sent to them, onboarding
+complete, a Client Pulse check-in) is also pushed to their devices and emailed through Brevo the moment
+it is saved. That runs in the background and every failure is logged and swallowed, so it can never
+fail the action that caused it. Adviser, claim and request notifications remain in-app only.
 
 ### Reports
 

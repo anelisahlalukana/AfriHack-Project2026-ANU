@@ -106,7 +106,7 @@ Under `/api/dashboard`. Explained in [dashboard-and-client-pulse.md](dashboard-a
 | `GET /me` | Signed in (clients only in practice) | The client's own overview: what needs them, paperwork, goals, money, activity |
 | `GET /at-risk` | Adviser | Clients ranked by risk of disengaging |
 | `GET /at-risk/:clientId` | Adviser | One client's signals in full |
-| `POST /at-risk/:clientId/check-in` | Adviser | Send the client an in-app check-in |
+| `POST /at-risk/:clientId/check-in` | Adviser | Send the client a check-in: an in-app notification, then a push to their devices and an email in the background |
 
 ## Compliance
 

@@ -103,6 +103,11 @@ words (for example "the Client Consent is waiting for your signature"), and neve
 request. If the notification could not be stored the call fails with a 502 so the adviser knows it
 did not go out.
 
+Once it is stored it is also pushed to the client's devices (generic wording, opening `/account`) and
+emailed to the address on their record, in the background. Those two never affect the result: the
+check-in succeeds if the in-app notification was saved. A client with no login has no devices, so they
+get the email only.
+
 ### Tuning
 
 Edit the constants in `server/src/constants/dashboard.js`. The server's scoring tests
