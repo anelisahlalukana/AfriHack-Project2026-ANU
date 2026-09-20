@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Bell, HeartPulse, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
+import { Bell, HeartPulse, ChartColumn, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
@@ -23,6 +23,7 @@ import ClientProfile from './pages/advisor/ClientProfile'
 import ClientForm from './pages/advisor/ClientForm'
 import AdviserCompliance from './pages/advisor/AdviserCompliance'
 import Compliance from './pages/advisor/Compliance'
+import Reports from './pages/advisor/Reports'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
@@ -74,6 +75,7 @@ function WorkspaceLayout() {
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
+        <NavLink to="/reports"><ChartColumn size={18} /> Reports</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Adviser" />
     </aside>
@@ -92,6 +94,7 @@ function AdminLayout() {
       <nav>
         <NavLink to="/admin" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/admin/users"><Users size={18} /> User management</NavLink>
+        <NavLink to="/admin/reports"><ChartColumn size={18} /> Reports</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Administrator" />
     </aside>
@@ -132,6 +135,7 @@ export default function App() {
       <Route element={<AdminLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/users" element={<AdminUsers />} />
+        <Route path="admin/reports" element={<Reports />} />
       </Route>
     </Route>
 
@@ -148,6 +152,7 @@ export default function App() {
       <Route path="clients/:id/edit" element={<ClientForm />} />
       <Route path="compliance" element={<Compliance />} />
       <Route path="compliance/:adviserId" element={<AdviserCompliance />} />
+      <Route path="reports" element={<Reports />} />
       <Route path="tasks" element={<Tasks />} />
       <Route path="tasks/new" element={<NewRequest staff />} />
       <Route path="tasks/:taskId" element={<AdviserTaskDetail />} />
