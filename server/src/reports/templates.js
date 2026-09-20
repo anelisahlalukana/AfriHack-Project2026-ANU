@@ -14,8 +14,9 @@ const {
   scopedClients, forClients, providerNames, DAY_MS, dateKey,
   OPEN_REMINDER_STATUSES, CLAIM_STATUS_LABELS, AUTOMATIC_PROVIDER_REPLIES, DONE_DOCUMENT_STATUSES,
   round1, avg, humanise, taskTypeLabel, rangeBounds, inRange, countRows, increment,
-  adviserLabel, scopedTasks, periodsFor, declineReason, NET_WORTH_BUCKETS,
+  adviserLabel, scopedTasks, periodsFor, declineReason, NET_WORTH_BUCKETS, plural,
 } = require("./helpers");
+const { contactList, summarise } = require("./contacts");
 const { EXTRA_TEMPLATES } = require("./templates.extra");
 const { MONEY_TEMPLATES } = require("./templates.money");
 
@@ -122,6 +123,27 @@ const TEMPLATES = [
       const rows = countRows(counts).sort((a, b) => b.value - a.value);
       const oldest = reminders.reduce((min, r) => (r.trigger_date < min ? r.trigger_date : min), today);
       const oldestDays = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${oldest}T00:00:00Z`)) / DAY_MS);
+      // Who to contact: each client with something overdue, the longest overdue first.
+      const clientById = new Map(clients.map((c) => [c.id, c]));
+      const daysLate = (r) => Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${r.trigger_date}T00:00:00Z`)) / DAY_MS);
+      const lateByClient = new Map();
+      for (const r of reminders) {
+        if (!lateByClient.has(r.client_id)) lateByClient.set(r.client_id, []);
+        lateByClient.get(r.client_id).push(r);
+      }
+      const contacts = contactList({
+        title: "Clients with overdue reminders",
+        intro: "Reach out about what has slipped, starting with the longest overdue.",
+        order: "longest overdue first",
+        entries: [...lateByClient.entries()]
+          .map(([clientId, list]) => ({ clientId, list: list.sort((a, b) => daysLate(b) - daysLate(a)) }))
+          .sort((a, b) => daysLate(b.list[0]) - daysLate(a.list[0]) || b.list.length - a.list.length)
+          .map(({ clientId, list }) => ({
+            clientId,
+            name: fullName(clientById.get(clientId)),
+            detail: summarise(list.map((r) => `${humanise(r.reminder_type || r.rule_id)}, ${plural(daysLate(r), "day")} overdue`)),
+          })),
+      });
       return {
         chartType: "bar",
         rows,
@@ -129,6 +151,7 @@ const TEMPLATES = [
         unit: "reminders",
         headline: reminders.length ? `${reminders.length} overdue, the oldest by ${oldestDays} days` : "No overdue reminders",
         llmRows: rows.concat(reminders.length ? [{ label: "Oldest overdue (days)", value: oldestDays }] : []),
+        contacts,
       };
     },
   },
@@ -159,6 +182,7 @@ const TEMPLATES = [
       const label = groupBy === "adviser" ? await adviserLabel(ctx, clients.map((c) => c.advisor_id)) : null;
       const now = ctx.now.getTime();
       const groups = new Map();
+      const behindByClient = new Map();
       let unmeasured = 0;
       for (const goal of goals) {
         const target = Number(goal.target_amount);
@@ -175,10 +199,29 @@ const TEMPLATES = [
         const key = groupBy === "adviser" ? label(clientById.get(goal.client_id)?.advisor_id) : humanise(goal.goal_type || "Unspecified");
         if (!groups.has(key)) groups.set(key, { label: key, on_track: 0, behind: 0 });
         groups.get(key)[onTrack ? "on_track" : "behind"] += 1;
+        if (!onTrack) {
+          if (!behindByClient.has(goal.client_id)) behindByClient.set(goal.client_id, []);
+          behindByClient.get(goal.client_id).push({ type: humanise(goal.goal_type || "Unspecified"), funded, elapsed, passed: end <= now });
+        }
       }
       const rows = [...groups.values()].sort((a, b) => b.behind - a.behind || b.on_track - a.on_track);
       const behind = rows.reduce((s, r) => s + r.behind, 0);
       const measured = rows.reduce((s, r) => s + r.on_track + r.behind, 0);
+      // Who to contact: clients with a goal behind schedule, the widest gap between time gone and money saved first.
+      const gap = (g) => g.elapsed - g.funded;
+      const contacts = contactList({
+        title: "Clients behind on a goal",
+        intro: "Review the savings plan with each, starting with the biggest gap between time gone and amount saved.",
+        order: "widest gap first",
+        entries: [...behindByClient.entries()]
+          .map(([clientId, list]) => ({ clientId, list: list.sort((a, b) => gap(b) - gap(a)) }))
+          .sort((a, b) => gap(b.list[0]) - gap(a.list[0]))
+          .map(({ clientId, list }) => ({
+            clientId,
+            name: fullName(clientById.get(clientId)),
+            detail: summarise(list.map((g) => `${g.type}: ${Math.round(g.funded * 100)}% saved, ${g.passed ? "target date passed" : `${Math.round(g.elapsed * 100)}% of the time gone`}`)),
+          })),
+      });
       return {
         chartType: "bar",
         stacked: true,
@@ -192,6 +235,7 @@ const TEMPLATES = [
           ? `${behind} of ${measured} goals behind schedule${unmeasured ? ` (${unmeasured} without a target amount or date)` : ""}`
           : "No goals with a target amount and date",
         llmRows: rows.concat(unmeasured ? [{ label: "Goals without a target amount or date", value: unmeasured }] : []),
+        contacts,
       };
     },
   },

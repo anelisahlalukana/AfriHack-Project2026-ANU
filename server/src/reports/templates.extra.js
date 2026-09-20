@@ -12,6 +12,7 @@ const {
   round1, avg, pct, plural, daysSince, humanise, taskTypeLabel, rangeBounds, inRange, countRows, increment,
   adviserLabel, scopedTasks, periodsFor, periodName,
 } = require("./helpers");
+const { contactList, summarise } = require("./contacts");
 
 const OPEN_STATUSES = ["open", "awaiting_client"];
 const STATUS_SERIES = [
@@ -552,6 +553,26 @@ const EXTRA_TEMPLATES = [
       }
       const rows = [...groups.values()].sort((a, b) => b.value - a.value);
       const oldest = rows.reduce((m, r) => Math.max(m, r.oldest_days), 0);
+      // Who to contact: each client with something unsigned, the longest wait first.
+      const clientById = new Map(clients.map((c) => [c.id, c]));
+      const waiting = new Map();
+      for (const d of docs) {
+        if (!waiting.has(d.client_id)) waiting.set(d.client_id, []);
+        waiting.get(d.client_id).push({ label: labelOf.get(d.document_type) || humanise(d.document_type), days: d.sent_at ? daysSince(d.sent_at, ctx.now) : 0 });
+      }
+      const contacts = contactList({
+        title: "Clients who still need to sign",
+        intro: "Nudge each to sign, starting with the longest wait.",
+        order: "longest wait first",
+        entries: [...waiting.entries()]
+          .map(([clientId, list]) => ({ clientId, list: list.sort((a, b) => b.days - a.days) }))
+          .sort((a, b) => b.list[0].days - a.list[0].days || b.list.length - a.list.length)
+          .map(({ clientId, list }) => ({
+            clientId,
+            name: fullName(clientById.get(clientId)),
+            detail: summarise(list.map((d) => (d.days ? `${d.label}, waiting ${plural(d.days, "day")}` : d.label))),
+          })),
+      });
       return {
         chartType: "bar",
         rows,
@@ -561,6 +582,7 @@ const EXTRA_TEMPLATES = [
           ? `${plural(docs.length, "document")} waiting on clients${oldest ? `, the oldest for ${plural(oldest, "day")}` : ""}`
           : "Nothing waiting for a signature",
         llmRows: rows,
+        contacts,
         insights: oldest > 7 ? ["Send a reminder for anything waiting more than a week."] : [],
       };
     },

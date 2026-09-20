@@ -40,6 +40,10 @@ Respond with JSON only:
   adviser's time, or closing a compliance gap — and name the most
   valuable next step. Be concrete and tie each point to a number or
   group that is in the data.
+If the data has a follow_up field, the app prints the list of those clients, with a reason for each,
+directly under your meaning paragraph. You are never given their names. Finish the paragraph by
+pointing to that list as "the clients listed below" and say what to do with them. Never invent,
+guess or mention a client's name.
 Only use numbers present in the data. Don't restate every bar. Don't
 invent causes the data cannot support: if something is a likely
 explanation, say it is worth checking. No generic disclaimers or filler.
