@@ -10,7 +10,8 @@
     "create-admin": "node scripts/create-admin.js",
     "dev:demo": "node server.js --demo",
     "test": "node --test tests/*.test.js __tests__/*.test.js",
-    "push:keys": "web-push generate-vapid-keys --json"
+    "push:keys": "web-push generate-vapid-keys --json",
+    "seed:demo": "node scripts/seed-demo.js"
   },
   "keywords": [],
   "author": "",

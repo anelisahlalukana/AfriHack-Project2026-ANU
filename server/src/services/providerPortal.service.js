@@ -209,7 +209,8 @@ async function decline(access, taskId, body = {}) {
 async function sendMessage(access, taskId, body = {}) {
   const task = await getTaskForProvider(access, taskId);
   if (task.status === "cancelled") throw conflict("This request was cancelled");
-  const note = String(body.note).trim().slice(0, 2000);
+  const note = String(body.note || "").trim().slice(0, 2000);
+  if (!note) throw badRequest("Write a message first");
   await mockProvider.logEvent(task, access.providerId, "received", "message", { note, by: access.label });
   await addUpdate(task, {
     stage: task.current_stage,
