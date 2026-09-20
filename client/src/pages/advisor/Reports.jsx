@@ -123,7 +123,6 @@ export default function Reports() {
   return <div className="rpt-page">
     <header className="page-heading rpt-no-print">
       <div>
-        <p className="eyebrow">REPORTS</p>
         <h1>Ask about your data</h1>
         <p>{admin ? 'Live figures across every adviser\'s book.' : 'Live figures from your own clients.'} Pick a question below or type your own.</p>
       </div>

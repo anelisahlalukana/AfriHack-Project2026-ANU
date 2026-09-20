@@ -61,7 +61,6 @@ export default function ClientReminders() {
 
   return <>
     <header>
-      <p className="eyebrow">YOUR REMINDERS</p>
       <h1>Reminders</h1>
     </header>
 

@@ -55,7 +55,6 @@ export default function ClientPulseDetail() {
     {back}
     <header className="page-heading">
       <div>
-        <p className="eyebrow">CLIENT PULSE</p>
         <h1>{data.client.name}</h1>
         <p><span className="badge">{data.client.status}</span> <span className={badge.className}>{badge.phrase} · score {data.score}</span>{' '}
           <span className={`live${error ? ' live-stale' : ''}`} role="status"><i aria-hidden="true" />{error ? 'Reconnecting, showing the last update' : 'Live'} · updated {updated}</span>

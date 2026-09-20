@@ -19,7 +19,6 @@ export default function MyProfile() {
 
   return <>
     <header>
-      <p className="eyebrow">YOUR PROFILE</p>
       <h1>Profile</h1>
     </header>
 

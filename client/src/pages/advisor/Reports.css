@@ -95,7 +95,6 @@
   body.rpt-printing{background:#fff}
   body.rpt-printing .app-shell{display:block}
   body.rpt-printing .app-shell>aside,
-  body.rpt-printing .workspace-label,
   body.rpt-printing .rpt-no-print{display:none!important}
   body.rpt-printing main{padding:0;max-width:none}
   body.rpt-printing .rpt-page{gap:0}

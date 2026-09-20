@@ -81,7 +81,7 @@ function WorkspaceLayout() {
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Adviser" />
     </aside>
-    <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
+    <main key={session.user.id}><Outlet /></main>
   </div>
 }
 
@@ -101,7 +101,7 @@ function AdminLayout() {
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Administrator" />
     </aside>
-    <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Admin</span></div><Outlet /></main>
+    <main key={session.user.id}><Outlet /></main>
   </div>
 }
 

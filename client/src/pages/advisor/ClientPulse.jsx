@@ -19,7 +19,6 @@ export default function ClientPulse() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">CLIENT ENGAGEMENT</p>
         <h1>Client Pulse</h1>
         <p>Clients most at risk of disengaging, and why.{' '}
           <span className={`live${error ? ' live-stale' : ''}`} role="status"><i aria-hidden="true" />{error ? 'Reconnecting, showing the last update' : 'Live'} · updated {updated}</span>

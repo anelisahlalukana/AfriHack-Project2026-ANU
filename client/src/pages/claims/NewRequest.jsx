@@ -92,7 +92,7 @@ export default function NewRequest({ staff = false }) {
 
   return <>
     <Link className="back" to={staff ? '/tasks' : '/account/claims'}><ArrowLeft size={16} /> {staff ? 'Requests & claims' : 'My claims & requests'}</Link>
-    <header className="page-heading"><div><p className="eyebrow">{staff ? 'LOG A CLIENT REQUEST' : 'ASK FOR SOMETHING'}</p><h1>{staff ? 'What does the client need?' : 'How can we help?'}</h1><p>{staff ? 'For requests that arrived by email, WhatsApp or phone.' : 'We pass it to your provider and tell you when it is done.'}</p></div></header>
+    <header className="page-heading"><div><h1>{staff ? 'What does the client need?' : 'How can we help?'}</h1><p>{staff ? 'For requests that arrived by email, WhatsApp or phone.' : 'We pass it to your provider and tell you when it is done.'}</p></div></header>
     {catalog.loading && <p role="status">Loading…</p>}
     <Alert>{catalog.error}</Alert>
     {catalog.data && (type

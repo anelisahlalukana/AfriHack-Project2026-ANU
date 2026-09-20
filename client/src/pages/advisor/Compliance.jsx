@@ -39,7 +39,6 @@ export default function Compliance() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">COMPLIANCE</p>
         <h1><ShieldEllipsis size={28} /> Compliance overview</h1>
         <p>Client controls and adviser development. Recorded events are on the audit log.</p>
       </div>

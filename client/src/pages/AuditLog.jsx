@@ -169,7 +169,6 @@ export default function AuditLog() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">AUDIT LOG</p>
         <h1>Activity</h1>
         <p>{scopeNote}</p>
       </div>

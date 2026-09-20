@@ -135,8 +135,8 @@ export default function ProviderTaskDetail() {
     <Link className="back" to="/provider"><ArrowLeft size={16} /> Claims & requests</Link>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">{task.providerReference ? `${task.providerReference} · ` : ''}ROYAL SQUARE {task.reference}</p>
         <h1>{task.isClaim ? `${task.typeLabel} claim` : task.typeLabel}</h1>
+        <p>{task.providerReference ? `${task.providerReference} · ` : ''}Royal Square {task.reference}</p>
         <p>{task.client?.name}{task.policyNumber ? ` · policy ${task.policyNumber}` : ''} · submitted {formatDateTime(task.submittedAt)}</p>
         <p className="rs-chips"><StatusChip status={task.status} viewer="staff" />{task.newMessage && <span className="rs-chip red">New message from Royal Square</span>}</p>
       </div>
