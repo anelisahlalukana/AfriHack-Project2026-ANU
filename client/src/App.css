@@ -569,6 +569,16 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .chat-panel{left:auto;right:24px;bottom:24px;width:390px;height:min(620px,calc(100vh - 48px));border-radius:16px;border:1px solid var(--border)}
 }
 
+/* Install / new-version banner (components/PwaPrompts.jsx). Anchored below the top bar rather
+   than at the bottom, where the client area already has its navigation and the chat button. */
+.pwa-banner{position:fixed;left:50%;transform:translateX(-50%);top:calc(68px + env(safe-area-inset-top));z-index:70;width:min(560px,calc(100% - 24px));display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow-lg)}
+.pwa-banner>span{flex:1;min-width:0}
+.pwa-banner b{display:block;font-size:14px}
+.pwa-banner small{color:var(--muted)}
+.pwa-banner button{flex:none;min-height:40px;white-space:nowrap}
+.pwa-dismiss{padding:8px;width:40px;display:grid;place-items:center;background:none;border-color:transparent;color:var(--muted)}
+.pwa-dismiss:hover:not(:disabled){background:var(--card-2);border-color:transparent;color:var(--text)}
+
 /* Desktop client area. The same markup becomes a proper site: the tab bar that floats at the
    bottom of a phone is re-laid-out as a left sidebar (one nav to keep in step, not two), the
    content column widens, and the pages that were stacked into one phone-width strip lay their
