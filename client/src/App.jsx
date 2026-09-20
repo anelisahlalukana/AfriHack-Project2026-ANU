@@ -5,6 +5,7 @@ import { AuthProvider } from './context/AuthContext'
 import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
+import PwaPrompts from './components/PwaPrompts'
 import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
@@ -106,7 +107,7 @@ function AdminLayout() {
 }
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><Routes>
+  return <BrowserRouter><AuthProvider><PwaPrompts /><Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/complete-registration" element={<CompleteRegistration />} />
     <Route path="/reset-password" element={<ResetPassword />} />
