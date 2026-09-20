@@ -46,7 +46,7 @@ test('grouping and featured templates', async () => {
   const { groupTemplates, featuredTemplates } = await import('../src/lib/reportFormat.js')
   const t = [{ id: 'a', category: 'Clients' }, { id: 'b', category: 'Claims', featured: true }, { id: 'c', category: 'Claims' }]
   assert.deepEqual(groupTemplates(t, ['Claims', 'Clients']).map(g => [g.category, g.templates.length]), [['Claims', 2], ['Clients', 1]])
-  assert.deepEqual(featuredTemplates(t).map(x => x.id), ['b'])
+  assert.deepEqual(featuredTemplates(t).map(x => x.id)[0], 'b')
   assert.deepEqual(featuredTemplates([{ id: 'x' }]).map(x => x.id), ['x'])
 })
 
@@ -71,4 +71,17 @@ test('compact charts switch to horizontal bars sooner', () => {
   assert.equal(preferHorizontalBars(rows), false)
   assert.equal(preferHorizontalBars(rows, true), true)
   assert.equal(preferHorizontalBars(rows.slice(0, 3).map(() => ({ label: 'Motor' })), true), false)
+})
+
+test('only four suggested questions, the curated ones first', async () => {
+  const { featuredTemplates } = await import('../src/lib/reportFormat.js')
+  const t = ['a', 'claims_by_type', 'b', 'stuck_tasks', 'claim_value_trend', 'c', 'document_completion'].map(id => ({ id, featured: id === 'a' }))
+  assert.deepEqual(featuredTemplates(t).map(x => x.id), ['claims_by_type', 'claim_value_trend', 'stuck_tasks', 'document_completion'])
+  assert.deepEqual(featuredTemplates([{ id: 'x' }, { id: 'y', featured: true }]).map(x => x.id), ['y', 'x'])
+})
+
+test('chips use short questions', async () => {
+  const { chipText } = await import('../src/lib/reportFormat.js')
+  assert.equal(chipText({ id: 'stuck_tasks', suggestedQuestion: 'Which claims and requests are stuck?' }), 'What work is stuck?')
+  assert.equal(chipText({ id: 'other', suggestedQuestion: 'Q?' }), 'Q?')
 })

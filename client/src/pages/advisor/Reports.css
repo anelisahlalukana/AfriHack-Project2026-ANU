@@ -27,6 +27,7 @@
 .rpt-chip{border-radius:var(--r-pill);padding:7px 14px;font-size:13px;font-weight:500;background:var(--card);color:var(--text-2);text-align:left}
 .rpt-chip:hover:not(:disabled){border-color:var(--brand-600);color:var(--brand-700)}
 .rpt-note{font-size:12.5px;color:var(--warn)}
+.rpt-browse .rpt-try{margin-top:12px}
 .rpt-try{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px;color:var(--muted)}
 .rpt-link{border:0;background:none;padding:0;color:var(--brand-700);font-weight:500;font-size:13px;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--accent-300)}
 .rpt-link:hover:not(:disabled){background:none;color:var(--brand-800);text-decoration-color:var(--brand-600)}

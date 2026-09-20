@@ -32,9 +32,26 @@ export function groupTemplates(templates = [], categories = []) {
     .filter(group => group.templates.length)
 }
 
-export function featuredTemplates(templates = [], max = 9) {
-  const featured = templates.filter(t => t.featured)
-  return (featured.length ? featured : templates).slice(0, max)
+// The few questions shown as chips: one each for claims, money, stuck work and compliance.
+// Everything else is one click away under "Browse all reports".
+export const SUGGESTED_IDS = ['claims_by_type', 'claim_value_trend', 'stuck_tasks', 'document_completion']
+const SHORT_QUESTIONS = {
+  claims_by_type: 'Which claims do we get most?',
+  claim_value_trend: 'How much is claimed and paid out?',
+  stuck_tasks: 'What work is stuck?',
+  document_completion: 'Who is missing documents?',
+}
+
+// Chip text: short enough for the four chips to sit on one line.
+export function chipText(template) {
+  return SHORT_QUESTIONS[template.id] || template.suggestedQuestion || template.label
+}
+
+export function featuredTemplates(templates = [], max = 4) {
+  const picked = SUGGESTED_IDS.map(id => templates.find(t => t.id === id)).filter(Boolean)
+  const featured = templates.filter(t => t.featured && !picked.includes(t))
+  const rest = templates.filter(t => !picked.includes(t) && !featured.includes(t))
+  return [...picked, ...featured, ...rest].slice(0, max)
 }
 
 // "Showing: Claims by status, 21 Jun 2026 – 19 Sep 2026"
