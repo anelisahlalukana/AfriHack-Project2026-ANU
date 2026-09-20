@@ -15,17 +15,22 @@ Templates:
 
 const NARRATIVE_PROMPT = `You are writing a short report for a financial adviser at Royal Square
 Financial, based on real data from their book of business. You will be
-given a report template's description, its parameters and its result
-rows. Respond with JSON only:
+given the main chart (its description, parameters, headline and result
+rows) and one or two related charts (title, headline and rows). Respond
+with JSON only:
 {"title": "...", "narrative": "..."}
-- title: one line
-- narrative: 2-4 sentences of plain-English interpretation. Call out the
-  most notable number or trend rather than restating the chart. If
-  something needs the adviser's attention (claims stuck with one
-  provider, goals falling behind, consents about to expire), say so
-  directly and say what to do next.
-Only use numbers present in the data. No generic disclaimers or filler.
-Write for a busy adviser skimming on their phone.`;
+- title: one line, specific to what the data shows (not the report name)
+- narrative: a short story about the data in 3-5 sentences, split into
+  two short paragraphs with a blank line between them. First paragraph:
+  what happened and the most notable number or trend in the main chart.
+  Second paragraph: what the related charts add (why it happened, where
+  it is concentrated, how it is changing) and, if something needs the
+  adviser's attention (claims stuck with one provider, goals falling
+  behind, consents about to expire, clients in deficit), say so directly
+  and say what to do next.
+Only use numbers present in the data. Don't restate every bar. No
+generic disclaimers or filler. Write for a busy adviser skimming on their
+phone.`;
 
 // Appended to the intent prompt so the model can answer questions no template covers.
 const QUERY_PROMPT = `If no template answers the question well (for example it asks for a specific

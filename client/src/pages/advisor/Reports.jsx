@@ -3,7 +3,7 @@ import { Download, FileText, RotateCw, Search, Sparkles } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdmin } from '../../lib/authRoles'
 import { askReport, generateReport, getReportCatalogue, runReport } from '../../api/reports'
-import { TRY_ASKING, featuredTemplates, formatGeneratedAt, groupTemplates, isClosestMatch, printTitle, showingLabel } from '../../lib/reportFormat'
+import { TRY_ASKING, featuredTemplates, formatGeneratedAt, groupTemplates, isClosestMatch, printTitle, showingLabel, storyParagraphs } from '../../lib/reportFormat'
 import ReportChart from '../../components/reports/ReportChart'
 import './Reports.css'
 
@@ -177,7 +177,7 @@ export default function Reports() {
         </div>}
         {result.headline && <h2>{result.headline}</h2>}
       </div>
-      <ReportChart result={result} linkClients={!admin} />
+      <ReportChart result={result} linkClients={!admin} showData />
       {result.alternatives?.length > 0 && <div className="rpt-alternatives">
         <span>{result.kind === 'query' ? 'Or see a prepared report:' : 'Not what you meant? Try:'}</span>
         {result.alternatives.map(alt => <button type="button" key={alt.id} className="rpt-chip" disabled={loading}
@@ -193,16 +193,38 @@ export default function Reports() {
     </section>}
 
     {report && !loading && <article className="card rpt-report" ref={reportRef}>
-      <img className="rpt-print-logo" src="/images/slogan.png" alt="Royal Square Financial" />
-      <header>
+      <header className="rpt-report-head">
+        <img className="rpt-print-logo" src="/images/slogan.png" alt="Royal Square Financial" />
         <p className="eyebrow">ROYAL SQUARE FINANCIAL · REPORT</p>
         <h2>{report.title}</h2>
-        <p className="rpt-meta">Prepared for {report.generatedFor} · {formatGeneratedAt(report.generatedAt)} · {report.scope}</p>
+        <p className="rpt-meta muted">Prepared for {report.generatedFor} · {formatGeneratedAt(report.generatedAt)}{report.scope ? ` · ${report.scope}` : ''}</p>
       </header>
-      <p className="rpt-narrative">{report.narrative}</p>
-      <ReportChart result={report} linkClients={!admin} />
+      {report.highlights?.length > 0 && <dl className="rpt-kpis" aria-label="Key figures">
+        {report.highlights.map(item => <div className="rpt-kpi" key={item.label}>
+          <dt><span>{item.label}</span></dt>
+          <dd><strong>{item.value}</strong></dd>
+        </div>)}
+      </dl>}
+      <section className="rpt-story" aria-label="Summary">
+        {storyParagraphs(report.narrative).map((text, i) => <p key={i}>{text}</p>)}
+      </section>
+      <figure className="rpt-figure">
+        <h3>{report.template?.label || report.title}</h3>
+        {report.headline && <figcaption className="rpt-caption muted">{report.headline}</figcaption>}
+        <ReportChart result={report} linkClients={!admin} showData animate={false} />
+      </figure>
+      {report.related?.length > 0 && <>
+        <h3 className="rpt-related-title">Related views</h3>
+        <div className="rpt-related">
+          {report.related.map(view => <figure className="rpt-figure" key={view.templateId || view.title}>
+            <h3>{view.title}</h3>
+            {view.caption && <figcaption className="rpt-caption muted">{view.caption}</figcaption>}
+            <ReportChart result={view} linkClients={!admin} compact animate={false} />
+          </figure>)}
+        </div>
+      </>}
       <footer className="rpt-footnote">
-        Figures from the Royal Square workspace at the time shown.{report.writtenBy === 'template' ? ' Summary written automatically from the top figures.' : ' Summary drafted by AI from aggregated figures; check before sharing.'}
+        Figures from the Royal Square workspace at the time shown.{report.writtenBy === 'template' ? ' Summary written automatically from the figures.' : ' Summary drafted by AI from aggregated figures; check before sharing.'}
       </footer>
       <div className="rpt-actions rpt-no-print">
         <button type="button" className="primary" onClick={downloadPdf}><Download size={16} /> Download PDF</button>

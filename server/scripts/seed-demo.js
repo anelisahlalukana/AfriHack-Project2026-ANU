@@ -51,9 +51,11 @@ function createRandom(seed) {
       for (const [value, w] of pairs) if ((x -= w) < 0) return value;
       return pairs[pairs.length - 1][0];
     },
+    // Ids are always fresh, so rows kept from an earlier run (e.g. for the audit log) never clash.
+    // The same number of draws is still taken, so the rest of the data stays repeatable per seed.
     uuid: () => {
-      const h = [...Array(32)].map(() => Math.floor(next() * 16).toString(16)).join("");
-      return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${"89ab"[Math.floor(next() * 4)]}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+      for (let i = 0; i < 33; i += 1) next();
+      return crypto.randomUUID();
     },
   };
   return r;
@@ -277,11 +279,32 @@ function providerFor(rnd, providers, category) {
 // Provider personalities, so reports have a story: one is slow, one declines more.
 function personality(provider, index) {
   return [
-    { speed: 1, decline: 0.08, reply: [6, 30], rating: 4.3 },
-    { speed: 2.2, decline: 0.16, reply: [30, 140], rating: 3.1 },
-    { speed: 1.3, decline: 0.1, reply: [10, 60], rating: 3.9 },
-    { speed: 1.6, decline: 0.22, reply: [20, 90], rating: 3.4 },
+    { speed: 1, decline: 0.08, reply: [6, 30], rating: 4.3, payout: [0.88, 1] },
+    { speed: 2.2, decline: 0.16, reply: [30, 140], rating: 3.1, payout: [0.7, 0.95] },
+    { speed: 1.3, decline: 0.1, reply: [10, 60], rating: 3.9, payout: [0.85, 1] },
+    { speed: 1.6, decline: 0.22, reply: [20, 90], rating: 3.4, payout: [0.6, 0.9] },
   ][index % 4];
+}
+
+// Typical claim sizes (ZAR) per product line, and the excess deducted from a payout.
+const CLAIM_SIZES = {
+  motor: [[6000, 45000, 6], [45000, 180000, 3], [180000, 420000, 1]],
+  health: [[4000, 30000, 6], [30000, 150000, 3]],
+  funeral: [[10000, 30000, 6], [30000, 75000, 3]],
+  life: [[250000, 1200000, 5], [1200000, 4000000, 2]],
+  personal: [[3000, 25000, 6], [25000, 90000, 2]],
+  commercial: [[20000, 150000, 5], [150000, 800000, 2]],
+};
+const EXCESS = { motor: [2500, 7500], personal: [1000, 3000], commercial: [5000, 25000] };
+
+// Are the claim amount columns there (migration 202609200001_claim_amounts.sql)?
+async function hasClaimAmounts(store) {
+  try {
+    await store.select("tasks", "claimed_amount, settled_amount", [{ col: "id", op: "eq", value: "00000000-0000-4000-8000-000000000000" }]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function seedDemo(store, options = {}) {
@@ -291,10 +314,17 @@ async function seedDemo(store, options = {}) {
   const clientCount = clamp(Number(options.clients) || 60, 1, 400);
   const today = saDate(now);
 
-  const existing = await store.select("users", "id", [{ col: "contact_email", op: "like", value: `%@${DEMO_DOMAIN}` }]);
+  const demoRows = await store.select("users", "id", [{ col: "contact_email", op: "like", value: `%@${DEMO_DOMAIN}` }]);
+  // Rows a reset had to keep for the append-only audit log are empty shells, not live demo data.
+  const shells = demoRows.length
+    ? new Set((await store.select("compliance_audit_log", "client_id", [{ col: "client_id", op: "in", value: demoRows.map((r) => r.id) }])).map((r) => r.client_id))
+    : new Set();
+  const existing = demoRows.filter((r) => !shells.has(r.id));
   if (existing.length) throw new Error(`Demo data is already there (${existing.length} demo clients). Run with --reset first, or use --fresh.`);
 
   const config = await loadConfig(store);
+  const withAmounts = await hasClaimAmounts(store);
+  log(withAmounts ? "  claim amounts: yes" : "  claim amounts: skipped (apply supabase/migrations/202609200001_claim_amounts.sql to include them)");
   if (!config.rules.length) throw new Error("reminder_rules is empty: apply the reminders migration (202609190010) first.");
   const providers = await ensureProviders(store, rnd, config, log);
   const traits = new Map(providers.map((p, i) => [p.id, personality(p, i)]));
@@ -315,7 +345,10 @@ async function seedDemo(store, options = {}) {
   const password = options.demoPassword || crypto.randomBytes(18).toString("base64url");
   for (const name of demoNames.slice(0, clamp(Number(options.demoAdvisers ?? 2), 0, 5))) {
     const email = `${name.toLowerCase().replace(/\s+/g, ".")}@${DEMO_DOMAIN}`;
-    const user = await store.auth.createUser({ email, password, app_metadata: { role: "advisor" }, user_metadata: { full_name: `${name} (demo)` } });
+    // A demo login left behind by an earlier (interrupted) run is reused, not recreated.
+    const leftover = authUsers.find((u) => String(u.email).toLowerCase() === email);
+    const user = leftover || (await store.auth.createUser({ email, password, app_metadata: { role: "advisor" }, user_metadata: { full_name: `${name} (demo)` } }));
+    if (leftover) log(`  reusing demo login ${email} (its password is unchanged)`);
     demoAdvisers.push({ id: user.id, email, name: `${name} (demo)` });
   }
   const advisers = [
@@ -402,7 +435,11 @@ async function seedDemo(store, options = {}) {
       if (occupation !== "Retired") add("income", "salary", "Net salary", (income / 12) * rnd.num(0.68, 0.78), "monthly");
       else add("income", "pension", "Pension income", income / 12, "monthly");
       if (home && rnd.chance(0.15)) add("income", "rental_income", "Rental from a flatlet", rnd.num(4000, 12000), "monthly");
-      add("expense", "household", "Household expenses", (income / 12) * rnd.num(0.25, 0.45), "monthly");
+      // Most clients have money left over; about one in eight is stretched and spends more than they earn.
+      add("expense", "household", "Household expenses", (income / 12) * (rnd.chance(0.12) ? rnd.num(0.72, 0.95) : rnd.num(0.25, 0.45)), "monthly");
+      if (items.some((it) => it.client_id === client.id && it.category === "liability" && ["home_loan", "vehicle_finance", "personal_loan"].includes(it.item_type))) {
+        add("expense", "debt_repayments", "Loan and bond repayments", (income / 12) * rnd.num(0.08, 0.22), "monthly");
+      }
       if (rnd.chance(0.5)) add("expense", "insurance_premiums", "Insurance premiums", rnd.num(900, 6000), "monthly");
     }
 
@@ -543,6 +580,18 @@ async function seedDemo(store, options = {}) {
     const adviser = client._adviser;
     const policyNumber = provider ? `${provider.reference_prefix || "POL"}${rnd.int(1000000, 9999999)}` : null;
     const rating = kind === "claim" && status === "completed" && rnd.chance(0.7) ? clamp(Math.round(trait.rating + rnd.num(-1.4, 1.2)), 1, 5) : null;
+    // Claim amounts: what was claimed, and what the insurer paid (less any excess); 0 when declined.
+    let amounts = {};
+    if (withAmounts && kind === "claim") {
+      const [lo, hi] = rnd.weighted((CLAIM_SIZES[category.category] || [[5000, 60000, 1]]).map(([a, b, w]) => [[a, b], w]));
+      const claimed = round(rnd.num(lo, hi), 100);
+      let settled = null;
+      if (status === "completed") {
+        const [e1, e2] = EXCESS[category.category] || [0, 0];
+        settled = Math.max(0, round(claimed * rnd.num(...(trait.payout || [0.85, 1])) - rnd.num(e1, e2), 100));
+      } else if (status === "declined") settled = 0;
+      amounts = { claimed_amount: claimed, settled_amount: settled };
+    }
     tasks.push({
       id,
       client_id: client.id,
@@ -562,6 +611,7 @@ async function seedDemo(store, options = {}) {
       closed_at: closedAt ? iso(closedAt) : null,
       client_rating: rating,
       client_review: rating ? rnd.pick(REVIEWS) : null,
+      ...amounts,
     });
 
     // History: one stage-change update per step reached, spread between creation and the last move.
@@ -737,6 +787,7 @@ async function seedDemo(store, options = {}) {
     documents: documents.length,
     tasks: tasks.length,
     claims: tasks.filter((t) => t.task_type === "claim").length,
+    claimAmounts: withAmounts,
     taskUpdates: updates.length,
     providerEvents: events.length,
     reminders: reminders.length,
@@ -749,6 +800,28 @@ async function seedDemo(store, options = {}) {
 }
 
 // ------------------------------------------------------------------ reset
+// Columns that point at auth.users (docs/schema.md and the migrations). Used only to explain
+// why a demo login couldn't be deleted; tables a project doesn't have are skipped.
+const AUTH_REFERENCES = [
+  ["users", "advisor_id"], ["users", "auth_user_id"], ["clients", "advisor_id"], ["tasks", "created_by"],
+  ["task_updates", "created_by"], ["task_files", "uploaded_by"], ["notifications", "advisor_id"],
+  ["notifications", "recipient_user_id"], ["client_messages", "sender_id"], ["client_screenings", "actor_id"],
+  ["adviser_compliance", "adviser_id"], ["adviser_cpd_records", "adviser_id"],
+  ["compliance_audit_log", "actor_id"], ["compliance_audit_log", "adviser_id"],
+];
+async function referencesTo(store, id) {
+  const found = [];
+  for (const [table, col] of AUTH_REFERENCES) {
+    try {
+      const rows = await store.select(table, col, [{ col, op: "eq", value: id }]);
+      if (rows.length) found.push(`${table}.${col} (${rows.length})`);
+    } catch {
+      // table or column not in this project
+    }
+  }
+  return found;
+}
+
 async function resetDemo(store, options = {}) {
   const log = options.log || (() => {});
   const removed = {};
@@ -797,8 +870,16 @@ async function resetDemo(store, options = {}) {
         log(`  kept demo adviser ${id}: the append-only audit log refers to them`);
         continue;
       }
-      await store.auth.deleteUser(id);
-      removed["auth users"] = (removed["auth users"] || 0) + 1;
+      try {
+        await store.auth.deleteUser(id);
+        removed["auth users"] = (removed["auth users"] || 0) + 1;
+      } catch (error) {
+        // Supabase refuses while any row still points at the login (e.g. something created in the
+        // app while signed in as a demo adviser). Keep it: the next seed reuses it.
+        const where = await referencesTo(store, id);
+        log(`  kept demo login ${id}: still referenced${where.length ? ` by ${where.join(", ")}` : ""} (${error.message}). The next seed reuses it.`);
+        removed["auth users kept"] = (removed["auth users kept"] || 0) + 1;
+      }
     }
   }
   const demoProviders = (await store.select("users", "id", [{ col: "role_id", op: "eq", value: 2 }, { col: "organisation_name", op: "like", value: "% (demo)" }])).map((r) => r.id);
