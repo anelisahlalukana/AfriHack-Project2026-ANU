@@ -112,6 +112,16 @@
 .rpt-meaning{background:var(--card-2);border:1px solid var(--border);border-left:3px solid var(--brand-700);border-radius:var(--r-card);padding:14px 16px;display:flex;flex-direction:column;gap:8px;max-width:75ch}
 .rpt-meaning h3{margin:0;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--brand-700);font-weight:650}
 .rpt-meaning p{font-size:15px;line-height:1.65;color:var(--text)}
+/* Who to contact: the clients behind the numbers, inside the business reading. */
+.rpt-contacts{margin-top:6px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.rpt-contacts h4{margin:0;font-size:14px;color:var(--text)}
+.rpt-contacts .rpt-contacts-intro{margin:0;font-size:13px;line-height:1.5;color:var(--muted)}
+.rpt-contacts ol{list-style:none;margin:6px 0 0;padding:0;counter-reset:contact;display:flex;flex-direction:column}
+.rpt-contacts li{counter-increment:contact;display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:8px;row-gap:1px;padding:9px 0;border-bottom:1px solid var(--border);align-items:baseline}
+.rpt-contacts li:last-child{border-bottom:0}
+.rpt-contacts li::before{content:counter(contact);grid-row:1 / span 2;font-size:12px;font-weight:650;color:var(--muted)}
+.rpt-contacts li>a,.rpt-contacts li>b{grid-column:2;font-weight:600}
+.rpt-contacts li>span{grid-column:2;font-size:13px;line-height:1.5;color:var(--text-2)}
 .rpt-footnote{font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px}
 .rpt-print-logo{display:none}
 
@@ -137,7 +147,7 @@
     --rpt-c1:#2a78d6;--rpt-c2:#eb6834;--rpt-c3:#1baf7a;--rpt-c4:#eda100;--rpt-c5:#e87ba4;--rpt-c6:#008300}
   body.rpt-printing .rpt-report{border:0;padding:0;background:#fff;box-shadow:none;gap:16px}
   body.rpt-printing .rpt-print-logo{display:block;width:160px;margin-bottom:4px}
-  body.rpt-printing .rpt-figure,body.rpt-printing .rpt-kpis,body.rpt-printing .rpt-meaning,body.rpt-printing .rpt-table tr{break-inside:avoid}
+  body.rpt-printing .rpt-figure,body.rpt-printing .rpt-kpis,body.rpt-printing .rpt-meaning,body.rpt-printing .rpt-contacts li,body.rpt-printing .rpt-table tr{break-inside:avoid}
   body.rpt-printing .rpt-related{grid-template-columns:1fr 1fr}
   body.rpt-printing .rpt-report a{text-decoration:none;color:inherit}
 }

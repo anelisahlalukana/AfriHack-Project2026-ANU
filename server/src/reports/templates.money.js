@@ -5,6 +5,8 @@ const {
   scopedClients, forClients, providerNames, adviserLabel, scopedTasks, periodsFor, inRange,
   humanise, pct, plural, claimAmounts, AMOUNTS_NOTICE, monthlyAmount, periodName,
 } = require("./helpers");
+const { fullName } = require("../utils/fullName");
+const { contactList } = require("./contacts");
 
 const RAND = new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 });
 const rand = (n) => RAND.format(Math.round(n || 0));
@@ -243,8 +245,20 @@ const MONEY_TEMPLATES = [
         series = [{ key: "value", label: "Clients" }];
         unit = "clients";
       }
-      const deficit = measured.filter((c) => surplus(c) < 0).length;
+      const inDeficit = measured.filter((c) => surplus(c) < 0).sort((a, b) => surplus(a) - surplus(b));
+      const deficit = inDeficit.length;
       const avgSurplus = mean(measured.map(surplus));
+      // The same clients the headline counts, biggest monthly shortfall first.
+      const contacts = contactList({
+        title: "Clients spending more than they earn",
+        intro: "Book a budget review with each, starting with the biggest monthly shortfall.",
+        order: "biggest monthly shortfall first",
+        entries: inDeficit.map((c) => ({
+          clientId: c.id,
+          name: fullName(c),
+          detail: `Spends ${rand(-surplus(c))} more than they earn each month (${rand(flows.get(c.id).income)} in, ${rand(flows.get(c.id).expense)} out)`,
+        })),
+      });
       return {
         chartType: "bar",
         rows,
@@ -259,6 +273,7 @@ const MONEY_TEMPLATES = [
           { label: "Clients with cash-flow figures", value: `${measured.length} of ${clients.length}` },
         ],
         llmRows: rows,
+        contacts,
         insights: deficit ? [`Review budgets with the ${plural(deficit, "client")} in deficit before recommending new premiums.`] : ["Every client with cash-flow figures has money left over each month."],
       };
     },

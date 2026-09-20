@@ -28,7 +28,8 @@ Endpoints (all `requireAuth` + `requireRole(["advisor","admin"])`, mounted at `/
   related charts add and what to do), the main chart, one or two related charts
   (`server/src/reports/related.js`), and a closing "What this means for the business" paragraph
   (`meaning`) – how healthy the result is, what it does to revenue, retention, workload, provider
-  dependency or regulatory exposure, and the decision or next step the numbers support. The model sees
+  dependency or regulatory exposure, and the decision or next step the numbers support. For some reports an
+  adviser also gets the clients to contact under it (`contacts`, see [Who to contact](#who-to-contact)). The model sees
   only aggregated rows of the main and related charts; without it the story and the business reading are
   written from the figures (`fallbackMeaning`, framed per report category by `CATEGORY_LENS`). Percentage
   splits are withheld below `MEANINGFUL_COUNT` records, so thin data is never presented as a pattern.
@@ -55,7 +56,45 @@ section is always present.
   and phone numbers redacted) and aggregated rows (counts, averages, category labels). Decline
   notes are bucketed server-side and never sent. The consent pipeline sends date-bucket counts;
   client names appear only in the browser. A final check refuses to send any payload that still
-  contains a client name or ID number.
+  contains a client name or ID number. The "who to contact" list (below) is built after the model call,
+  so the model is told only that a list exists and how long it is, never who is on it.
+
+## Who to contact
+
+A written report's "What this means for the business" section ends with the clients behind the
+numbers, so an adviser who asks "How many clients spend more than they earn each month?" and is told
+"4 clients" also gets the four names, biggest problem first, each linking to the client's profile:
+
+> **Clients spending more than they earn**
+> Book a budget review with each, starting with the biggest monthly shortfall.
+> 1. Lerato Khumalo: Spends R9 400 more than they earn each month (R21 000 in, R30 400 out)
+
+A report can do this when its template returns `contacts` (built with `contactList()` in
+`server/src/reports/contacts.js`). Four reports do today, and each lists exactly the clients its own
+headline counts:
+
+| Report | Who is listed | Worked through |
+|---|---|---|
+| monthly_cash_flow | Clients whose income is below their expenses | Biggest monthly shortfall first |
+| goal_progress | Clients with a goal behind schedule | Widest gap between time gone and amount saved |
+| overdue_reminders | Clients with a reminder past its date, not completed | Longest overdue first |
+| documents_awaiting_signature | Clients with a sent document still unsigned | Longest wait first |
+
+The consent and stuck-items reports already list their clients in their own tables, so they don't
+repeat them here. To add the list to another report, return `contacts: contactList({ title, intro,
+order, entries })` from its `run()`, one entry per client in the order to work through them.
+
+Rules that hold for every list:
+
+- **Advisers only.** `execute()` drops `contacts` for anyone who is not an adviser, so an admin gets
+  the aggregate report and never a list of clients (admins don't see client financial data). An adviser's
+  list only ever holds their own clients, because it is built from the same scoped rows as the chart.
+- **Never sent to the model.** The narrative model receives the aggregated rows and `follow_up: { who,
+  count }`. The prompt tells it the app prints the list under its paragraph and to say "the clients listed
+  below". Without the model, the templated reading says the same.
+- **At most 15 names**, with the true total kept, so the page can say "Showing the 15 most urgent of 21".
+- The list appears on the written report only, not on the live chart, and is part of the printed PDF.
+- Related views never carry a list.
 
 ## Schema check (templates → tables)
 

@@ -241,6 +241,13 @@ function fallbackMeaning(template, result, params, related = []) {
   if (insight) sentences.push(`Worth noting in the detail — ${asSentence(insight)}`);
   if (lens) sentences.push(`${insight ? "Either way, the useful next move is to" : "The useful next move is to"} ${lens.lever}.`);
 
+  // The clients to work through are printed straight under this paragraph.
+  const contacts = result.contacts;
+  if (contacts?.clients?.length) {
+    const many = contacts.total > 1;
+    sentences.push(`The ${many ? `${contacts.total} clients` : "client"} to contact ${many ? "are" : "is"} listed below, ${contacts.order}.`);
+  }
+
   // Where a companion view narrows the question down, say which one to open next.
   const companion = related.find((r) => r.result?.headline);
   if (companion && sentences.length < 5) {
@@ -314,7 +321,7 @@ function hasChartData(result) {
 
 // The browser-safe part of a related view (never llmRows).
 function presentRelated(title, result, extra = {}) {
-  const { llmRows, insights, highlights, ...visible } = result; // eslint-disable-line no-unused-vars
+  const { llmRows, insights, highlights, contacts, ...visible } = result; // eslint-disable-line no-unused-vars
   return { title, ...visible, caption: result.headline, ...extra };
 }
 
@@ -352,6 +359,8 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
     const params = normalizeParams(template, rawParams, ctx.now);
     if (access.role === "advisor") delete params.advisor_id; // advisers only ever see their own book
     const result = await template.run(access, params, ctx);
+    // Names and figures for individual clients are for the adviser who owns them: admins see aggregates only.
+    if (access.role !== "advisor") delete result.contacts;
     return { params, result, ctx, ...extra };
   }
 
@@ -499,6 +508,8 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
       headline: ran.result.headline,
       unit: ran.result.unit,
       rows: sanitizeRows(ran.result.llmRows),
+      // Only that a list of clients is printed under the reading, and how many: never a name.
+      follow_up: ran.result.contacts ? { who: ran.result.contacts.title, count: ran.result.contacts.total } : undefined,
       related: related.map((r) => ({ title: r.title, headline: r.result.headline, unit: r.result.unit, rows: sanitizeRows(r.result.llmRows).slice(0, 15) })),
     });
     if (containsClientData(payload, clients)) {
