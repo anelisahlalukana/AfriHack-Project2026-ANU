@@ -121,10 +121,137 @@ function fallbackNarrative(template, result, params, related = []) {
       return `${r.title} — ${r.result.headline}.${r.result.insights?.[0] ? ` ${r.result.insights[0]}` : ""}`;
     });
   if (extra.length) narrative += `\n\nAlongside this: ${extra.join(" ")}`;
-  return { title, narrative };
+  return { title, narrative, meaning: fallbackMeaning(template, result, params, related) };
+}
+
+// What each family of numbers drives for Royal Square, and the lever the adviser can pull.
+// Frames the templated "what this means" paragraph when the model is unavailable.
+const CATEGORY_LENS = {
+  "Claims & requests": {
+    stake: "claims turnaround is what clients judge Royal Square on, and a slow file is the most common reason a client leaves",
+    lever: "push the oldest files with the slowest provider, and keep those clients updated while they wait",
+  },
+  Clients: {
+    stake: "the shape of the book decides where the next premium and cross-sell income can come from",
+    lever: "pick the thinnest group here and plan a review round for it",
+  },
+  "Money & goals": {
+    stake: "premium and goal funding are recurring revenue, so drift here shows up in next year's income",
+    lever: "book reviews for the clients furthest off track, before the shortfall grows",
+  },
+  Compliance: {
+    stake: "FAIS and FICA gaps carry regulatory and audit risk that no amount of new business offsets",
+    lever: "clear the outstanding items first; they are cheap to fix now and expensive at audit",
+  },
+  Reminders: {
+    stake: "renewals and reviews kept on time are the cheapest retention Royal Square has",
+    lever: "work the overdue end of this list first, then diarise the rest",
+  },
+};
+
+// Custom queries carry no category, so they fall back to the general commercial reading.
+const DEFAULT_LENS = {
+  stake: "figures like these decide where the adviser's hours go, and adviser time is Royal Square's scarcest asset",
+  lever: "start with the largest group above, where the same effort touches the most clients",
+};
+
+function capFirst(text) {
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}
+
+function asSentence(text) {
+  const trimmed = String(text || "").trim();
+  return !trimmed || /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+// The business reading of the figures: how healthy the result is, what it costs or earns the
+// firm, and the decision it points to. Reads the same rows the adviser sees on the chart, and
+// every claim is tied to a number already in the result, so it never over-reads the data.
+function fallbackMeaning(template, result, params, related = []) {
+  const unit = result.unit || "";
+  const counted = COUNT_UNITS.includes(unit);
+  const bare = counted ? "" : unit;
+  const lens = CATEGORY_LENS[template.category] || DEFAULT_LENS;
+  const scope = result.readAs ? "this view" : `this report (${describeScope(params)})`;
+  const rows = (result.rows || []).filter((r) => r && r.label !== undefined);
+  // Counted units are dropped by formatFigure, but the business reading needs the noun.
+  const withUnit = (value) => {
+    if (!counted) return formatFigure(value, bare);
+    // Every counted unit is plural ("claims", "reminders"), so one of them drops the "s".
+    return `${formatFigure(value, "")} ${value === 1 ? unit.replace(/s$/, "") : unit}`;
+  };
+  const sentences = [];
+
+  if (!rows.length) {
+    sentences.push(`${capFirst(scope)} came back empty, so there is nothing to act on yet.`);
+    if (lens) sentences.push(`It is still worth watching, because ${lens.stake}.`);
+    sentences.push("Widen the date range or check the filters, and come back to it once more of this work has been captured.");
+    return sentences.join(" ");
+  }
+
+  const keys = (result.series || []).map((s) => s.key);
+  const summed = keys.length > 1 && (result.stacked || result.chartType === "line");
+  const valueOf = (r) => (summed ? keys.reduce((n, k) => n + (Number(r[k]) || 0), 0) : Number(r[keys[0] || "value"]) || 0);
+  const additive = result.additive ?? (counted || unit === "rand" || Boolean(result.stacked));
+  const total = rows.reduce((n, r) => n + valueOf(r), 0);
+  const sorted = [...rows].sort((a, b) => valueOf(b) - valueOf(a));
+  const top = sorted[0];
+  const period = result.period || "period";
+  // Percentages off a handful of records read as precision the data doesn't have.
+  const thin = counted && total > 0 && total < MEANINGFUL_COUNT;
+
+  // 1. How to read the overall result: too thin to call, a run-rate, a concentration, or a gap.
+  const byPeriod = result.chartType === "line";
+  const name = (label) => (byPeriod ? periodName(label) : label);
+  if (thin) {
+    sentences.push(
+      rows.length === 1
+        ? `There ${total === 1 ? "is" : "are"} only ${withUnit(total)} here, all in ${name(top.label)}, so there is no pattern to read yet — act on the ${total === 1 ? "one case" : "cases"} rather than the shape of the chart.`
+        : `The volumes are still small — ${withUnit(total)} across ${rows.length} ${byPeriod ? `${period}s` : "groups"}, the ${byPeriod ? "busiest" : "largest"} being ${name(top.label)} — so treat the split as a pointer rather than a pattern, and don't reshape the book on it yet.`
+    );
+  } else if (result.chartType === "line" && rows.length >= 3 && additive && total) {
+    const average = total / rows.length;
+    const latest = rows[rows.length - 1];
+    const last = valueOf(latest);
+    const direction = last > average * 1.15 ? "above" : last < average * 0.85 ? "below" : "in line with";
+    sentences.push(
+      `The latest ${period} (${periodName(latest.label)}, ${withUnit(last)}) sits ${direction} its own average of ${withUnit(average)} over the ${rows.length} ${period}s shown, so read it as ${direction === "in line with" ? "the book's normal run-rate" : "a shift in the run-rate rather than noise"}.`
+    );
+  } else if (additive && total && rows.length > 1) {
+    const share = Math.round((valueOf(top) / total) * 100);
+    sentences.push(
+      share >= 40
+        ? `${top.label} accounts for ${share}% of the ${withUnit(total)}, so this result is really about one group rather than the whole book, and how that group goes is how the number goes.`
+        : `The ${withUnit(total)} total is spread across ${rows.length} groups with ${top.label} only slightly ahead on ${share}%, so nothing is concentrated in one place and no single group is driving the number.`
+    );
+  } else if (!additive && rows.length > 1) {
+    const low = sorted[sorted.length - 1];
+    sentences.push(
+      `The spread runs from ${top.label} at ${formatFigure(valueOf(top), unit)} down to ${low.label} at ${formatFigure(valueOf(low), unit)}, and that gap, rather than the average, is where the room for improvement sits.`
+    );
+  } else if (result.headline) {
+    sentences.push(`Take the headline — ${asSentence(result.headline)} — as the current baseline for ${scope}.`);
+  }
+
+  // 2. What it means commercially.
+  if (lens) sentences.push(`Commercially, ${lens.stake}.`);
+
+  // 3. The detail behind it, then the decision the numbers support.
+  const insight = (result.insights || []).find(Boolean);
+  if (insight) sentences.push(`Worth noting in the detail — ${asSentence(insight)}`);
+  if (lens) sentences.push(`${insight ? "Either way, the useful next move is to" : "The useful next move is to"} ${lens.lever}.`);
+
+  // Where a companion view narrows the question down, say which one to open next.
+  const companion = related.find((r) => r.result?.headline);
+  if (companion && sentences.length < 5) {
+    sentences.push(`"${companion.title}" below shows how that breaks down, which is the quickest way to turn this into a short list to work through.`);
+  }
+  return sentences.join(" ");
 }
 
 const RAND = new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 });
+// Below this many records, a percentage split says more about the sample than the book.
+const MEANINGFUL_COUNT = 10;
 const COUNT_UNITS = ["claims", "clients", "reminders", "tasks", "requests", "documents", "goals", "items", "dependants", "screenings"];
 
 function formatFigure(value, unit) {
@@ -367,7 +494,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
     const fallback = fallbackNarrative(template, ran.result, ran.params, related);
     if (!llm?.enabled) return { ...fallback, writtenBy: "template" };
     const payload = JSON.stringify({
-      template: { label: template.label, description: template.description },
+      template: { label: template.label, description: template.description, category: template.category },
       parameters: modelVisibleParams(ran.params),
       headline: ran.result.headline,
       unit: ran.result.unit,
@@ -382,7 +509,10 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
       const reply = await llm.generateJson(NARRATIVE_PROMPT, payload);
       const title = typeof reply?.title === "string" ? reply.title.trim().slice(0, 140) : "";
       const narrative = typeof reply?.narrative === "string" ? reply.narrative.trim().slice(0, 2000) : "";
-      if (title && narrative) return { title, narrative, writtenBy: "ai" };
+      const meaning = typeof reply?.meaning === "string" ? reply.meaning.trim().slice(0, 2000) : "";
+      // A reply without the business reading still beats the templated story, so the
+      // templated meaning fills that gap and the section is always there.
+      if (title && narrative) return { title, narrative, meaning: meaning || fallback.meaning, writtenBy: "ai" };
     } catch (error) {
       console.warn("[reports] narrative model unavailable, using template:", error.message);
     }
@@ -424,7 +554,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
       base = { kind: "template", ...present(template, ran, "direct") };
     }
     const [clients, related] = await Promise.all([scopedClients(db, access, ran.params), relatedViews(access, template, ran, querySpec)]);
-    const { title, narrative, writtenBy } = await writeNarrative(template, ran, clients, related);
+    const { title, narrative, meaning, writtenBy } = await writeNarrative(template, ran, clients, related);
     let generatedFor = access.label;
     if (access.role === "admin") {
       const advisorId = ran.params.advisor_id || querySpec?.advisor_id;
@@ -436,6 +566,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
       ...base,
       title,
       narrative,
+      meaning,
       writtenBy,
       highlights: deriveHighlights(ran.result),
       related: related.map((r) => presentRelated(r.title, r.result, r.readAs ? { readAs: r.readAs } : { templateId: r.templateId })),
@@ -447,4 +578,4 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
   return { listTemplates, catalogue, ask, run, query, generate, fallbackNarrative };
 }
 
-module.exports = { ...createReportsService(), createReportsService, fallbackNarrative, deriveHighlights, MIN_CONFIDENCE };
+module.exports = { ...createReportsService(), createReportsService, fallbackNarrative, fallbackMeaning, deriveHighlights, MIN_CONFIDENCE };
