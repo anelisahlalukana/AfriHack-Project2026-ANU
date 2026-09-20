@@ -3,7 +3,7 @@ import { Download, FileText, RotateCw, Search, Sparkles } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdmin } from '../../lib/authRoles'
 import { askReport, generateReport, getReportCatalogue, runReport } from '../../api/reports'
-import { TRY_ASKING, featuredTemplates, formatGeneratedAt, groupTemplates, isClosestMatch, printTitle, showingLabel, storyParagraphs } from '../../lib/reportFormat'
+import { TRY_ASKING, chipText, featuredTemplates, formatGeneratedAt, groupTemplates, isClosestMatch, printTitle, showingLabel, storyParagraphs } from '../../lib/reportFormat'
 import ReportChart from '../../components/reports/ReportChart'
 import './Reports.css'
 
@@ -124,7 +124,7 @@ export default function Reports() {
     <header className="page-heading rpt-no-print">
       <div>
         <h1>Ask about your data</h1>
-        <p>{admin ? 'Live figures across every adviser\'s book.' : 'Live figures from your own clients.'} Pick a question below or type your own.</p>
+        <p>{admin ? 'Live figures across every adviser\'s book.' : 'Live figures from your own clients.'} Type a question, or start with one of these.</p>
       </div>
     </header>
 
@@ -141,14 +141,14 @@ export default function Reports() {
       {templatesError
         ? <Problem error={`Couldn't load the suggested questions: ${templatesError}`} onRetry={loadTemplates} />
         : <div className="rpt-chips" aria-label="Suggested questions">
-          {featuredTemplates(templates).map(t => <button type="button" key={t.id} className="rpt-chip" onClick={() => runTemplate(t)} disabled={loading} title={t.description}>{t.suggestedQuestion}</button>)}
+          {featuredTemplates(templates).map(t => <button type="button" key={t.id} className="rpt-chip" onClick={() => runTemplate(t)} disabled={loading} title={t.description}>{chipText(t)}</button>)}
         </div>}
-      <div className="rpt-try" aria-label="Free-form examples">
-        <span>Or ask anything about your records:</span>
-        {TRY_ASKING.map(text => <button type="button" key={text} className="rpt-link" onClick={() => tryAsking(text)} disabled={loading}>{text}</button>)}
-      </div>
       {templates.length > 0 && <details className="rpt-browse">
         <summary>Browse all {templates.length} reports</summary>
+        <div className="rpt-try" aria-label="Free-form examples">
+          <span>Or ask in your own words, e.g.</span>
+          {TRY_ASKING.map(text => <button type="button" key={text} className="rpt-link" onClick={() => tryAsking(text)} disabled={loading}>{text}</button>)}
+        </div>
         {groupTemplates(templates, catalogue.categories).map(group => <div className="rpt-group" key={group.category}>
           <h3>{group.category}</h3>
           <ul>
