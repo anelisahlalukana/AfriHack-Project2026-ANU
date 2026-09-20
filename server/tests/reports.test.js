@@ -938,3 +938,18 @@ test("the question 'How many clients spend more than they earn each month?' open
   assert.equal(r.template.id, "monthly_cash_flow");
   assert.equal(r.contacts.total, 2);
 });
+
+test("asking then generating, as the browser does, gives an adviser the list and an admin only the aggregate", async () => {
+  const data = withDeficitClient(seed());
+  const question = "How many clients spend more than they earn each month?";
+
+  for (const [user, expectList] of [[adviser(A1), true], [ADMIN, false]]) {
+    const svc = service(data);
+    const asked = await svc.ask(user, question);
+    const written = await svc.generate(user, asked.template.id, asked.parameters);
+
+    assert.equal(asked.template.id, "monthly_cash_flow");
+    assert.equal(Boolean(written.contacts), expectList);
+    assert.equal(/clients to contact are listed below/.test(written.meaning), expectList);
+  }
+});
