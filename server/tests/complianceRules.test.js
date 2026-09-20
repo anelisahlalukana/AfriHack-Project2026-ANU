@@ -23,7 +23,7 @@ test("fallback adds twelve calendar months, clamps leap day and preserves UTC ti
   assert.equal(addConsentMonths("2024-02-29T15:30:00Z"), "2025-02-28T15:30:00.000Z");
   assert.equal(consentState({ ...consent, expires_at: null }, now).expiresAt, "2027-01-01T12:00:00.000Z");
 });
-const checks = ["pep", "terrorism_financing"].map(type => ({ id: type, screening_type: type, result: "clear", created_at: "2026-01-01" }));
+const checks = ["pep", "terrorism_financing"].map(type => ({ id: type, simulated: false, provider: "Recorded screening source", screening_type: type, result: "clear", created_at: "2026-01-01" }));
 const docs = DOCUMENT_TYPES.map(d => ({ ...consent, document_type: d.type }));
 test("overall priority and unique required documents", () => {
   assert.equal(clientCompliance({ id: "a" }, docs, checks, now).status, "compliant");
@@ -36,8 +36,8 @@ test("overall priority and unique required documents", () => {
   assert.equal(clientCompliance({ is_politically_exposed: true }, docs, checks, now).status, "action_required");
 });
 test("latest screening wins per type, deterministic ties, declared PEP overrides clear", () => {
-  const rows = [...checks, { id: "z", screening_type: "pep", result: "flagged", created_at: "2026-02-01" },
-    { id: "y", screening_type: "pep", result: "clear", created_at: "2026-02-01" }];
+  const rows = [...checks, { id: "z", simulated: false, provider: "Recorded screening source", screening_type: "pep", result: "flagged", created_at: "2026-02-01" },
+    { id: "y", simulated: false, provider: "Recorded screening source", screening_type: "pep", result: "clear", created_at: "2026-02-01" }];
   assert.equal(screeningState(rows, "pep", false).status, "flagged");
   assert.equal(screeningState(rows, "terrorism_financing", false).status, "clear");
   assert.equal(screeningState(checks, "pep", true).status, "flagged");
@@ -53,4 +53,15 @@ test("CPD follows South African June boundary and excludes historical hours", ()
   assert.equal(cpdSummary(records, now).status, "up_to_date");
   assert.equal(cpdSummary(records, "2027-06-01T00:00:00Z").status, "not_started");
   assert.equal(cpdSummary([{ hours: 19, completed_on: "2026-09-01" }], now).remainingHours, 0);
+});
+
+test("simulated or unclassified records cannot clear clients or replace genuine screenings", () => {
+  const genuine = { id: "real", screening_type: "pep", result: "flagged", provider: "Recorded source", simulated: false, created_at: "2026-01-01" };
+  const demo = { ...genuine, id: "demo", simulated: true, result: "clear", created_at: "2026-09-01" };
+  assert.equal(screeningState([genuine, demo], "pep", false).status, "flagged");
+  assert.equal(screeningState([demo], "pep", false).status, "not_screened");
+  assert.equal(screeningState([{ ...genuine, simulated: undefined }], "pep", false).status, "not_screened");
+  assert.equal(screeningState([demo], "pep", true).status, "flagged");
+  const simulatedChecks = checks.map(row => ({ ...row, simulated: true }));
+  assert.equal(clientCompliance({}, docs, simulatedChecks, now).status, "action_required");
 });

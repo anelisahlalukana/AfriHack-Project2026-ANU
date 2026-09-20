@@ -47,7 +47,8 @@ function cpdSummary(records, now = new Date()) {
 }
 
 function screeningState(records, type, declaredPep) {
-  const latest = records.filter(r => r.screening_type === type)
+  const latest = records.filter(r => r.screening_type === type && r.simulated === false &&
+    typeof r.provider === "string" && r.provider.trim() && ["clear", "flagged"].includes(r.result) && Number.isFinite(Date.parse(r.created_at)))
     .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || String(b.id).localeCompare(String(a.id)))[0];
   return { status: type === "pep" && declaredPep ? "flagged" : latest?.result || "not_screened",
     declared: type === "pep" && Boolean(declaredPep), checkedAt: latest?.created_at || null,
@@ -68,7 +69,7 @@ function clientCompliance(client, documents, screenings, now = new Date()) {
   if (!consent.valid) actions.push(consent.state === "invalid" ? "Review the invalid or duplicate consent record." : "Obtain current signed client consent.");
   for (const [label, check] of [["PEP", pep], ["Terrorism financing", terrorismFinancing]]) {
     if (check.status === "flagged") actions.push(`Review the flagged ${label} check.`);
-    if (check.status === "not_screened") actions.push(`Run the ${label} check.`);
+    if (check.status === "not_screened") actions.push(`Obtain and record a genuine ${label} screening result.`);
   }
   for (const doc of outstanding) actions.push(`Complete ${doc.label}.`);
   for (const doc of duplicates) actions.push(`Resolve duplicate ${doc.label} records.`);

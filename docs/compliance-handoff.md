@@ -1,5 +1,19 @@
 # Compliance implementation handoff
 
+## Live data correction on 20 September 2026
+
+The dashboard was verified against the configured Supabase project: 72 client-role users, 336 documents, 20 CPD activities, and 95 screening rows. All 95 screening rows were marked simulated; no non-simulated screening rows were present. All exposed table/column definitions were inspected to locate alternative screening evidence; adviser flags belong to advisers, not clients.
+
+The dashboard continues to read live Supabase clients, documents, declarations, CPD and audit records. Current client screening status now uses only explicitly non-simulated records with a recorded source, supported result and timestamp. Later simulations do not replace genuine screening evidence. Declared PEP remains flagged. Missing genuine evidence means not screened/action required, not clear.
+
+The mock-generating action has been removed from the client card. Its legacy POST endpoint returns a clear 503 explaining that no live provider is connected, without inserting a screening. Existing database rows and historical audit entries were not changed or deleted. This correction requires an application restart/refresh, not a database migration. Do not flip simulated flags just to obtain a compliant badge.
+
+Read-only verification after correction returned 72 clients, 0 compliant, 72 action required, 6 consent-expiring, 2 declared-PEP flagged, and 22 clients with outstanding documents. These totals reflect the currently stored evidence, not invented replacements.
+
+Validation: 19 focused compliance rules/service/route tests passed and frontend production build passed. Full frontend lint remains blocked by existing errors in the separate uncommitted AuditLog.jsx and exportTable.js work; those files were preserved.
+
+The following sections describe the original implementation; the live-data correction above supersedes its mock-screening behavior.
+
 Implemented on `feature/compliance`, 19 September 2026. The pre-implementation review is retained in `compliance-project-review.md`; the implemented scope follows `compliance-implementation-prompt.md`.
 
 ## Delivered

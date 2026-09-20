@@ -17,10 +17,6 @@ export function cpdPercent(hours, required) {
   if (!Number.isFinite(hours) || !Number.isFinite(required) || required <= 0) return 0
   return Math.min(100, Math.max(0, hours / required * 100))
 }
-export function filterCompliance(clients, search = '', status = 'all') {
-  const term = search.trim().toLowerCase()
-  return clients.filter(c => (status === 'all' || c.status === status) && c.name.toLowerCase().includes(term))
-}
 export function southAfricaToday(now = new Date()) {
   return new Date(new Date(now).getTime() + 2 * 3600000).toISOString().slice(0, 10)
 }

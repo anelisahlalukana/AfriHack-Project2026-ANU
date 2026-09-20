@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Inbox, LogOut } from 'lucide-react'
+import { Inbox, LogOut, ScrollText } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useProviderMe } from '../../hooks/useProvider'
 import { initialsOf } from '../../lib/initials'
@@ -34,6 +34,7 @@ export default function ProviderLayout() {
       <hr className="side-divider" />
       <nav>
         <NavLink to="/provider" end><Inbox size={18} /> Claims & requests</NavLink>
+        <NavLink to="/provider/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <div className="advisor">
         <div className="advisor-row">

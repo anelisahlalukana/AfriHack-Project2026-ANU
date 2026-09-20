@@ -77,6 +77,9 @@ main{padding:26px 38px 55px;min-width:0;max-width:1550px;width:100%;margin:auto}
 .card{
   background:var(--card);
   border:1px solid var(--border);
+  /* A card and the page are both white in light mode and both navy in dark, so the
+     left edge is what separates them. */
+  border-left:3px solid var(--card-accent);
   border-radius:var(--r-card);
   padding:24px;
   display:flex;
@@ -108,9 +111,12 @@ main{padding:26px 38px 55px;min-width:0;max-width:1550px;width:100%;margin:auto}
 /* Tables */
 .table-scroll{overflow-x:auto}
 table{width:100%;border-collapse:collapse;text-align:left}
+/* Headers read as sentence case: a capital first letter and the rest as written.
+   The labels are already capitalised at their source, so nothing is transformed
+   here — that keeps acronyms like ID and PEP intact. */
 th{
-  color:var(--muted);font-size:10.5px;text-transform:uppercase;
-  letter-spacing:1px;font-weight:600;background:var(--card-2);
+  color:var(--muted);font-size:12.5px;
+  letter-spacing:0;font-weight:600;background:var(--card-2);
 }
 th:first-child{border-radius:9px 0 0 9px}
 th:last-child{border-radius:0 9px 9px 0}
@@ -125,6 +131,9 @@ tbody tr:last-child td{border-bottom:0}
   display:inline-block;border:1px solid var(--border-strong);border-radius:var(--r-pill);
   background:var(--card-2);color:var(--text-2);padding:3px 11px;font-size:11px;
   white-space:nowrap;text-transform:capitalize;font-weight:550;
+  /* A flex parent would otherwise stretch the badge to the row height, and the
+     pill radius would round that tall box into a circle. */
+  align-self:flex-start;
 }
 
 .empty{text-align:center;padding:45px 15px;display:flex;flex-direction:column;align-items:center;gap:14px}
@@ -484,26 +493,15 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 @media(max-width:359px){.client-top .signout span{display:none}.client-top .signout{padding:6px 10px}}
 
 /* Compliance follows the existing cards, badges and form styling. */
-.stats.compliance-stats{grid-template-columns:repeat(3,minmax(0,1fr))}
 .compliance-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0}
-.compliance-table{overflow-x:auto;width:100%}
-.compliance-table table{width:100%;border-collapse:collapse;min-width:780px}
-.compliance-table th,.compliance-table td{text-align:left;padding:12px 8px;border-bottom:1px solid var(--border)}
-.compliance-table th{font-size:12px;color:var(--muted)}
-.compliance-table a{font-weight:600}
 .compliance-cpd{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
 .compliance-cpd progress{width:100%;height:12px;accent-color:var(--red)}
 .compliance-fields{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:12px;min-width:0}
 .compliance-fields legend{font-weight:600;margin-bottom:12px}
 .compliance-fields button{align-self:flex-start}
-.compliance-activities{list-style:none;padding:0;max-height:320px;overflow:auto}
-.compliance-activities li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)}
-.compliance-activities small{display:block;color:var(--muted);margin-top:4px}
 .compliance-audit ol{padding-left:20px;max-height:380px;overflow:auto}
 .compliance-audit li{padding:8px 0;line-height:1.6;overflow-wrap:anywhere}
 .compliance-audit time{font-weight:600}
-@media(max-width:900px){.stats.compliance-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:520px){.stats.compliance-stats{grid-template-columns:1fr}}
 .stats .metric{color:inherit;text-decoration:none}
 .stats a.metric:hover{border-color:var(--border-strong)}
 .stats .metric small{color:var(--muted);font-size:12px}
@@ -512,7 +510,8 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .live-stale{color:var(--warn)}.live-stale i{animation:none}
 @keyframes live-pulse{50%{opacity:.35}}
 @media(prefers-reduced-motion:reduce){.live i{animation:none}}
-.pulse-row{cursor:pointer}.pulse-row:hover{background:var(--accent-50)}.pulse-reasons{display:flex;flex-wrap:wrap;gap:6px}.pulse-row td:last-child{width:32px;color:var(--accent-500)}.detail-row progress{margin-top:8px;max-width:260px}
+.signal-days{align-self:flex-start;white-space:nowrap;color:var(--muted);font-size:12.5px}
+.pulse-row{cursor:pointer}.pulse-row:hover{background:var(--accent-50)}.pulse-reason{white-space:normal;min-width:200px;max-width:420px;overflow-wrap:anywhere}.pulse-reason small{color:var(--muted);margin-top:2px}.pulse-row td:last-child{width:32px;color:var(--accent-500)}.detail-row progress{margin-top:8px;max-width:260px}
 
 /* ============================================================
    Reference pass — shapes and accents brought in line with
@@ -546,7 +545,7 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 /* Cards, panels and popovers share the card radius and shadow. */
 .rs-choice,.rs-check,.modal,.col-panel,.claim-panel,.doc-preview,.rs-safety,.rs-thread,.rs-snapshot{border-radius:var(--r-card)}
 .rs-choice[aria-pressed="true"]{background:var(--accent-50)}
-.rs-needs{box-shadow:inset 3px 0 0 var(--brand-600),var(--shadow);border-color:var(--accent-300)}
+.rs-needs{box-shadow:var(--shadow);border-color:var(--accent-300);border-left-color:var(--brand-600)}
 .rs-safety{background:var(--accent-50);border-color:var(--accent-300)}
 .col-panel,.claim-panel,.modal{box-shadow:var(--shadow-lg)}
 .rs-queue tr.waiting-us td:first-child{box-shadow:inset 3px 0 0 var(--brand-600)}
@@ -565,8 +564,6 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 /* Sortable table headers sit on the tinted header row. */
 .sort-btn.sorted svg{color:var(--brand-600)}
 .clickable-row:hover,.pulse-row:hover{background:var(--accent-50)}
-.compliance-table th,.compliance-table td{border-bottom-color:var(--border)}
-.compliance-table th{background:var(--card-2);border-radius:0}
 .compliance-cpd progress{accent-color:var(--brand-600)}
 
 /* Client area: light top bar, floating bottom nav with a blue active tab. */
@@ -585,7 +582,7 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 }
 .chat-fab:hover:not(:disabled){background:linear-gradient(180deg,var(--brand-500),var(--brand-800))}
 .chat-panel{border-radius:20px 20px 0 0}
-.chat-log{background:var(--bg)}
+.chat-log{background:var(--card-2)}
 .chat-msg.bot{background:var(--card);border-color:var(--border)}
 .chat-msg.user{background:linear-gradient(180deg,var(--brand-600),var(--brand-800));color:#fff}
 .chat-link{color:var(--brand-600)}
@@ -643,7 +640,6 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 .rs-safety b{color:var(--danger)}
 .rs-alert{border-color:var(--danger);color:var(--danger)}
 .rs-queue tr.waiting-us td:first-child{box-shadow:inset 3px 0 0 var(--danger)}
-.compliance-table .status-flagged{color:var(--danger)}
 
 /* ============================================================
    Dark mode adjustments.
@@ -680,3 +676,41 @@ aside .theme-toggle:hover:not(:disabled){background:var(--sidebar-hover);color:v
 .advisor-row .side-user{flex:1;min-width:0}
 .client-top .theme-toggle{position:absolute;left:12px;top:50%;transform:translateY(-50%)}
 .login-theme-toggle{position:fixed;right:16px;top:16px;z-index:40;background:var(--card);border-color:var(--border)}
+
+/* ============================================================
+   Audit log.
+   A wide, dense table: the detail column carries most of the
+   meaning, so it wraps while everything else stays on one line.
+   ============================================================ */
+.audit-downloads{display:flex;gap:10px;flex-wrap:wrap}
+.audit-table{min-width:760px}
+.audit-table td{white-space:nowrap;vertical-align:top}
+.audit-table td.audit-detail{white-space:normal;min-width:260px;max-width:520px;overflow-wrap:anywhere}
+.audit-table tbody tr:hover{background:var(--accent-50)}
+.audit-table .badge{font-weight:600}
+.badge.audit-source-compliance{background:var(--accent-100);border-color:var(--accent-300);color:var(--brand-700)}
+.badge.audit-source-task{background:var(--card-2);border-color:var(--border-strong);color:var(--text-2)}
+.badge.audit-source-provider{background:var(--ok-bg);border-color:var(--ok-border);color:var(--ok)}
+/* The date inputs in the toolbar are narrower than the selects beside them. */
+.table-toolbar input[type="date"]{width:auto;min-width:150px}
+@media(max-width:700px){
+  .audit-downloads{width:100%}
+  .audit-downloads button{flex:1}
+}
+
+/* ============================================================
+   Compliance page: two tabbed tables.
+   ============================================================ */
+/* The tab strip sits above the card, so give it room. */
+.rs-tabs[role="tablist"]{margin:0 0 16px}
+.compliance-client-table{min-width:720px}
+.compliance-cpd-table{min-width:520px}
+.compliance-client-table td,.compliance-cpd-table td{white-space:nowrap}
+/* Activity names are free text and can be long, so they wrap instead of stretching the table. */
+.compliance-cpd-table td:first-child{white-space:normal;min-width:220px;max-width:420px;overflow-wrap:anywhere}
+.compliance-cpd-table tfoot td{
+  white-space:nowrap;font-weight:600;color:var(--text-2);
+  background:var(--card-2);border-bottom:0;border-radius:0 0 9px 9px;
+}
+.compliance-cpd .table-toolbar{margin-top:14px}
+.compliance-cpd .pager{margin-bottom:6px}

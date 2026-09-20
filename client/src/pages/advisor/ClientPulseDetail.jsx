@@ -22,7 +22,7 @@ function Signal({ signal, clientId }) {
       {['document', 'onboarding'].includes(signal.kind) && <Link to={`/clients/${clientId}`} state={{ from: `/client-pulse/${clientId}` }}>Open documents</Link>}
       {signal.kind === 'reminder' && <Link to="/reminders">Open reminders</Link>}
     </span>
-    {signal.days !== null && <span className={`badge${signal.kind === 'document' ? ' status-sent' : ''}`}>{plural(signal.days, 'day')}</span>}
+    {signal.days !== null && <span className="signal-days">{plural(signal.days, 'day')}</span>}
   </div>
 }
 

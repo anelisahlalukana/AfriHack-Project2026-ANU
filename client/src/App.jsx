@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Bell, HeartPulse, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
+import { Bell, HeartPulse, Inbox, LayoutDashboard, LogOut, ScrollText, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
@@ -26,6 +26,7 @@ import Compliance from './pages/advisor/Compliance'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
+import AuditLog from './pages/AuditLog'
 import AdviserTaskDetail from './pages/claims/AdviserTaskDetail'
 import ClientTaskDetail from './pages/claims/ClientTaskDetail'
 import MyRequests from './pages/claims/MyRequests'
@@ -74,6 +75,7 @@ function WorkspaceLayout() {
         <NavLink to="/reminders"><Bell size={18} /> Reminders</NavLink>
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
+        <NavLink to="/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Adviser" />
     </aside>
@@ -92,6 +94,7 @@ function AdminLayout() {
       <nav>
         <NavLink to="/admin" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/admin/users"><Users size={18} /> User management</NavLink>
+        <NavLink to="/admin/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Administrator" />
     </aside>
@@ -125,6 +128,7 @@ export default function App() {
       <Route element={<ProviderLayout />}>
         <Route path="provider" element={<ProviderInbox />} />
         <Route path="provider/tasks/:taskId" element={<ProviderTaskDetail />} />
+        <Route path="provider/audit-log" element={<AuditLog />} />
       </Route>
     </Route>
 
@@ -132,6 +136,7 @@ export default function App() {
       <Route element={<AdminLayout />}>
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/users" element={<AdminUsers />} />
+        <Route path="admin/audit-log" element={<AuditLog />} />
       </Route>
     </Route>
 
@@ -151,6 +156,7 @@ export default function App() {
       <Route path="tasks" element={<Tasks />} />
       <Route path="tasks/new" element={<NewRequest staff />} />
       <Route path="tasks/:taskId" element={<AdviserTaskDetail />} />
+      <Route path="audit-log" element={<AuditLog />} />
       <Route path="*" element={<div className="card"><h1>Page not found</h1><Link to="/">Return to your clients</Link></div>} />
     </Route>
     </Route>

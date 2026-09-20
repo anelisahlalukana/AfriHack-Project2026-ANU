@@ -37,7 +37,11 @@ export default function ClientPulse() {
             return <tr key={client.id} className="pulse-row" onClick={() => navigate(`/client-pulse/${client.id}`)}>
               <td><Link className="client-name" to={`/client-pulse/${client.id}`} onClick={event => event.stopPropagation()}>{client.name}</Link></td>
               <td><span className={badge.className}>{badge.label}</span><small>Score {client.score}</small></td>
-              <td><div className="pulse-reasons">{client.reasons.map((reason, index) => <span className="badge" key={`${index}-${reason}`}>{reason}</span>)}</div></td>
+              {/* Only the heaviest reason: the server sorts them by weight. The rest are
+                  on the client's own page, under "What's going stale". */}
+              <td className="pulse-reason">{client.reasons[0] || '—'}
+                {client.reasons.length > 1 && <small>+{client.reasons.length - 1} more</small>}
+              </td>
               <td aria-hidden="true"><ChevronRight size={18} /></td>
             </tr>
           })}</tbody>
