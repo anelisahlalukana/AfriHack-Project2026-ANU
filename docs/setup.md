@@ -112,3 +112,25 @@ Run `supabase/migrations/202609190006_extended_client_profile.sql` against the c
 Clients can edit the full form under **Profile** (`/account/profile`); assigned advisors see the same form on the client profile. The form covers all supplied personal, marital, education, work, rewards, referral, HR, tax, doctor, salary/alternate banking, contact, address and spouse/parent fields. Immediate and long-term planning goals are text lists; financial goals with target balances remain in their existing editor. Dependants reuse existing records and retain IDs after edits. Sign-in ID numbers for linked accounts are read-only in this form.
 
 Apply the migration before loading the updated client profile page. Verify a client and assigned advisor can save and reload additional fields, leading-zero account/branch codes, multiple dependants, and both planning-goal lists. Verify an unrelated user cannot read or save the profile via the RPC. Invalid allocations or dependant data must roll back the entire save. Existing assets, liabilities, financial goals, login linkage and advisor assignment must stay unchanged.
+
+## Installable app (PWA)
+
+The client and advisor areas install to a phone home screen or a desktop dock and open without browser chrome. Nothing extra has to be built or deployed: `client/public/manifest.webmanifest` and `client/public/sw.js` are copied into `dist/` as they are.
+
+What makes it up:
+
+- **`client/public/manifest.webmanifest`** — name, icons, `display: standalone`, `start_url: /`, and three shortcuts (claims, documents, reminders) that appear on a long-press of the installed icon.
+- **`client/public/icons/`** — 192px and 512px icons plus a maskable 512px one for Android, and a 180px `apple-touch-icon.png` for iOS. All four are the Royal Square monogram cut from `images/slogan.png`.
+- **`client/public/sw.js`** — the same service worker that has always handled push, now also caching the app shell so the app opens offline. Registered on start-up by `client/src/lib/pwa.js`, and still registered on demand by `enablePush`.
+- **`client/src/components/PwaPrompts.jsx`** — the "Install Royal Square" banner (dismissed once, never shown again on that device) and the "A new version is ready" banner.
+
+Operating notes:
+
+1. Installing and push both need **HTTPS** (or `localhost`). Over plain HTTP the app still works, it just cannot be installed.
+2. The service worker is registered in **production builds only**, so it never fights Vite's hot reloading in development. Test it with `npm run build --prefix client` then `npm run preview --prefix client`.
+3. The host must serve `index.html` for unknown paths (SPA fallback), otherwise a deep link such as `/account/claims` 404s on a cold load. `vite preview` already does this.
+4. **Bump `VERSION` in `client/public/sw.js` on each release.** Old caches are deleted when the new worker activates, which refreshes the cached shell and clears build assets from previous deploys.
+
+Nothing signed-in is ever cached. The worker passes `/api/` requests and every other origin (the API host, Supabase, signed document URLs) straight to the network, and only stores the app shell, Vite's content-hashed build output and the brand images — files that are identical for every visitor. The Cache API outlives a sign-out and is shared by everyone using the device, so no user data may go in it.
+
+Checks: build, preview, then in DevTools → Application confirm the manifest has no errors, the service worker is activated, and the page still loads with the network set to offline.

@@ -2,9 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The Royal Square monogram, same artwork as the installed app's icons. -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Royal Square | Advisor Workspace</title>
+    <meta name="description" content="Your documents, claims, requests and reminders with Royal Square Financial, in one place." />
+
+    <!-- Installable app. The manifest carries the name, icons and start URL; the service worker
+         it implies is registered from src/lib/pwa.js once the page has loaded. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Matches the sticky top bar in each theme, so the status bar blends into the app. -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141d2f" media="(prefers-color-scheme: dark)" />
+    <!-- iOS reads these rather than the manifest when the app is added to the Home Screen. -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Royal Square" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <script>
       // Applied before first paint so a dark-mode user never sees a white flash.
       try {
