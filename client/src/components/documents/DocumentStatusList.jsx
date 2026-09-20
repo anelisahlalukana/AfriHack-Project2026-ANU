@@ -25,9 +25,11 @@ const ACKNOWLEDGE_TYPE = 'fais_disclosure'
 // `onlySent` hides documents that haven't been sent yet (used on the client's own
 // account page, where only what's actually been sent to them should show).
 // `emptyMessage` is shown when there is nothing to list. `onChanged` runs after a document is signed.
+// `heading={false}` drops the card's own title, for a page whose own heading already says
+// "Documents" (the client's Documents tab). Advisers see it among other cards, so it stays there.
 // Advisers (staff) only send documents; the client is the signer. So advisers get a "Send to
 // client" action and never the sign/upload options, and clients never get "Send".
-export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, onChanged }) {
+export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, onChanged, heading = true }) {
   const { user } = useAuth()
   const isAdviser = isStaff(user)
   const [sendingType, setSendingType] = useState(null)
@@ -70,7 +72,7 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, o
   const visibleDocuments = onlySent ? documents?.filter(d => d.status !== 'not_sent') : documents
 
   return <section className="card">
-    <header className="section-heading"><div><h2><FileText size={20} /> Documents</h2><p>Compliance documents for this client</p></div></header>
+    {heading && <header className="section-heading"><div><h2><FileText size={20} /> Documents</h2><p>Compliance documents for this client</p></div></header>}
     {error && <p className="error" role="alert">{error}</p>}
     {!documents && !error && <p>Loading…</p>}
     {visibleDocuments && !visibleDocuments.length && emptyMessage && <p className="empty">{emptyMessage}</p>}
@@ -96,7 +98,9 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, o
                 {sendingType === doc.documentType ? 'Sending…' : 'Send to client'}
               </button>
             )
-            : (
+            // A client can only act on a document that is waiting for them. Once it is signed (or
+            // filed) the button is gone; View still opens the signed copy.
+            : doc.status === 'sent' && (
               <button type="button" className="primary" onClick={() => setOpenType(doc.documentType)}>
                 {acknowledge ? 'Acknowledge' : 'Sign'}
               </button>

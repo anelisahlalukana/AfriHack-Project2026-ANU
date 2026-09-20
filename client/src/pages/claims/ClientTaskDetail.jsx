@@ -19,8 +19,8 @@ export default function ClientTaskDetail() {
     <Link className="back" to="/account/claims"><ArrowLeft size={16} /> My claims & requests</Link>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">{task.reference}{task.providerReference ? ` · ${task.provider?.name} ${task.providerReference}` : ''}</p>
         <h1>{task.isClaim ? `${task.typeLabel} claim` : task.typeLabel}</h1>
+        <p>{task.reference}{task.providerReference ? ` · ${task.provider?.name} ${task.providerReference}` : ''}</p>
         <p className="rs-chips"><StatusChip status={task.status} /><WaitingChip task={task} viewer="client" />{task.claimsHandler && <span className="rs-chip">Handler: {task.claimsHandler}</span>}</p>
       </div>
     </header>

@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes, Link, NavLink } from 'react-router-dom'
-import { Bell, HeartPulse, ChartColumn, Inbox, LayoutDashboard, LogOut, ShieldEllipsis, Users } from 'lucide-react'
+import { Bell, HeartPulse, ChartColumn, Inbox, LayoutDashboard, ScrollText, LogOut, ShieldEllipsis, Users } from 'lucide-react'
 import { AuthProvider } from './context/AuthContext'
 import { initialsOf } from './lib/initials'
 import { useAuth } from './hooks/useAuth'
 import ProtectedRoute from './components/ProtectedRoute'
+import PwaPrompts from './components/PwaPrompts'
 import ThemeToggle from './components/ThemeToggle'
 import Login from './pages/Login'
 import ResetPassword from './pages/ResetPassword'
@@ -27,6 +28,7 @@ import Reports from './pages/advisor/Reports'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AdminUsers from './pages/admin/AdminUsers'
 import Tasks from './pages/Tasks'
+import AuditLog from './pages/AuditLog'
 import AdviserTaskDetail from './pages/claims/AdviserTaskDetail'
 import ClientTaskDetail from './pages/claims/ClientTaskDetail'
 import MyRequests from './pages/claims/MyRequests'
@@ -76,10 +78,11 @@ function WorkspaceLayout() {
         <NavLink to="/tasks"><Inbox size={18} /> Requests & claims</NavLink>
         <NavLink to="/compliance"><ShieldEllipsis size={18} /> Compliance</NavLink>
         <NavLink to="/reports"><ChartColumn size={18} /> Reports</NavLink>
+        <NavLink to="/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Adviser" />
     </aside>
-    <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Client management</span></div><Outlet /></main>
+    <main key={session.user.id}><Outlet /></main>
   </div>
 }
 
@@ -95,15 +98,16 @@ function AdminLayout() {
         <NavLink to="/admin" end><LayoutDashboard size={18} /> Dashboard</NavLink>
         <NavLink to="/admin/users"><Users size={18} /> User management</NavLink>
         <NavLink to="/admin/reports"><ChartColumn size={18} /> Reports</NavLink>
+      <NavLink to="/admin/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <SignOutBlock onSignOut={signOut} name={name} role="Administrator" />
     </aside>
-    <main key={session.user.id}><div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Admin</span></div><Outlet /></main>
+    <main key={session.user.id}><Outlet /></main>
   </div>
 }
 
 export default function App() {
-  return <BrowserRouter><AuthProvider><Routes>
+  return <BrowserRouter><AuthProvider><PwaPrompts /><Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/complete-registration" element={<CompleteRegistration />} />
     <Route path="/reset-password" element={<ResetPassword />} />
@@ -128,6 +132,7 @@ export default function App() {
       <Route element={<ProviderLayout />}>
         <Route path="provider" element={<ProviderInbox />} />
         <Route path="provider/tasks/:taskId" element={<ProviderTaskDetail />} />
+        <Route path="provider/audit-log" element={<AuditLog />} />
       </Route>
     </Route>
 
@@ -136,6 +141,7 @@ export default function App() {
         <Route path="admin" element={<AdminDashboard />} />
         <Route path="admin/users" element={<AdminUsers />} />
         <Route path="admin/reports" element={<Reports />} />
+<Route path="admin/audit-log" element={<AuditLog />} />
       </Route>
     </Route>
 
@@ -156,6 +162,7 @@ export default function App() {
       <Route path="tasks" element={<Tasks />} />
       <Route path="tasks/new" element={<NewRequest staff />} />
       <Route path="tasks/:taskId" element={<AdviserTaskDetail />} />
+      <Route path="audit-log" element={<AuditLog />} />
       <Route path="*" element={<div className="card"><h1>Page not found</h1><Link to="/">Return to your clients</Link></div>} />
     </Route>
     </Route>

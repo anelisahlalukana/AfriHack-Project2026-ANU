@@ -31,13 +31,13 @@ export default function MyRequests() {
   const done = tasks.filter(task => ['completed', 'declined'].includes(task.status))
   return <>
     <header className="claims-head">
-      <div><p className="eyebrow">YOUR CLAIMS AND REQUESTS</p><h1>My claims and requests</h1><p>Each update shows who sent it and when.</p></div>
+      <div><h1>My claims and requests</h1><p>Each update shows who sent it and when.</p></div>
       <LogClaimMenu />
     </header>
     {loading && <p role="status">Loading…</p>}
     {error && <div className="card" role="alert"><p className="error">{error}</p><button onClick={retry}>Try again</button></div>}
     {data && !tasks.length && <div className="card empty"><h3>Nothing here yet</h3><p>Use Log a claim at the top right, or the chat button to ask us for something.</p></div>}
-    {active.length > 0 && <div className="rs-stack">{active.map(task => <TaskCard key={task.id} task={task} />)}</div>}
+    {active.length > 0 && <div className="rs-stack cards-grid">{active.map(task => <TaskCard key={task.id} task={task} />)}</div>}
     {done.length > 0 && <section className="rs-stack" style={{ marginTop: 28 }}>
       <h2>Closed</h2>
       {done.map(task => <div className="detail-row" key={task.id}><span><Link className="client-name" to={`/account/tasks/${task.id}`}>{task.isClaim ? `${task.typeLabel} claim` : task.typeLabel}</Link><small>{task.reference} · {progressText(task.progress)} · closed {formatDateTime(task.closedAt)}</small></span><StatusChip status={task.status} /></div>)}

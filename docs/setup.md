@@ -1,5 +1,18 @@
 # Advisor workspace setup
 
+Database, roles and environment set-up, and the checks to run against a real Supabase project. For
+the project overview and a quick start, read the [root README](../README.md) first; the other
+documents are indexed in [README.md](README.md).
+
+Contents:
+
+- [Compliance module setup](#compliance-module-setup)
+- [Existing advisor workspace setup](#existing-advisor-workspace-setup) (start here for a new project)
+- [Client registration and staff provisioning](#client-registration-and-staff-provisioning)
+- [Reminders and push notifications](#reminders-and-push-notifications)
+- [Extended client profile](#extended-client-profile)
+- [Installable app (PWA)](#installable-app-pwa)
+
 ## Compliance module setup
 
 The compliance implementation adds `/compliance` to the advisor sidebar and keeps `/compliance/:adviserId` working. It needs the Express server and the shared Supabase database; `--demo` only substitutes the existing reminders backend, not compliance.
@@ -16,7 +29,7 @@ Run the four automated checks: `npm test --prefix server`, `npm test --prefix cl
 
 - Apply migration 012 twice. Confirm anon/authenticated cannot access the new tables or execute the mutation RPC, and service-role audit UPDATE/DELETE/TRUNCATE is denied. Check that a failed audit insert rolls back a screening/adviser/CPD mutation. Database owners can change schema controls; append-only does not mean tamper-proof.
 - As adviser A, read adviser B's compliance but verify B's PATCH/CPD routes return 403. Clients/admins must get 403 on all compliance-specific routes; signed-out callers get 401. A UUID belonging to a non-adviser must not create an adviser-compliance record.
-- Run both client screening checks; verify source is visibly mocked. Declared PEP overrides a previous clear result. Only explicit `simulateFlag: true` forces a demo flag; it is refused in production. The mock provider remains a mock even without that flag.
+- Screening: no live provider is connected. `POST /api/clients/:clientId/compliance/screenings` answers `503` and stores nothing, existing simulated rows never clear a client, and a declared PEP overrides a previous clear result. (The mock screening action described in the original build was removed; see `compliance-handoff.md`.)
 - Sign/renew consent on the existing document page and confirm the client card refreshes. Verify the signing audit uses the authenticated actor, not the typed signature name. There is deliberately no duplicate signature/consent implementation.
 - Attempt a financial refresh with valid, expired, missing, and malformed/duplicate consent, and with unavailable audit storage. Only valid consent with a persisted authorization audit may proceed. An allowed audit means authorization, not proof that the later snapshot write succeeded. If both verification and audit storage fail, the request is blocked and a server-side error is logged.
 - Add fractional CPD hours, test 18 hours, prior-cycle records, June rollover and concurrent submissions. The API derives current-cycle totals on every read; stored `cpd_status` is only a cache. Previous-cycle shortfalls are not automatically labelled overdue where historic evidence is absent.
@@ -24,7 +37,7 @@ Run the four automated checks: `npm test --prefix server`, `npm test --prefix cl
 
 ### Prototype policies and known limits
 
-Annual consent renewal and an 18-hour CPD target are prototype policies awaiting Royal Square's confirmation. The supplied consent wording continues until written cancellation; no withdrawal workflow is implemented here. Qualifications and CPD are self-recorded; PEP/terrorism screening is simulated. A compliant badge covers the tracked client controls only.
+Annual consent renewal and an 18-hour CPD target are prototype policies awaiting Royal Square's confirmation. The supplied consent wording continues until written cancellation; no withdrawal workflow is implemented here. Qualifications and CPD are self-recorded; no live PEP/terrorism screening provider is connected. A compliant badge covers the tracked client controls only.
 
 The existing signing flow overwrites a fixed signed-PDF path and does not preserve document versions. Duplicate document rows are flagged as action required rather than repaired. Signature history/versioning, full document execution requirements, licence-specific CPD targets and complete regulatory certification remain outside this change.
 
@@ -99,11 +112,11 @@ Set-up, in order:
    VAPID_SUBJECT=mailto:you@example.com
    ```
 
-   If any of the three is missing or invalid the server logs `Push notifications are OFF` and starts normally; the Reminders page then says push is not set up.
-3. Push only works on HTTPS or `localhost`, in a browser that supports it (on iPhone, add the app to the Home Screen first). Each device turns it on for itself; `client/public/sw.js` is the service worker that shows the alert. The alert text is always generic, so nothing about a client appears on a lock screen.
+   If only some of the three are set, or they are invalid, the server logs a `Push notifications are OFF` warning (with none set it logs nothing). Either way it starts normally and the Reminders page says push is not set up.
+3. Push only works on HTTPS or `localhost`, in a browser that supports it (on iPhone, add the app to the Home Screen first). Each device turns it on for itself; `client/public/sw.js` is the service worker that shows the alert. How delivery, retries and subscription checks work is in [pwa.md](pwa.md). The alert text is always generic, so nothing about a client appears on a lock screen.
 4. Optional: `CLIENT_ORIGIN` limits which website may call the API (default: `http://localhost:5173`), and `REMINDERS_TICK_MS` changes how often due reminders are fired and waiting push messages are sent (default 30000).
 
-Checks: `npm test --prefix server` (24 tests, no database needed). `node server/scripts/e2e-reminders.js --yes` runs an end-to-end test against the real Supabase project with throwaway accounts and deletes everything it created.
+Checks: `npm test --prefix server` (the reminders and push tests need no database). `node server/scripts/e2e-reminders.js --yes` runs an end-to-end test against the real Supabase project with throwaway accounts and deletes everything it created.
 
 ## Extended client profile
 
@@ -112,3 +125,26 @@ Run `supabase/migrations/202609190006_extended_client_profile.sql` against the c
 Clients can edit the full form under **Profile** (`/account/profile`); assigned advisors see the same form on the client profile. The form covers all supplied personal, marital, education, work, rewards, referral, HR, tax, doctor, salary/alternate banking, contact, address and spouse/parent fields. Immediate and long-term planning goals are text lists; financial goals with target balances remain in their existing editor. Dependants reuse existing records and retain IDs after edits. Sign-in ID numbers for linked accounts are read-only in this form.
 
 Apply the migration before loading the updated client profile page. Verify a client and assigned advisor can save and reload additional fields, leading-zero account/branch codes, multiple dependants, and both planning-goal lists. Verify an unrelated user cannot read or save the profile via the RPC. Invalid allocations or dependant data must roll back the entire save. Existing assets, liabilities, financial goals, login linkage and advisor assignment must stay unchanged.
+
+## Installable app (PWA)
+
+The client installs to a phone home screen or a desktop dock, opens without browser chrome, starts
+offline and can receive push notifications. **The full reference** (the files, the caching strategy,
+updates, push end to end, testing and troubleshooting) is in [pwa.md](pwa.md). The set-up essentials:
+
+- Nothing extra has to be built or deployed: `client/public/manifest.webmanifest` and
+  `client/public/sw.js` are copied into `dist/` as they are.
+- Installing and push both need **HTTPS** (or `localhost`). Over plain HTTP the app still works; it
+  just cannot be installed.
+- The service worker registers in **production builds only**, so it never fights Vite's hot reload
+  (turning push on also registers it, even in development). Try it with
+  `npm run build --prefix client` then `npm run preview --prefix client`.
+- The host must serve `index.html` for unknown paths (single-page-app fallback), otherwise a deep link
+  such as `/account/claims` 404s on a cold load. `vite preview` and the Vercel config already do.
+- **Bump `VERSION` in `client/public/sw.js` on each release.** Old caches are deleted when the new
+  worker activates, which refreshes the cached shell and clears build assets from earlier deploys.
+- Nothing signed-in is ever cached. The worker passes `/api/` and every other origin straight to the
+  network and stores only the app shell, Vite's hashed build output and the brand images.
+
+Checks: build, preview, then in DevTools, Application: the manifest has no errors, the service worker
+is activated, and the page still opens with the network set to offline.

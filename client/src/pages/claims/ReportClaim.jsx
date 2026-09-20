@@ -50,7 +50,7 @@ function DraftEditor({ task, providers, onTaskChange }) {
 
   return <>
     <Link className="back" to="/account/claims"><ArrowLeft size={16} /> My claims & requests</Link>
-    <header className="page-heading"><div><p className="eyebrow">{task.typeLabel.toUpperCase()} CLAIM · {task.reference}</p><h1>{step === 'checklist' ? 'At the scene' : 'Tell us what happened'}</h1><Stepper step={step} hasChecklist={hasChecklist} /></div></header>
+    <header className="page-heading"><div><h1>{step === 'checklist' ? 'At the scene' : 'Tell us what happened'}</h1><p>{task.typeLabel} claim · {task.reference}</p><Stepper step={step} hasChecklist={hasChecklist} /></div></header>
 
     <form className="rs-stack" onSubmit={handleSubmit(submit)}>
       {step === 'checklist' ? <>

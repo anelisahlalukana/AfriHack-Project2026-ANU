@@ -1,4 +1,8 @@
 import { money, totals } from './financials.js'
+import { paginate, sortRows } from './tableUtils.js'
+
+// Re-exported so existing callers keep importing paging from here.
+export { paginate }
 
 // Pure logic for the advisor's Clients table: which columns exist, and how rows are
 // filtered, sorted and paged. No React in here so it can be tested on its own.
@@ -66,38 +70,6 @@ export function filterClients(clients, { query = '', status = '', risk = '' } = 
 // Empty values always sort last, whichever direction is chosen. Ties fall back to name so the order is stable.
 export function sortClients(clients, key, direction = 'asc') {
   const column = columnByKey(key) || columnByKey('name')
-  const factor = direction === 'desc' ? -1 : 1
-
-  const compareValues = (a, b) => {
-    if (column.type === 'text') return String(a).localeCompare(String(b), undefined, { sensitivity: 'base', numeric: true })
-    if (column.type === 'date') return Date.parse(a) - Date.parse(b)
-    return a - b
-  }
-
-  return [...clients].sort((left, right) => {
-    const a = column.get(left)
-    const b = column.get(right)
-    const aEmpty = a === null || a === undefined || a === ''
-    const bEmpty = b === null || b === undefined || b === ''
-    if (aEmpty && !bEmpty) return 1
-    if (!aEmpty && bEmpty) return -1
-    const result = aEmpty && bEmpty ? 0 : compareValues(a, b) * factor
-    return result || fullName(left).localeCompare(fullName(right), undefined, { sensitivity: 'base' })
-  })
-}
-
-// `page` is clamped into range, so a stale page number (e.g. after filtering) never shows an empty table.
-export function paginate(items, page, pageSize) {
-  const total = items.length
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
-  const current = Math.min(Math.max(1, Math.floor(page) || 1), pageCount)
-  const startIndex = (current - 1) * pageSize
-  return {
-    items: items.slice(startIndex, startIndex + pageSize),
-    page: current,
-    pageCount,
-    total,
-    start: total ? startIndex + 1 : 0,
-    end: Math.min(startIndex + pageSize, total),
-  }
+  return sortRows(clients, column, direction, (left, right) =>
+    fullName(left).localeCompare(fullName(right), undefined, { sensitivity: 'base' }))
 }

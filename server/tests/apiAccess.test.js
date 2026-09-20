@@ -104,6 +104,7 @@ test("every protected endpoint answers 401 with a JSON error when signed out", a
     ["GET", "/api/me"],
     ["GET", "/api/catalog"],
     ["GET", "/api/dashboard"],
+    ["GET", "/api/dashboard/me"],
     ["GET", "/api/dashboard/at-risk"],
     ["GET", `/api/dashboard/at-risk/${UUID}`],
     ["POST", `/api/dashboard/at-risk/${UUID}/check-in`],
@@ -154,6 +155,12 @@ test("the practice dashboard and client creation are advisor-only", async () => 
   for (const as of ["admin", "client", "provider"]) {
     assert.equal((await request("GET", "/api/dashboard", { as })).status, 403, `dashboard as ${as}`);
     assert.equal((await request("POST", "/api/clients", { as, body: {} })).status, 403, `create client as ${as}`);
+  }
+});
+
+test("the client's own dashboard is closed to every staff and provider login", async () => {
+  for (const as of ["admin", "advisor", "provider"]) {
+    assert.equal((await request("GET", "/api/dashboard/me", { as })).status, 403, `own dashboard as ${as}`);
   }
 });
 

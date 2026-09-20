@@ -6,7 +6,7 @@ export default function AdviserCompliance() {
 
   return <>
     <header className="page-heading">
-      <div><p className="eyebrow">COMPLIANCE</p><h1>Adviser compliance</h1></div>
+      <div><h1>Adviser compliance</h1></div>
     </header>
     <ComplianceTracker key={adviserId} adviserId={adviserId} />
   </>

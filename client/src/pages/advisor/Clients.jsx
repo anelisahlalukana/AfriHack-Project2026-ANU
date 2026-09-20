@@ -32,7 +32,6 @@ export default function Clients() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">YOUR CLIENTS</p>
         <h1>Clients</h1>
         {data && <p>{clients.length} {clients.length === 1 ? 'client' : 'clients'}. Open a client to see their financial overview.</p>}
       </div>

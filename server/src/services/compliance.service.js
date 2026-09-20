@@ -1,6 +1,6 @@
 const { supabaseAdmin } = require("../config/supabaseClient");
 const { CLIENT_ROLE_ID, ADVISOR_ROLE } = require("../constants/roles");
-const { EVENTS, SCREENING_TYPES, SCREENING_SOURCE, PAGE_SIZE, AUDIT_DEFAULT_LIMIT } = require("../constants/compliance");
+const { EVENTS, SCREENING_TYPES, PAGE_SIZE, AUDIT_DEFAULT_LIMIT } = require("../constants/compliance");
 const { clientCompliance, cpdSummary } = require("../utils/complianceRules");
 const { HttpError, notFound, forbidden, badRequest } = require("../utils/httpError");
 const { createConsentService } = require("./consent.service");
@@ -11,7 +11,7 @@ const DOCUMENT_COLUMNS = "id,client_id,document_type,status,signed_at,expires_at
 const UPDATABLE_FIELDS = { qualificationStatus: "qualification_status", isPoliticallyExposed: "is_politically_exposed",
   pepDetails: "pep_details", terrorismFinancingFlag: "terrorism_financing_flag", terrorismFinancingDetails: "terrorism_financing_details" };
 
-function createComplianceService({ db = supabaseAdmin, now = () => new Date(), logger = console, environment = process.env.NODE_ENV } = {}) {
+function createComplianceService({ db = supabaseAdmin, now = () => new Date(), logger = console } = {}) {
   const { getConsentStatus } = createConsentService(db, now);
   const { writeAudit } = createAuditService(db, logger);
   async function result(query) {
@@ -89,16 +89,11 @@ function createComplianceService({ db = supabaseAdmin, now = () => new Date(), l
   }
   async function runScreening(clientId, { screeningType, simulateFlag = false }, actor) {
     if (!SCREENING_TYPES.includes(screeningType) || typeof simulateFlag !== "boolean") throw badRequest("Invalid screening request");
-    if (simulateFlag && environment === "production") throw badRequest("Simulated flags are disabled in production.");
-    const client = await getClient(clientId);
-    const outcome = simulateFlag || (screeningType === "pep" && client.is_politically_exposed) ? "flagged" : "clear";
-    const row = await recordChange("screening", clientId, { screening_type: screeningType, result: outcome,
-      provider: SCREENING_SOURCE, simulated_flag: simulateFlag }, actor,
-    { event_type: EVENTS.SCREENING, summary: `${screeningType === "pep" ? "PEP" : "Terrorism financing"} check performed (mock)`,
-      result: outcome, metadata: { screeningType, source: SCREENING_SOURCE, simulated: true, simulateFlag } });
-    return { screening: { id: row.id, screeningType, result: outcome, source: row.provider, simulated: true, createdAt: row.created_at },
-      compliance: await getClientCompliance(clientId) };
+    if (actor?.app_metadata?.role !== ADVISOR_ROLE) throw forbidden();
+    await getClient(clientId);
+    throw new HttpError(503, "No live screening provider is connected. Record a genuine screening result through your approved process; simulated results cannot clear a client.");
   }
+
   async function getComplianceRecord(adviserId) {
     await requireAdviser(adviserId);
     const [row, records] = await Promise.all([
