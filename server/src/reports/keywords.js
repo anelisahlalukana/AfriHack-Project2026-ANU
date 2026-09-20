@@ -161,7 +161,9 @@ function extractParams(question, now = new Date()) {
       break;
     }
   }
-  if (/\bby (adviser|advisor)s?\b|\bper (adviser|advisor)\b/.test(q)) params.group_by = "adviser";
+  if (/\b(per|each|by|a|every) week\b|\bweekly\b/.test(q)) params.group_by = "week";
+  else if (/\b(per|each|by|a|every) month\b|\bmonthly\b/.test(q) && !/\bmonthly (income|expenses?|cash|surplus|budget)/.test(q)) params.group_by = "month";
+  else if (/\bby (adviser|advisor)s?\b|\bper (adviser|advisor)\b/.test(q)) params.group_by = "adviser";
   else if (/\bby provider|\bper provider|\bprovider/.test(q)) params.group_by = "provider";
   else if (/\bby goal type|\bby type of goal/.test(q)) params.group_by = "goal_type";
   else if (/\bby (task |request )?type\b/.test(q)) params.group_by = "task_type";

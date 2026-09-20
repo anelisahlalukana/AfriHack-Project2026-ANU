@@ -24,7 +24,7 @@ development or demo project, not production (it refuses when `NODE_ENV=productio
 | Goals | Retirement, education, home deposit, emergency fund and other goals, some ahead of schedule and some behind. |
 | Dependants | Spouses, children and parents, with beneficiary splits that add up to 100%. |
 | Documents | The five onboarding documents: all signed for active clients, a mix of signed/sent/not sent for onboarding ones. Consents are spread so some expire soon and a few already have. |
-| Claims and requests | About 2–3 per client over the past year, following the stage lists in `claim_stages`, with a stage history, insurer activity (claim numbers, handlers, replies, declines with reasons) and client ratings. Insurers differ: one is slow to reply, one declines more. |
+| Claims and requests | About 2–3 per client over the past year, following the stage lists in `claim_stages`, with a stage history, insurer activity (claim numbers, handlers, replies, declines with reasons) and client ratings. Insurers differ: one is slow to reply, one declines more. If the claim-amount migration is applied, claims also get a claimed amount (sized by product line) and, once settled, a paid-out amount after the insurer's excess. |
 | Reminders | Birthdays, annual reviews, valuations and retirement-fee reviews: upcoming, done, and some overdue. |
 | Compliance | PEP and terrorism-financing screening results (a few flagged, some not yet run) and CPD hours per adviser (some complete, some behind). |
 | Notifications | Recent claim updates for each adviser. |

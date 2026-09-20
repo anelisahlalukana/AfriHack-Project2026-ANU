@@ -12,7 +12,7 @@ const { CLIENT_ROLE_ID } = require("../constants/roles");
 const { DOCUMENT_TYPES } = require("../constants/documentTypes");
 const { fullName } = require("../utils/fullName");
 const {
-  scopedClients, forClients, providerNames, DAY_MS, CLAIM_STATUS_LABELS, humanise, adviserLabel, scopedTasks, daysSince,
+  scopedClients, forClients, providerNames, DAY_MS, CLAIM_STATUS_LABELS, humanise, adviserLabel, scopedTasks, daysSince, claimAmounts,
 } = require("./helpers");
 
 const STATUS_LABELS = { ...CLAIM_STATUS_LABELS, draft: "Draft" };
@@ -55,6 +55,13 @@ function taskFields(kind) {
     days_to_close: f("Days to close", "number", { unit: "days", synonyms: ["turnaround", "time to close", "how long"] }),
     idle_days: f("Days since last update", "number", { unit: "days", synonyms: ["idle", "stuck", "no update", "waiting"] }),
     client_rating: f("Client rating", "number", { unit: "rating", synonyms: ["rating", "satisfaction", "stars", "review"] }),
+    ...(kind === "claims"
+      ? {
+          // From migration 202609200001_claim_amounts.sql; empty until it's applied.
+          claimed_amount: f("Amount claimed", "number", { unit: "rand", amounts: true, synonyms: ["claim amount", "claimed", "claim value", "claim size", "amount", "value", "worth", "money", "rand"] }),
+          settled_amount: f("Amount paid out", "number", { unit: "rand", amounts: true, synonyms: ["paid out", "payout", "payouts", "paid", "settled amount", "settlement"] }),
+        }
+      : {}),
   };
 }
 
@@ -65,6 +72,7 @@ async function loadTasks(kind, ctx, access, params) {
   );
   const names = await providerNames(ctx.db, tasks.map((t) => t.provider_id));
   const labels = kind === "requests" ? await requestLabels(ctx) : null;
+  const amounts = kind === "claims" ? await claimAmounts(ctx, tasks.map((t) => t.id)) : null;
   return tasks.map((t) => ({
     id: t.id,
     reference: t.reference || null,
@@ -77,6 +85,7 @@ async function loadTasks(kind, ctx, access, params) {
     days_to_close: t.submitted_at && t.closed_at && t.status === "completed" ? Math.round(((Date.parse(t.closed_at) - Date.parse(t.submitted_at)) / DAY_MS) * 10) / 10 : null,
     idle_days: ["open", "awaiting_client"].includes(t.status) ? daysSince(t.updated_at || t.created_at, ctx.now) : null,
     client_rating: t.client_rating ? Number(t.client_rating) : null,
+    ...(kind === "claims" ? { claimed_amount: amounts?.get(t.id)?.claimed ?? null, settled_amount: amounts?.get(t.id)?.settled ?? null } : {}),
   }));
 }
 
@@ -93,9 +102,9 @@ const DATASETS = {
     description: "Insurance claims logged for clients (one row per claim).",
     synonyms: ["claim", "claims"],
     dateField: "created_at",
-    numberField: "days_to_close",
+    numberField: "claimed_amount",
     fields: taskFields("claims"),
-    recordColumns: ["reference", "client", "product_line", "status", "provider", "created_at"],
+    recordColumns: ["reference", "client", "product_line", "status", "provider", "claimed_amount", "created_at"],
     load: (ctx, access, params) => loadTasks("claims", ctx, access, params),
   },
   requests: {

@@ -127,6 +127,31 @@ test("reset keeps demo clients that the append-only audit log refers to", async 
   await resetDemo(store, { log: (line) => logs.push(line) });
   assert.ok(store.tables.users.some((u) => u.id === audited.id));
   assert.match(logs.join("\n"), /kept 1 demo client/);
+  const before = new Set(store.tables.users.map((u) => u.id));
+  await seedDemo(store, { now: NOW, clients: 5 }); // the kept shell neither blocks a new seed nor clashes with it
+  const added = store.tables.users.filter((u) => !before.has(u.id));
+  assert.equal(added.length, 5);
+  assert.equal(new Set(store.tables.users.map((u) => u.id)).size, store.tables.users.length, "no duplicate ids");
+});
+
+test("a demo login the database won't delete is kept by reset and reused by the next seed", async () => {
+  const store = memoryStore();
+  await seedDemo(store, { now: NOW, clients: 5 });
+  const stuck = store.auth.all.find((u) => u.email.startsWith("lindiwe.mahlaba@"));
+  const realDelete = store.auth.deleteUser;
+  store.auth.deleteUser = async (id) => {
+    if (id === stuck.id) throw new Error("auth: Database error deleting user");
+    return realDelete(id);
+  };
+  const logs = [];
+  const removed = await resetDemo(store, { log: (line) => logs.push(line) });
+  assert.equal(removed["auth users kept"], 1);
+  assert.match(logs.join("\n"), /kept demo login .*next seed reuses it/);
+  const seedLogs = [];
+  const summary = await seedDemo(store, { now: NOW, clients: 5, log: (line) => seedLogs.push(line) });
+  assert.match(seedLogs.join("\n"), /reusing demo login lindiwe\.mahlaba@/);
+  assert.equal(store.auth.all.filter((u) => u.email === stuck.email).length, 1);
+  assert.ok(summary.advisers.some((a) => a.email === stuck.email));
 });
 
 test("the same seed gives the same data", async () => {

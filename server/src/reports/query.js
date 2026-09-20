@@ -11,7 +11,7 @@
 const { badRequest } = require("../utils/httpError");
 const { DATASETS } = require("./datasets");
 const { dateKey, isRealDate } = require("./params");
-const { humanise, periodsFor } = require("./helpers");
+const { humanise, periodsFor, periodName, AMOUNTS_NOTICE } = require("./helpers");
 
 const OPS_BY_TYPE = {
   enum: ["eq", "neq", "in", "contains"],
@@ -25,6 +25,7 @@ const CHARTS = ["bar", "donut", "line", "table"];
 const MAX_FILTERS = 8;
 const MAX_GROUPS = 12;
 const MAX_SERIES = 6;
+const MAX_WEEKS = 26;
 const MAX_RECORDS = 100;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RAND = new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 });
@@ -231,12 +232,6 @@ function defaultTitle(spec) {
   return `${metricLabel(spec, dataset)}${by}${suffix}`.slice(0, 90);
 }
 
-function periodName(key) {
-  if (/^\d{4}-\d{2}$/.test(key)) return new Date(`${key}-01T12:00:00Z`).toLocaleDateString("en-ZA", { month: "long", year: "numeric", timeZone: "UTC" });
-  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) return `the week of ${new Date(`${key}T12:00:00Z`).toLocaleDateString("en-ZA", { day: "numeric", month: "short", timeZone: "UTC" })}`;
-  return key;
-}
-
 // ------------------------------------------------------------------ aggregation
 function aggregate(list, spec) {
   const { op, field } = spec.metric;
@@ -274,14 +269,18 @@ function bucketer(spec, rows) {
     for (let y = Number(from.slice(0, 4)); y <= Number(to.slice(0, 4)); y += 1) years.push(String(y));
     return { keyOf: (v) => dateKey(new Date(v)).slice(0, 4), keys: years };
   }
-  // periodsFor picks weekly for short ranges; force the requested bucket by widening/narrowing.
-  const periods = periodsFor({ from, to });
-  if ((spec.time_bucket === "week") === periods.weekly) return { keyOf: periods.keyOf, keys: periods.keys };
+  if (spec.time_bucket === "week") {
+    // Weekly over a long history is unreadable: keep the most recent MAX_WEEKS weeks.
+    const periods = periodsFor({ from, to }, "week");
+    const keys = periods.keys.slice(-MAX_WEEKS);
+    return { keyOf: periods.keyOf, keys, only: periods.keys.length > keys.length ? new Set(keys) : null };
+  }
   if (spec.time_bucket === "month") {
     const keys = [];
     for (let d = new Date(`${from.slice(0, 7)}-01T12:00:00Z`); dateKey(d).slice(0, 7) <= to.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) keys.push(dateKey(d).slice(0, 7));
     return { keyOf: (v) => dateKey(new Date(v)).slice(0, 7), keys };
   }
+  const periods = periodsFor({ from, to });
   return { keyOf: periods.keyOf, keys: periods.keys };
 }
 
@@ -363,10 +362,11 @@ function aggregateResult(spec, dataset, rows) {
     };
   }
   const groupField = { key: spec.group_by, ...dataset.fields[spec.group_by] };
-  const { keyOf, keys } = bucketer(spec, rows);
+  const { keyOf, keys, only } = bucketer(spec, rows);
   const groups = new Map((keys || []).map((k) => [k, []]));
   for (const r of rows) {
     const label = groupLabel(r, groupField, keyOf);
+    if (only && !only.has(label)) continue;
     if (!groups.has(label)) groups.set(label, []);
     groups.get(label).push(r);
   }
@@ -398,7 +398,9 @@ function aggregateResult(spec, dataset, rows) {
       return row;
     });
   } else {
-    out = [...groups.entries()].map(([label, list]) => ({ label, value: list.length ? aggregate(list, spec) : 0, count: list.length }));
+    // An empty period is zero claims, but it has no average: leave it out rather than plot R 0.
+    const adds = ["count", "count_clients", "sum"].includes(spec.metric.op);
+    out = [...groups.entries()].map(([label, list]) => ({ label, value: list.length ? aggregate(list, spec) : adds ? 0 : null, count: list.length }));
     // Averages/min/max over groups with no recorded values mean "no data", not zero.
     out = out.filter((r) => r.value != null);
   }
@@ -421,13 +423,14 @@ function aggregateResult(spec, dataset, rows) {
   const top = isTime ? null : out[0];
   const total = ["count", "count_clients", "sum"].includes(spec.metric.op) && !spec.split_by ? out.reduce((s, r) => s + (Number(r.value) || 0), 0) : null;
   const shownUnit = unit === dataset.noun || unit === "clients" ? "" : unit;
-  return {
+  const built = {
     chartType,
     stacked: Boolean(spec.split_by),
     rows: out,
     series,
     unit,
     ...(isTime ? { period: spec.time_bucket } : {}),
+    additive: ["count", "count_clients", "sum"].includes(spec.metric.op),
     headline: !rows.length
       ? `No matching ${dataset.noun}`
       : !out.length
@@ -440,7 +443,14 @@ function aggregateResult(spec, dataset, rows) {
             const sum = out.reduce((n, r) => n + (Number(valueOf(r)) || 0), 0);
             return ["count", "count_clients", "sum"].includes(spec.metric.op) && peak
               ? `${formatNumber(sum, shownUnit)}${shownUnit ? "" : ` ${unit}`} in total; busiest was ${periodName(peak.label)} (${formatNumber(valueOf(peak), shownUnit)})`
-              : `${mLabel} per ${spec.time_bucket}`;
+              : (() => {
+                  // Averages over time: describe the range rather than adding them up.
+                  const filled = out.filter((r) => r.count > 0 && Number.isFinite(valueOf(r)));
+                  if (filled.length < 2) return `${mLabel} per ${spec.time_bucket}`;
+                  const lo = filled.reduce((m, r) => (valueOf(r) < valueOf(m) ? r : m), filled[0]);
+                  const hi = filled.reduce((m, r) => (valueOf(r) > valueOf(m) ? r : m), filled[0]);
+                  return `${mLabel} ranged from ${formatNumber(valueOf(lo), shownUnit)} (${periodName(lo.label)}) to ${formatNumber(valueOf(hi), shownUnit)} (${periodName(hi.label)})`;
+                })();
           })(),
     llmRows: out.map((r) => {
       const clean = { label: r.label };
@@ -449,6 +459,8 @@ function aggregateResult(spec, dataset, rows) {
       return clean;
     }),
   };
+  if (only && out.length) built.headline = `Last ${MAX_WEEKS} weeks: ${built.headline.charAt(0).toLowerCase()}${built.headline.slice(1)}`;
+  return built;
 }
 
 function splitRows(rows, spec, dataset) {
@@ -477,6 +489,9 @@ async function runQuery(access, rawSpec, ctx) {
     rows = rows.filter((r) => matches(r, filter, field));
   }
   const result = spec.mode === "records" ? recordsResult(spec, dataset, rows) : aggregateResult(spec, dataset, rows);
+  // Asked about claim amounts before the amounts migration was applied: say so.
+  const usesAmounts = [spec.metric.field, ...spec.filters.map((fl) => fl.field)].some((k) => k && dataset.fields[k]?.amounts);
+  if (usesAmounts && ctx.amountsAvailable === false) result.notice = AMOUNTS_NOTICE;
   if (access.role !== "admin") delete spec.advisor_id;
   return { spec, result: { ...result, readAs: describeQuery(spec), title: spec.title || defaultTitle(spec) } };
 }

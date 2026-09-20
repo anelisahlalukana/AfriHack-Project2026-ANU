@@ -1,12 +1,13 @@
 // Pure helpers for the Reports page (tested in tests/reportFormat.test.js).
 
-const UNIT_SUFFIX = { days: ' days', hours: ' h', '%': '%', rating: ' / 5' }
+const UNIT_SUFFIX = { days: ' days', hours: ' h', '%': '%', rating: ' / 5', years: ' yrs' }
 const RAND = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 })
 
 export function formatValue(value, unit) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return value ?? '—'
   if (unit === 'rand') return RAND.format(value)
-  const text = Number.isInteger(value) ? value.toLocaleString('en-ZA') : value.toLocaleString('en-ZA', { maximumFractionDigits: 1 })
+  // Decimal point (not the en-ZA comma) so charts match the written summary.
+  const text = (Number.isInteger(value) ? value.toLocaleString('en-ZA') : value.toLocaleString('en-ZA', { maximumFractionDigits: 1 })).replace(',', '.')
   return `${text}${UNIT_SUFFIX[unit] || ''}`
 }
 
@@ -56,6 +57,11 @@ export function isClosestMatch(result) {
   return result?.matchedBy === 'keyword'
 }
 
+// The report's story arrives as paragraphs separated by blank lines.
+export function storyParagraphs(text) {
+  return String(text || '').split(/\n\s*\n/).map(part => part.replace(/\s+/g, ' ').trim()).filter(Boolean)
+}
+
 export function formatGeneratedAt(iso) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
@@ -63,8 +69,10 @@ export function formatGeneratedAt(iso) {
 }
 
 // Horizontal bars when labels are long or there are many of them, so nothing gets cut off.
-export function preferHorizontalBars(rows = []) {
-  return rows.length > 6 || rows.some(row => String(row.label ?? '').length > 14)
+// Compact charts (related views, half width) switch sooner.
+export function preferHorizontalBars(rows = [], compact = false) {
+  const [most, longest] = compact ? [4, 9] : [6, 14]
+  return rows.length > most || rows.some(row => String(row.label ?? '').length > longest)
 }
 
 // Donut slices with their share of the whole, for the legend.

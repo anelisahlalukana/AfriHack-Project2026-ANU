@@ -16,6 +16,8 @@ const { buildPlannerPrompt, NARRATIVE_PROMPT } = require("../reports/prompts");
 const { runQuery, normalizeQuery } = require("../reports/query");
 const { parseQuestion, detectClients } = require("../reports/queryParser");
 const { describeDatasets, providerOptions } = require("../reports/datasets");
+const { relatedTemplateIds, relatedQuerySpecs } = require("../reports/related");
+const { periodName } = require("../reports/helpers");
 const { sanitizeRows, redactQuestion, containsClientData } = require("../reports/privacy");
 const { createGeminiClient } = require("../reports/llm");
 
@@ -25,6 +27,7 @@ const SURE_CONFIDENCE = 0.75;
 const ALTERNATIVES = 3;
 // Without the model, a parsed query beats the best template when the question is this specific.
 const STRONG_TEMPLATE = 10;
+const EXACT_TEMPLATE = 24;
 // Only offer prepared reports that are reasonably close to the question.
 const MIN_ALTERNATIVE_SCORE = 4;
 const MAX_QUESTION_LENGTH = 500;
@@ -66,7 +69,7 @@ function modelVisibleParams(params) {
 }
 
 // A plain sentence or two from the top rows, used whenever the model is unavailable.
-function fallbackNarrative(template, result, params) {
+function fallbackNarrative(template, result, params, related = []) {
   const title = result.readAs ? template.label : `${template.label} (${describeScope(params)})`;
   const rows = result.llmRows || [];
   const unit = result.unit || "";
@@ -76,18 +79,24 @@ function fallbackNarrative(template, result, params) {
     const expired = rows.find((r) => r.label === "Already expired");
     if (expired?.value) parts.push(`${expired.value} need renewing now.`);
     if (soon?.value) parts.push(`${soon.value} expire${soon.value === 1 ? "s" : ""} within 14 days; start with ${soon.value === 1 ? "that one" : "those"}.`);
-  } else if (result.chartType === "line") {
-    const totals = rows.map((r) => ({ period: r.period, total: Object.entries(r).reduce((s, [k, v]) => (k === "period" ? s : s + (Number(v) || 0)), 0) }));
-    const busiest = totals.reduce((best, r) => (r.total > (best?.total ?? -1) ? r : best), null);
-    if (busiest?.total) parts.push(`The busiest ${result.period || "period"} was ${busiest.period} with ${busiest.total}.`);
   } else if (result.insights?.length) {
-    // The template knows what matters in its own data; use that instead of a generic line.
+    // The template's own insights say it better than a generic line; they're added below.
+  } else if (result.chartType === "line") {
+    // Custom queries already name the busiest period (or the range, for averages) in the headline.
+    if (!result.readAs && result.additive !== false) {
+      const skip = new Set(["label", "period", "records"]);
+      const totals = rows.map((r) => ({ period: r.label ?? r.period, total: Object.entries(r).reduce((s, [k, v]) => (skip.has(k) ? s : s + (Number(v) || 0)), 0) }));
+      const busiest = totals.reduce((best, r) => (r.total > (best?.total ?? -1) ? r : best), null);
+      if (busiest?.total) parts.push(`The busiest ${result.period || "period"} was ${periodName(busiest.period)}, with ${formatFigure(busiest.total, COUNT_UNITS.includes(unit) ? "" : unit)}.`);
+    }
   } else if (result.stacked && result.series?.length > 1) {
     const key = result.series[1].key;
     const top = rows.filter((r) => typeof r[key] === "number").sort((a, b) => b[key] - a[key])[0];
     if (top?.[key]) parts.push(`${top.label} has the most ${result.series[1].label.toLowerCase()} (${top[key]}).`);
   } else {
-    const valued = rows.filter((r) => typeof r.value === "number");
+    // The chart's own rows (llmRows can carry extra summary lines that aren't groups).
+    const key = result.series?.[0]?.key || "value";
+    const valued = (result.rows || []).map((r) => ({ label: r.label, value: r[key] })).filter((r) => typeof r.value === "number");
     const top = [...valued].sort((a, b) => b.value - a.value)[0];
     const countable = ["claims", "clients", "reminders", "tasks", "requests", "documents", "goals"].includes(unit);
     const total = valued.reduce((sum, r) => sum + r.value, 0);
@@ -103,8 +112,83 @@ function fallbackNarrative(template, result, params) {
     }
   }
   parts.push(...(result.insights || []));
-  const narrative = parts.filter(Boolean).join(" ") || "There is no data for this report yet.";
+  let narrative = parts.filter(Boolean).join(" ") || "There is no data for this report yet.";
+  // Second paragraph: what the related views add.
+  const extra = related
+    .filter((r) => r.result?.headline)
+    .map((r) => {
+      // "Claims by provider — 88 claims…": the headline keeps its own capitals (product and provider names).
+      return `${r.title} — ${r.result.headline}.${r.result.insights?.[0] ? ` ${r.result.insights[0]}` : ""}`;
+    });
+  if (extra.length) narrative += `\n\nAlongside this: ${extra.join(" ")}`;
   return { title, narrative };
+}
+
+const RAND = new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR", maximumFractionDigits: 0 });
+const COUNT_UNITS = ["claims", "clients", "reminders", "tasks", "requests", "documents", "goals", "items", "dependants", "screenings"];
+
+function formatFigure(value, unit) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  if (unit === "rand") return RAND.format(Math.round(value));
+  // Thousands grouped the South African way, with a decimal point to match the written story.
+  const text = (Number.isInteger(value) ? value : Math.round(value * 10) / 10).toLocaleString("en-ZA").replace(",", ".");
+  return `${text}${unit === "%" ? "%" : unit === "days" ? " days" : unit === "hours" ? " h" : unit === "rating" ? " / 5" : unit === "years" ? " years" : ""}`;
+}
+
+// Three key figures for the top of a report, unless the template supplied its own.
+function deriveHighlights(result) {
+  if (Array.isArray(result.highlights) && result.highlights.length) return result.highlights.slice(0, 3);
+  const rows = result.rows || [];
+  const unit = result.unit || "";
+  if (!rows.length) return [];
+  if (result.chartType === "stat") return rows.slice(0, 3).map((r) => ({ label: r.label, value: formatFigure(r.value, unit) }));
+  if (result.chartType === "table") return [{ label: "Items listed", value: String(rows.length) }];
+  const keys = (result.series || []).map((s) => s.key);
+  // Several series that add up (stacked bars, or several count lines) are summed per row.
+  const sums = keys.length > 1 && (result.stacked || (result.chartType === "line" && COUNT_UNITS.includes(unit)));
+  const valueOf = (r) => (sums ? keys.reduce((n, k) => n + (Number(r[k]) || 0), 0) : Number(r[keys[0] || "value"]) || 0);
+  // Averages (and min/max) don't add up; counts and sums do.
+  const additive = result.additive ?? (COUNT_UNITS.includes(unit) || unit === "rand" || result.stacked);
+  const total = rows.reduce((n, r) => n + valueOf(r), 0);
+  const out = [];
+  // Stacked bars (signed vs missing, open vs completed…): the total of each part says more than the biggest bar.
+  if (result.stacked && result.chartType === "bar" && keys.length > 1) {
+    const parts = result.series.map((s) => ({ label: s.label, value: rows.reduce((n, r) => n + (Number(r[s.key]) || 0), 0) }));
+    const whole = parts.reduce((n, p) => n + p.value, 0);
+    const shown = parts.filter((p) => p.value > 0).sort((a, b) => b.value - a.value).slice(0, 2);
+    return [{ label: "Total", value: formatFigure(whole, COUNT_UNITS.includes(unit) ? "" : unit) }, ...shown.map((p) => ({ label: p.label, value: `${formatFigure(p.value, COUNT_UNITS.includes(unit) ? "" : unit)}${whole && unit !== "rand" ? ` (${Math.round((p.value / whole) * 100)}%)` : ""}` }))];
+  }
+  if (additive) out.push({ label: result.chartType === "line" ? `Total over ${rows.length} ${result.period || "period"}s` : "Total", value: formatFigure(total, COUNT_UNITS.includes(unit) ? "" : unit) });
+  if (result.chartType === "line") {
+    const peak = rows.reduce((best, r) => (valueOf(r) > valueOf(best) ? r : best), rows[0]);
+    out.push({ label: `Busiest ${result.period || "period"}`, value: `${periodName(peak.label)} (${formatFigure(valueOf(peak), COUNT_UNITS.includes(unit) ? "" : unit)})` });
+    if (additive) out.push({ label: `Average per ${result.period || "period"}`, value: formatFigure(total / rows.length, COUNT_UNITS.includes(unit) ? "" : unit) });
+    else if (rows.length > 1) {
+      const low = rows.reduce((best, r) => (valueOf(r) < valueOf(best) ? r : best), rows[0]);
+      out[0].label = `Highest ${result.period || "period"}`;
+      out.push({ label: `Lowest ${result.period || "period"}`, value: `${periodName(low.label)} (${formatFigure(valueOf(low), COUNT_UNITS.includes(unit) ? "" : unit)})` });
+    }
+  } else {
+    const sorted = [...rows].sort((a, b) => valueOf(b) - valueOf(a));
+    const top = sorted[0];
+    out.push({ label: "Largest", value: `${top.label}: ${formatFigure(valueOf(top), COUNT_UNITS.includes(unit) ? "" : unit)}${additive && total ? ` (${Math.round((valueOf(top) / total) * 100)}%)` : ""}` });
+    const low = sorted[sorted.length - 1];
+    if (sorted.length > 1) out.push({ label: additive ? "Groups" : "Lowest", value: additive ? String(sorted.length) : `${low.label}: ${formatFigure(valueOf(low), unit)}` });
+  }
+  return out.slice(0, 3).map((h) => ({ ...h, value: h.value.charAt(0).toUpperCase() + h.value.slice(1) }));
+}
+
+function hasChartData(result) {
+  if (!result || result.notice || !result.rows?.length) return false;
+  if (["table", "stat"].includes(result.chartType)) return true;
+  const keys = (result.series || []).map((s) => s.key);
+  return result.rows.some((r) => keys.some((k) => Number(r[k]) > 0));
+}
+
+// The browser-safe part of a related view (never llmRows).
+function presentRelated(title, result, extra = {}) {
+  const { llmRows, insights, highlights, ...visible } = result; // eslint-disable-line no-unused-vars
+  return { title, ...visible, caption: result.headline, ...extra };
 }
 
 function defaultAdviserNames(db) {
@@ -145,7 +229,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
   }
 
   function present(template, { params, result }, matchedBy) {
-    const { llmRows, insights, ...visible } = result; // eslint-disable-line no-unused-vars
+    const { llmRows, insights, highlights, ...visible } = result; // eslint-disable-line no-unused-vars
     return {
       template: { id: template.id, label: template.label, description: template.description },
       parameters: params,
@@ -166,6 +250,11 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
   function planLocally(question, ranked, parsed, clientIds, today) {
     const best = ranked[0];
     const templateScore = best?.score || 0;
+    // A near-exact match to a prepared report's own questions keeps that report, unless the
+    // question narrows it (a filter) or names a client, which a prepared report can't do.
+    if (parsed && !clientIds.length && parsed.filters === 0 && templateScore >= EXACT_TEMPLATE) {
+      return { kind: "template", template: best.template, params: extractParams(question, today), matchedBy: "keyword" };
+    }
     const specific =
       parsed &&
       (clientIds.length > 0 ||
@@ -208,7 +297,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
   }
 
   function presentQuery({ spec, result }, matchedBy, alternatives = []) {
-    const { llmRows, insights, title, readAs, ...visible } = result; // eslint-disable-line no-unused-vars
+    const { llmRows, insights, highlights, title, readAs, ...visible } = result; // eslint-disable-line no-unused-vars
     const dateFilter = spec.filters.find((fl) => DATE_FIELDS.has(fl.field));
     return {
       kind: "query",
@@ -274,8 +363,8 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
     return { kind: "template", ...present(template, await execute(access, template, parameters), "direct") };
   }
 
-  async function writeNarrative(template, ran, clients) {
-    const fallback = fallbackNarrative(template, ran.result, ran.params);
+  async function writeNarrative(template, ran, clients, related = []) {
+    const fallback = fallbackNarrative(template, ran.result, ran.params, related);
     if (!llm?.enabled) return { ...fallback, writtenBy: "template" };
     const payload = JSON.stringify({
       template: { label: template.label, description: template.description },
@@ -283,6 +372,7 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
       headline: ran.result.headline,
       unit: ran.result.unit,
       rows: sanitizeRows(ran.result.llmRows),
+      related: related.map((r) => ({ title: r.title, headline: r.result.headline, unit: r.result.unit, rows: sanitizeRows(r.result.llmRows).slice(0, 15) })),
     });
     if (containsClientData(payload, clients)) {
       console.warn("[reports] narrative payload held client data; using the templated narrative");
@@ -291,12 +381,30 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
     try {
       const reply = await llm.generateJson(NARRATIVE_PROMPT, payload);
       const title = typeof reply?.title === "string" ? reply.title.trim().slice(0, 140) : "";
-      const narrative = typeof reply?.narrative === "string" ? reply.narrative.trim().slice(0, 1500) : "";
+      const narrative = typeof reply?.narrative === "string" ? reply.narrative.trim().slice(0, 2000) : "";
       if (title && narrative) return { title, narrative, writtenBy: "ai" };
     } catch (error) {
       console.warn("[reports] narrative model unavailable, using template:", error.message);
     }
     return { ...fallback, writtenBy: "template" };
+  }
+
+  // One or two companion views for the report. Each runs under the same scope; a view that
+  // fails or has nothing to show is simply left out.
+  async function relatedViews(access, template, ran, querySpec) {
+    const jobs = querySpec
+      ? relatedQuerySpecs(ran.spec).map(async (spec) => {
+          const q = await runQuery(access, spec, context());
+          return { title: q.result.title, result: q.result, readAs: q.result.readAs };
+        })
+      : relatedTemplateIds(template.id).map(async (id) => {
+          const other = getTemplate(id);
+          const { group_by, ...shared } = ran.params; // eslint-disable-line no-unused-vars
+          const r = await execute(access, other, shared);
+          return { title: other.label, result: r.result, templateId: id };
+        });
+    const settled = await Promise.allSettled(jobs);
+    return settled.filter((s) => s.status === "fulfilled" && hasChartData(s.value.result)).map((s) => s.value).slice(0, 2);
   }
 
   async function generate(user, templateId, parameters, querySpec) {
@@ -308,15 +416,15 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
     if (querySpec) {
       const q = await runQuery(access, querySpec, context());
       template = { label: q.result.title, description: `Custom query: ${q.result.readAs.join(" · ")}` };
-      ran = { params: {}, result: q.result, ctx: context() };
+      ran = { params: {}, result: q.result, ctx: context(), spec: q.spec };
       base = presentQuery(q, "direct");
     } else {
       template = requireTemplate(templateId);
       ran = await execute(access, template, parameters);
       base = { kind: "template", ...present(template, ran, "direct") };
     }
-    const clients = await scopedClients(db, access, ran.params);
-    const { title, narrative, writtenBy } = await writeNarrative(template, ran, clients);
+    const [clients, related] = await Promise.all([scopedClients(db, access, ran.params), relatedViews(access, template, ran, querySpec)]);
+    const { title, narrative, writtenBy } = await writeNarrative(template, ran, clients, related);
     let generatedFor = access.label;
     if (access.role === "admin") {
       const advisorId = ran.params.advisor_id || querySpec?.advisor_id;
@@ -324,10 +432,19 @@ function createReportsService({ db = supabaseAdmin, llm = createGeminiClient(), 
         ? `${(await ran.ctx.adviserNames([advisorId])).get(advisorId)}'s clients (prepared by ${access.label})`
         : `All advisers (prepared by ${access.label})`;
     }
-    return { ...base, title, narrative, writtenBy, generatedAt: ran.ctx.now.toISOString(), generatedFor };
+    return {
+      ...base,
+      title,
+      narrative,
+      writtenBy,
+      highlights: deriveHighlights(ran.result),
+      related: related.map((r) => presentRelated(r.title, r.result, r.readAs ? { readAs: r.readAs } : { templateId: r.templateId })),
+      generatedAt: ran.ctx.now.toISOString(),
+      generatedFor,
+    };
   }
 
   return { listTemplates, catalogue, ask, run, query, generate, fallbackNarrative };
 }
 
-module.exports = { ...createReportsService(), createReportsService, fallbackNarrative, MIN_CONFIDENCE };
+module.exports = { ...createReportsService(), createReportsService, fallbackNarrative, deriveHighlights, MIN_CONFIDENCE };
