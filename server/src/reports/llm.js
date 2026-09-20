@@ -40,7 +40,7 @@ function createGeminiClient({
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt }] },
         contents: [{ role: "user", parts: [{ text: userMessage }] }],
-        generationConfig: { temperature: 0.2, responseMimeType: "application/json", maxOutputTokens: 1024 },
+        generationConfig: { temperature: 0.2, responseMimeType: "application/json", maxOutputTokens: 2048 },
       }),
     });
     if (!response.ok) throw new Error(`Model call failed (${response.status})`);

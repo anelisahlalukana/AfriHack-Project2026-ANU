@@ -657,6 +657,99 @@ test("generated reports come with key figures, a two-part story and related char
   assert.deepEqual(q.related.map((v) => v.readAs.at(-1)), ["per month", "by provider"]);
 });
 
+test("every report explains what the figures mean for the business, and what to do next", async () => {
+  const { fallbackMeaning } = require("../src/services/reports.service");
+  // Each report carries the section, with a commercial reading and a next step.
+  for (const t of TEMPLATES) {
+    const r = await service().generate(adviser(A1), t.id, {});
+    assert.equal(r.writtenBy, "template");
+    assert.ok(r.meaning && r.meaning.length > 60, `${t.id} has no business reading`);
+    assert.doesNotMatch(r.meaning, /undefined|NaN|\[object/, `${t.id} meaning is malformed`);
+    assert.match(r.meaning, /Commercially|worth watching/, `${t.id} never says what it means commercially`);
+  }
+
+  // A concentrated book is called out as a dependency, and the report's own insight is kept
+  // verbatim so provider and product names keep their capitals.
+  const concentrated = fallbackMeaning(
+    { category: "Claims & requests", label: "Claims by provider" },
+    {
+      chartType: "bar",
+      unit: "claims",
+      series: [{ key: "value", label: "Claims" }],
+      rows: [{ label: "Sanlam", value: 41 }, { label: "Old Mutual", value: 18 }, { label: "Discovery", value: 9 }, { label: "Momentum", value: 6 }],
+      headline: "74 claims across 4 providers",
+      insights: ["Sanlam has 12 files open for more than 30 days."],
+    },
+    {},
+    []
+  );
+  assert.match(concentrated, /Sanlam accounts for 55% of the 74 claims/);
+  assert.match(concentrated, /Sanlam has 12 files open/);
+  assert.match(concentrated, /next move/);
+
+  // A trend is read against its own average, not against the biggest bar.
+  const trend = fallbackMeaning(
+    { category: "Claims & requests", label: "Claims over time" },
+    {
+      chartType: "line",
+      unit: "claims",
+      period: "month",
+      series: [{ key: "value", label: "Claims" }],
+      rows: [{ label: "2026-04", value: 8 }, { label: "2026-05", value: 11 }, { label: "2026-06", value: 9 }, { label: "2026-07", value: 10 }, { label: "2026-08", value: 22 }],
+      headline: "60 claims over 5 months",
+    },
+    {},
+    []
+  );
+  assert.match(trend, /August 2026, 22 claims\) sits above its own average of 12 claims/);
+
+  // Thin data is not dressed up as a pattern, and one record reads as one record.
+  const thin = fallbackMeaning(
+    { category: "Reminders", label: "Upcoming reminders" },
+    { chartType: "bar", unit: "reminders", series: [{ key: "value", label: "Reminders" }], rows: [{ label: "Birthday", value: 1 }], headline: "1 reminder" },
+    {},
+    []
+  );
+  assert.match(thin, /only 1 reminder here/);
+  assert.doesNotMatch(thin, /1 reminders|%/);
+
+  // Nothing to show still explains why the report matters.
+  const empty = fallbackMeaning(
+    { category: "Compliance", label: "Consents expiring" },
+    { chartType: "bar", unit: "documents", series: [{ key: "value", label: "Documents" }], rows: [] },
+    { days_ahead: 60 },
+    []
+  );
+  assert.match(empty, /came back empty/);
+  assert.match(empty, /FAIS and FICA/);
+});
+
+test("the model's business reading is used when it sends one, and filled in when it doesn't", async () => {
+  const reply = { title: "Motor dominates", narrative: "One.\n\nTwo.", meaning: "Motor is 60% of claims, so the renewal terms there set the firm's margin." };
+  const withMeaning = { enabled: true, generateJson: async () => reply };
+  const r = await service(seed(), withMeaning).generate(adviser(A1), "claims_by_type", {});
+  assert.equal(r.writtenBy, "ai");
+  assert.equal(r.meaning, reply.meaning);
+
+  // An older or truncated reply without "meaning" keeps the AI story and the templated reading.
+  const { meaning, ...withoutMeaning } = reply; // eslint-disable-line no-unused-vars
+  const r2 = await service(seed(), { enabled: true, generateJson: async () => withoutMeaning }).generate(adviser(A1), "claims_by_type", {});
+  assert.equal(r2.writtenBy, "ai");
+  assert.equal(r2.narrative, withoutMeaning.narrative);
+  assert.ok(r2.meaning.length > 60);
+  assert.match(r2.meaning, /Commercially/);
+});
+
+test("the story prompt asks for the business reading, and the model sees the report's category", async () => {
+  const sent = [];
+  const llm = { enabled: true, generateJson: async (system, message) => (sent.push({ system, message }), { title: "t", narrative: "n", meaning: "m" }) };
+  await service(seed(), llm).generate(adviser(A1), "claims_by_type", {});
+  const { system, message } = sent.at(-1);
+  assert.match(system, /"meaning"/);
+  assert.match(system, /revenue, retention/);
+  assert.equal(JSON.parse(message).template.category, "Claims & requests");
+});
+
 test("the story model sees the related charts, never client data", async () => {
   const sent = [];
   const llm = { enabled: true, generateJson: async (system, message) => (sent.push({ system, message }), { title: "Motor dominates", narrative: "One.\n\nTwo." }) };

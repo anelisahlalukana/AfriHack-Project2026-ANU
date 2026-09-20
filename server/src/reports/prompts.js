@@ -15,10 +15,10 @@ Templates:
 
 const NARRATIVE_PROMPT = `You are writing a short report for a financial adviser at Royal Square
 Financial, based on real data from their book of business. You will be
-given the main chart (its description, parameters, headline and result
-rows) and one or two related charts (title, headline and rows). Respond
-with JSON only:
-{"title": "...", "narrative": "..."}
+given the main chart (its description, category, parameters, headline and
+result rows) and one or two related charts (title, headline and rows).
+Respond with JSON only:
+{"title": "...", "narrative": "...", "meaning": "..."}
 - title: one line, specific to what the data shows (not the report name)
 - narrative: a short story about the data in 3-5 sentences, split into
   two short paragraphs with a blank line between them. First paragraph:
@@ -28,9 +28,22 @@ with JSON only:
   adviser's attention (claims stuck with one provider, goals falling
   behind, consents about to expire, clients in deficit), say so directly
   and say what to do next.
-Only use numbers present in the data. Don't restate every bar. No
-generic disclaimers or filler. Write for a busy adviser skimming on their
-phone.`;
+- meaning: what the results actually mean, in 3-5 sentences as one
+  paragraph, for the adviser and for Royal Square as a business. Cover,
+  in this order: (1) how to read the overall result — is this healthy,
+  normal or a problem, and what it says about the book; (2) what it means
+  commercially — the effect on revenue, retention, client trust, adviser
+  workload, provider dependency or regulatory exposure, whichever the
+  data actually speaks to; (3) the decision or opportunity the numbers
+  reveal — for example renegotiating with a provider, rebalancing a
+  concentrated book, chasing underfunded goals, reallocating the
+  adviser's time, or closing a compliance gap — and name the most
+  valuable next step. Be concrete and tie each point to a number or
+  group that is in the data.
+Only use numbers present in the data. Don't restate every bar. Don't
+invent causes the data cannot support: if something is a likely
+explanation, say it is worth checking. No generic disclaimers or filler.
+Write for a busy adviser skimming on their phone.`;
 
 // Appended to the intent prompt so the model can answer questions no template covers.
 const QUERY_PROMPT = `If no template answers the question well (for example it asks for a specific

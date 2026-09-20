@@ -108,6 +108,10 @@
 .rpt-related .rpt-figure{border:1px solid var(--border);border-radius:var(--r-card);padding:16px}
 .rpt-related .rpt-donut{grid-template-columns:1fr;gap:12px}
 .rpt-related .rpt-donut-chart{width:100%;max-width:220px;margin:0 auto}
+/* The business reading of the figures: set apart from the story so it reads as the takeaway. */
+.rpt-meaning{background:var(--card-2);border:1px solid var(--border);border-left:3px solid var(--brand-700);border-radius:var(--r-card);padding:14px 16px;display:flex;flex-direction:column;gap:8px;max-width:75ch}
+.rpt-meaning h3{margin:0;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--brand-700);font-weight:650}
+.rpt-meaning p{font-size:15px;line-height:1.65;color:var(--text)}
 .rpt-footnote{font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px}
 .rpt-print-logo{display:none}
 
@@ -133,7 +137,7 @@
     --rpt-c1:#2a78d6;--rpt-c2:#eb6834;--rpt-c3:#1baf7a;--rpt-c4:#eda100;--rpt-c5:#e87ba4;--rpt-c6:#008300}
   body.rpt-printing .rpt-report{border:0;padding:0;background:#fff;box-shadow:none;gap:16px}
   body.rpt-printing .rpt-print-logo{display:block;width:160px;margin-bottom:4px}
-  body.rpt-printing .rpt-figure,body.rpt-printing .rpt-kpis,body.rpt-printing .rpt-table tr{break-inside:avoid}
+  body.rpt-printing .rpt-figure,body.rpt-printing .rpt-kpis,body.rpt-printing .rpt-meaning,body.rpt-printing .rpt-table tr{break-inside:avoid}
   body.rpt-printing .rpt-related{grid-template-columns:1fr 1fr}
   body.rpt-printing .rpt-report a{text-decoration:none;color:inherit}
 }

@@ -222,6 +222,10 @@ export default function Reports() {
           </figure>)}
         </div>
       </>}
+      {report.meaning && <section className="rpt-meaning" aria-labelledby="rpt-meaning-title">
+        <h3 id="rpt-meaning-title">What this means for the business</h3>
+        {storyParagraphs(report.meaning).map((text, i) => <p key={i}>{text}</p>)}
+      </section>}
       <footer className="rpt-footnote">
         Figures from the Royal Square workspace at the time shown.{report.writtenBy === 'template' ? ' Summary written automatically from the figures.' : ' Summary drafted by AI from aggregated figures; check before sharing.'}
       </footer>
