@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import { signDocument } from '../../api/documents'
+import { trimmedSignatureDataUrl } from '../../lib/signature'
 
 export function SignaturePad({ clientId, documentType, onCancel, onSigned }) {
   const sigRef = useRef(null)
@@ -26,7 +27,7 @@ export function SignaturePad({ clientId, documentType, onCancel, onSigned }) {
     setStatus('saving')
 
     try {
-      const signature = sigRef.current.getTrimmedCanvas().toDataURL('image/png')
+      const signature = trimmedSignatureDataUrl(sigRef.current.getCanvas())
       await signDocument(clientId, documentType, { signature, signerName: signerName.trim() })
       setStatus('success')
       setTimeout(() => onSigned?.(), 600)

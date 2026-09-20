@@ -98,7 +98,9 @@ export function DocumentStatusList({ clientId, onlySent = false, emptyMessage, o
                 {sendingType === doc.documentType ? 'Sending…' : 'Send to client'}
               </button>
             )
-            : (
+            // A client can only act on a document that is waiting for them. Once it is signed (or
+            // filed) the button is gone; View still opens the signed copy.
+            : doc.status === 'sent' && (
               <button type="button" className="primary" onClick={() => setOpenType(doc.documentType)}>
                 {acknowledge ? 'Acknowledge' : 'Sign'}
               </button>
