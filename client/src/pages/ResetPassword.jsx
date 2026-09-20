@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ThemeToggle from '../components/ThemeToggle'
+import PasswordField from '../components/PasswordField'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabaseClient'
@@ -79,8 +80,8 @@ export default function ResetPassword() {
       <form className="card" onSubmit={submit}>
         <p className="eyebrow">ACCOUNT SETUP</p>
         <h2>Set a new password</h2>
-        <label>New password<input name="password" type="password" autoComplete="new-password" minLength={8} required disabled={busy} /><small>Use at least 8 characters.</small></label>
-        <label>Confirm password<input name="confirm_password" type="password" autoComplete="new-password" minLength={8} required disabled={busy} /></label>
+        <PasswordField label="New password" hint="Use at least 8 characters." name="password" autoComplete="new-password" minLength={8} required disabled={busy} />
+        <PasswordField label="Confirm password" name="confirm_password" autoComplete="new-password" minLength={8} required disabled={busy} />
         {error && <p className="error" role="alert">{error}</p>}
         <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Set password and continue'}</button>
       </form>

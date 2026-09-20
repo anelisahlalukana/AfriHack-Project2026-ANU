@@ -5,6 +5,12 @@ export async function getDashboard() {
   return data.dashboard;
 }
 
+// The signed-in client's own dashboard. The server scopes it to their client record.
+export async function getMyOverview() {
+  const { data } = await http.get("/api/dashboard/me");
+  return data.overview;
+}
+
 // Client Pulse: the ranking of clients at risk of disengaging.
 export async function getAtRiskClients() {
   const { data } = await http.get("/api/dashboard/at-risk");

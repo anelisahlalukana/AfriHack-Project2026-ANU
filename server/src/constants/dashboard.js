@@ -12,6 +12,14 @@ const NEW_CLIENT_WINDOW_DAYS = 30;
 const ONBOARDING_LIST_LIMIT = 8;
 const RECENT_ACTIVITY_LIMIT = 6;
 
+// --- The client's own dashboard (services/clientOverview.service.js). The portal is a phone
+// screen, so each panel shows a short list and links to the full page behind it.
+const CLIENT_LIST_LIMIT = 5;
+const CLIENT_GOAL_LIMIT = 4;
+const CLIENT_ACTIVITY_LIMIT = 6;
+// How many of a client's biggest assets and debts the money panel names.
+const CLIENT_BREAKDOWN_LIMIT = 4;
+
 // --- Client Pulse: ranking clients by risk of disengagement (getAtRiskClients).
 // A client's score is the sum of the weights of every signal below that applies to them.
 // Tune the numbers here; nothing else needs to change.
@@ -54,4 +62,8 @@ module.exports = {
   NEW_CLIENT_WINDOW_DAYS,
   ONBOARDING_LIST_LIMIT,
   RECENT_ACTIVITY_LIMIT,
+  CLIENT_LIST_LIMIT,
+  CLIENT_GOAL_LIMIT,
+  CLIENT_ACTIVITY_LIMIT,
+  CLIENT_BREAKDOWN_LIMIT,
 };

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ThemeToggle from '../../components/ThemeToggle'
+import PasswordField from '../../components/PasswordField'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { completeRegistration, finishRegistration } from '../../api/clients'
 import { supabase } from '../../lib/supabaseClient'
@@ -85,8 +86,8 @@ export default function CompleteRegistration() {
         {!params.get('email') && <label>Email address<input name="email" type="email" autoComplete="username" required disabled={busy} value={email} onChange={event => setEmail(event.target.value)} /></label>}
         {params.get('email') && <p>Registering <b>{email}</b></p>}
         <label>ID number<input name="id_number" inputMode="numeric" autoComplete="off" pattern="[0-9]{13}" maxLength={13} title="Your ID number must be exactly 13 digits" required disabled={busy} /><small>13 digits. You'll use this to sign in.</small></label>
-        <label>New password<input name="password" type="password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} /><small>Use at least 8 characters.</small></label>
-        <label>Confirm password<input name="confirm_password" type="password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} /></label>
+        <PasswordField label="New password" hint="Use at least 8 characters." name="password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} />
+        <PasswordField label="Confirm password" name="confirm_password" autoComplete="new-password" minLength={8} maxLength={72} required disabled={busy} />
         {error && <p className="error" role="alert">{error}</p>}
         <button className="primary" disabled={busy}>{busy ? 'Saving…' : 'Continue'}</button>
         <p className="auth-switch">Already registered? <Link to="/login">Sign in</Link></p>
