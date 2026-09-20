@@ -79,7 +79,7 @@ Branch protection on a private repository needs a paid GitHub plan; on a free pl
 
 ## The backend deploys through this pipeline
 
-The React client (`client/`) goes to Vercel. `server/` is a long-running Express process with an in-process reminder scheduler, and it binds to `127.0.0.1`, so it does not fit Vercel's serverless functions; it runs as a Node service on Render.
+The React client (`client/`) goes to Vercel. `server/` is a long-running Express process with an in-process reminder scheduler, so it does not fit Vercel's serverless functions; it runs as a Node service on Render.
 
 The backend is the part of production that GitHub Actions deploys. After CI passes on a push to `main`, the `production` job in [deploy.yml](../.github/workflows/deploy.yml) calls the service's Render **deploy hook** (`RENDER_DEPLOY_HOOK_URL`), which tells Render to build and deploy the backend. A failing CI blocks it.
 
@@ -105,6 +105,14 @@ cd server && npm ci && npm run lint && npm test
 ```
 
 `npm test` in `client/` runs both client test suites. Unit tests (`client/tests/*.test.js`) use Node's built-in runner; component tests (`client/tests/component/`) use Vitest with Testing Library.
+
+## Before each release: the service worker version
+
+The client is an installable app whose service worker caches the app shell. **Bump `VERSION` in
+`client/public/sw.js` in the release**, so that devices delete the old caches when the new worker
+activates. Without it the previous build's hashed files stay cached until the browser evicts them and
+the precached shell is not refreshed. People then see an "A new version is ready" prompt. See
+[pwa.md](pwa.md).
 
 ## Rolling back
 

@@ -260,7 +260,14 @@ configured for app code despite one existing in `vite.config.js`; don't rely on 
 
 ## Before committing
 
-- `npm run lint` in `client/` — must be clean.
-- `npx vite build` in `client/` — must succeed.
-- For backend-only changes, at least boot `node server.js` and hit the new route to check
-  for wiring/syntax errors — there's no automated backend test suite yet.
+CI runs the same checks on every pull request, so run them first:
+
+- `npm run lint` and `npm test` in `client/`: both must be clean and green.
+- `npm run build` in `client/`: must succeed.
+- `npm run lint` and `npm test` in `server/`: both must be clean and green. The server tests need no
+  database. For a new route also boot `node server.js` and call it, to catch wiring mistakes the
+  tests cannot.
+- Changed behaviour, a route, a setting, a script or a threshold? Update the matching document in
+  `docs/` in the same pull request (see `docs/README.md`).
+- Changed `client/public/sw.js`, the shell files or the icons? Bump `VERSION` in `sw.js`, and never
+  cache anything that depends on who is signed in (see `docs/pwa.md`).

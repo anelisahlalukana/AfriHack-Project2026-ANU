@@ -50,3 +50,10 @@ advisers get demo clients), `--demo-advisers=0..5`, `--seed=7` (the same seed gi
 
 Demo clients have no login of their own (the client portal isn't part of the demo data), and
 their documents have no signed PDF files behind them.
+
+## Related
+
+The dashboard, Client Pulse and reports read this data live: see
+[dashboard-and-client-pulse.md](dashboard-and-client-pulse.md) and [reports.md](reports.md). The
+project overview and the other scripts are in the [root README](../README.md) and
+[server/README.md](../server/README.md).
