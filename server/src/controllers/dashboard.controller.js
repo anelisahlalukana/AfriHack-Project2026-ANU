@@ -1,4 +1,15 @@
 const dashboardService = require("../services/dashboard.service");
+const clientOverviewService = require("../services/clientOverview.service");
+
+// The signed-in client's own dashboard. Scoped to their client record inside the service.
+async function getMyOverview(req, res) {
+  try {
+    const overview = await clientOverviewService.getClientOverview(req.user);
+    res.json({ overview });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+}
 
 async function getDashboard(req, res) {
   try {
@@ -36,4 +47,4 @@ async function sendCheckIn(req, res) {
   }
 }
 
-module.exports = { getDashboard, getAtRiskClients, getClientPulse, sendCheckIn };
+module.exports = { getDashboard, getMyOverview, getAtRiskClients, getClientPulse, sendCheckIn };

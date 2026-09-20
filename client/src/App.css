@@ -257,6 +257,13 @@ progress::-moz-progress-bar{background:var(--brand-600)}
 .tip:hover::after,.tip:focus::after{content:attr(data-tip);position:absolute;left:-4px;bottom:calc(100% + 8px);width:min(260px,70vw);padding:8px 10px;border-radius:8px;background:var(--text);color:var(--card);font-size:13px;font-weight:400;line-height:1.4;text-align:left;z-index:10;box-shadow:0 4px 14px rgba(0,0,0,.2)}
 .auth-switch .link{background:none;border:0;padding:0;color:var(--red);font-weight:600;font-size:inherit;text-decoration:underline;cursor:pointer}
 .auth-notice{background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:8px;padding:12px;color:var(--ok)}
+/* Password box with a show/hide button (components/PasswordField.jsx). The button sits inside the
+   field, so the input reserves room for it instead of running text underneath. */
+.password-field{position:relative;display:block}
+.password-field input{padding-right:46px}
+.password-toggle{position:absolute;right:5px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:34px;height:34px;min-height:34px;padding:0;border:0;border-radius:8px;background:none;color:var(--muted)}
+.password-toggle:hover:not(:disabled){background:var(--card-2);border-color:transparent;color:var(--text)}
+.password-toggle:disabled{opacity:.5}
 /* Client area (pages/client/*): mobile-first. The base rules are for phones; the min-width block below enhances wider screens. */
 .client-shell{min-height:100vh;min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
 .client-top{position:sticky;top:0;z-index:20;display:flex;justify-content:center;padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border)}
@@ -276,6 +283,60 @@ progress::-moz-progress-bar{background:var(--brand-600)}
 .client-content .card{padding:24px}
 .bottom-nav{left:50%;right:auto;width:min(650px,calc(100% - 32px));transform:translateX(-50%);bottom:16px;border:1px solid var(--border);border-radius:16px;box-shadow:0 6px 24px rgba(52,12,30,.12);padding-bottom:0}
 }
+/* Client dashboard (pages/client/ClientHome.jsx). Phone-first, like the rest of the client area:
+   one column of cards, tap targets that clear 44px, and nothing that needs a hover to be read. */
+.cdash{display:flex;flex-direction:column;gap:16px}
+.cdash header p{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px}
+.cdash .track span.tone-positive{background:linear-gradient(90deg,var(--ok),var(--ok))}
+.cdash .track span.tone-negative{background:linear-gradient(90deg,var(--red),var(--brand-600))}
+.cdash .chart-row+.chart-row{margin-top:12px}
+.cdash-figure{margin:0;font-family:var(--font-display);font-size:clamp(28px,7vw,36px);line-height:1.1;overflow-wrap:anywhere}
+.cdash-owed{color:var(--red-text)}
+
+/* The action centre: the client's whole to-do list, whatever part of the app it came from. */
+.cdash-actions{gap:14px}
+.cdash-action-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.cdash-action{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 12px;align-items:start;padding:12px;border:1px solid var(--border);border-left:3px solid var(--slate);border-radius:12px;background:var(--card-2)}
+.cdash-action.tone-urgent{border-left-color:var(--red);background:var(--accent-50)}
+.cdash-action.tone-soon{border-left-color:var(--warn)}
+.cdash-action.tone-info{border-left-color:var(--slate)}
+.cdash-action-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--card);border:1px solid var(--border);color:var(--brand-700)}
+.cdash-action.tone-urgent .cdash-action-icon{color:var(--red)}
+.cdash-action.tone-soon .cdash-action-icon{color:var(--warn)}
+.cdash-action-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cdash-action-text b{overflow-wrap:anywhere}
+.cdash-action-text small{color:var(--muted)}
+.cdash-action-go{grid-column:2;display:inline-flex;align-items:center;gap:6px;min-height:34px;font-size:13px;font-weight:600;color:var(--brand-700);text-decoration:none}
+.cdash-action-go:hover{text-decoration:underline}
+
+/* Three tiles that each open the page behind the number. */
+.cdash-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cdash-stat{display:flex;flex-direction:column;gap:2px;padding:14px 12px;border:1px solid var(--border);border-radius:14px;background:var(--card);box-shadow:var(--shadow);text-decoration:none;color:var(--text)}
+.cdash-stat:hover{border-color:var(--accent-300)}
+.cdash-stat svg{color:var(--brand-600)}
+.cdash-stat b{font-family:var(--font-display);font-size:clamp(20px,5.5vw,26px);line-height:1.15}
+.cdash-stat small{color:var(--muted);font-size:11.5px;line-height:1.3}
+.cdash-stat.tone-urgent{border-color:var(--red)}
+.cdash-stat.tone-urgent svg,.cdash-stat.tone-urgent b{color:var(--red-text)}
+
+.cdash-steps{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column}
+.cdash-steps li{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)}
+.cdash-steps li:last-child{border-bottom:0}
+.cdash-steps li span{display:inline-flex;align-items:center;gap:8px;overflow-wrap:anywhere}
+.cdash-steps li small{color:var(--muted);white-space:nowrap}
+.cdash-steps li.signed span svg,.cdash-steps li.filed span svg{color:var(--ok)}
+.cdash-steps li.sent span svg{color:var(--warn)}
+.cdash-steps li.not_sent{color:var(--muted)}
+
+.cdash-task{padding:12px 0;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.cdash-task:last-of-type{border-bottom:0}
+.cdash-task small{color:var(--muted);display:block}
+.cdash-activity{text-decoration:none;color:inherit}
+.cdash-activity:hover{background:var(--card-2)}
+@media(min-width:720px){.cdash-action{grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
+.cdash-action-go{grid-column:auto}
+}
+
 /* Document rows wrap on narrow screens instead of overflowing; modals get tighter padding. */
 .doc-row{flex-wrap:wrap}
 .doc-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -506,6 +567,34 @@ label.button{flex-direction:row;display:inline-flex;font-size:13px}
 @media(min-width:720px){
 .chat-fab{right:24px;bottom:100px}
 .chat-panel{left:auto;right:24px;bottom:24px;width:390px;height:min(620px,calc(100vh - 48px));border-radius:16px;border:1px solid var(--border)}
+}
+
+/* Desktop client area. The same markup becomes a proper site: the tab bar that floats at the
+   bottom of a phone is re-laid-out as a left sidebar (one nav to keep in step, not two), the
+   content column widens, and the pages that were stacked into one phone-width strip lay their
+   cards out side by side. Everything below 1024px is untouched and stays genuinely mobile.
+   This block sits last on purpose, so it can also undo the narrow-screen overrides above. */
+@media(min-width:1024px){
+.client-shell{display:grid;grid-template-columns:248px minmax(0,1fr);grid-template-areas:"nav top" "nav main";padding-bottom:0}
+.client-top{grid-area:top;justify-content:flex-start;padding:12px 32px}
+.client-top img{height:30px}
+.client-content{grid-area:main;max-width:1240px;padding:28px 32px 48px;gap:20px}
+.client-content h1{font-size:32px}
+.bottom-nav{grid-area:nav;position:sticky;top:0;left:auto;right:auto;bottom:auto;align-self:start;height:100dvh;width:auto;transform:none;display:flex;flex-direction:column;gap:4px;padding:22px 12px;background:var(--sidebar);border:0;border-right:1px solid var(--sidebar-line);border-radius:0;box-shadow:none}
+.bottom-nav a{flex-direction:row;justify-content:flex-start;gap:12px;min-height:44px;padding:10px 14px;border-radius:10px;font-size:14px;color:var(--sidebar-text)}
+.bottom-nav a svg{width:19px;height:19px;flex:none}
+.bottom-nav a:hover{background:var(--sidebar-hover);color:var(--brand-700)}
+.bottom-nav a.active{background:var(--accent-100);color:var(--brand-800);font-weight:650}
+/* The chat button no longer has to clear a bottom bar. */
+.chat-fab{bottom:24px}
+/* Cards use the room: the dashboard pairs its panels, card lists run two across, and the
+   claim detail and claim forms get their columns back. */
+.cdash{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.cdash>header,.cdash-actions,.cdash-stats{grid-column:1 / -1}
+.cdash-stats{gap:20px}
+.cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.client-content .rs-detail{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)}
+.client-content .rs-form .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 .claims-head .col-menu{flex-shrink:0}
 .claims-head .col-menu>button{white-space:nowrap}

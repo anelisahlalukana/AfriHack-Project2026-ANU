@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ThemeToggle from '../components/ThemeToggle'
+import PasswordField from '../components/PasswordField'
 import { Navigate, useLocation } from 'react-router-dom'
 import { Info } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -60,7 +61,7 @@ export default function Login() {
         <p>Clients, advisers and insurers can sign in here.</p>
         {!configured && <p className="error" role="alert">Sign-in is currently unavailable. Please contact your administrator.</p>}
         <label><span className="label-row">Username<span className="tip" tabIndex={0} role="img" aria-label={USERNAME_HINT} data-tip={USERNAME_HINT}><Info size={15} /></span></span><input name="username" autoComplete="username" autoCapitalize="none" spellCheck="false" required disabled={busy || !configured} /></label>
-        <label>Password<input name="password" type="password" autoComplete="current-password" required disabled={busy || !configured} /></label>
+        <PasswordField label="Password" name="password" autoComplete="current-password" required disabled={busy || !configured} />
         {(error || authError) && <p className="error" role="alert">{error || authError}</p>}
         <button className="primary" disabled={busy || !configured}>{busy ? 'Signing in…' : 'Sign in'}</button>
         <small>New client? Your adviser will email you an invitation to register.</small>
