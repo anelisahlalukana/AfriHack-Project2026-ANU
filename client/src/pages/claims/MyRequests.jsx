@@ -31,7 +31,7 @@ export default function MyRequests() {
   const done = tasks.filter(task => ['completed', 'declined'].includes(task.status))
   return <>
     <header className="claims-head">
-      <div><p className="eyebrow">YOUR CLAIMS AND REQUESTS</p><h1>My claims and requests</h1><p>Each update shows who sent it and when.</p></div>
+      <div><h1>My claims and requests</h1><p>Each update shows who sent it and when.</p></div>
       <LogClaimMenu />
     </header>
     {loading && <p role="status">Loading…</p>}

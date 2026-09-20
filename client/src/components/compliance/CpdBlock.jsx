@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { addCpdRecord } from '../../api/compliance'
 import { complianceDate, cpdPercent, southAfricaToday } from '../../lib/complianceStatus'
+import { useTableState } from '../../hooks/useTableState'
+import CpdTable from './CpdTable'
 
 export default function CpdBlock({ adviserId, cpd, canEdit, onChanged }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Its own prefix, so this table's state never collides with the client table on
+  // the same page.
+  const [tableState, onTableChange] = useTableState('cpd', { sort: 'completedOn', dir: 'desc', size: '10', page: '1' })
+
   async function submit(event) {
     event.preventDefault()
     const form = event.currentTarget
@@ -17,15 +23,15 @@ export default function CpdBlock({ adviserId, cpd, canEdit, onChanged }) {
     } catch (error) { setError(error.message) }
     finally { setSaving(false) }
   }
+
   return <section className="compliance-cpd" aria-label="Continuing professional development">
     <div className="section-heading"><div><h3>CPD activities</h3><p>{complianceDate(cpd.start)} – {complianceDate(cpd.end)}</p></div>
       <strong>{cpd.hours} / {cpd.requiredHours} hours</strong></div>
     <progress max="100" value={cpdPercent(cpd.hours, cpd.requiredHours)} aria-label="CPD hours towards cycle target" />
     <p>{cpd.remainingHours} hours outstanding. Prototype target; activities are self-recorded.</p>
-    {!cpd.records.length ? <p className="empty">No CPD activities recorded.</p> : <ul className="compliance-activities">
-      {cpd.records.map(record => <li key={record.id}><span>{record.activity}<small>{complianceDate(record.completedOn)}
-        {record.completedOn < cpd.start || record.completedOn > cpd.end ? ' · Outside current cycle' : ''}</small></span><b>{record.hours} hours</b></li>)}
-    </ul>}
+
+    <CpdTable records={cpd.records} cycle={cpd} state={tableState} onChange={onTableChange} />
+
     {canEdit && <form className="form-stack" onSubmit={submit}>
       <fieldset disabled={saving} className="compliance-fields">
         <legend>Log a CPD activity</legend>

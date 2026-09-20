@@ -36,7 +36,6 @@ export default function ClientHome() {
 
   return <>
     <header>
-      <p className="eyebrow">YOUR ACCOUNT</p>
       <h1>Welcome{name ? `, ${name}` : ''}</h1>
     </header>
 

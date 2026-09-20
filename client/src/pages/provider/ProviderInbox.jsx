@@ -35,7 +35,6 @@ export default function ProviderInbox() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">{me.provider.name.toUpperCase()} · PROVIDER PORTAL</p>
         <h1>Claims & requests</h1>
         <p>Sent to {me.provider.name} by Royal Square Financial. Red outline means it's waiting on you.</p>
       </div>

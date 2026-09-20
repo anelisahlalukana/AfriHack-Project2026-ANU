@@ -3,6 +3,7 @@ const { ACCOUNT_ROLES, PROVIDER_ROLE } = require("../constants/roles");
 const { QUALIFICATION_STATUSES } = require("../constants/complianceStatuses");
 const { SCREENING_TYPES, AUDIT_DEFAULT_LIMIT, AUDIT_MAX_LIMIT } = require("../constants/compliance");
 const { southAfricaDate } = require("../utils/complianceRules");
+const AUDIT_PAGE = require("../constants/auditLog");
 
 function validateDocumentType(req, res, next) {
   const { type } = req.params;
@@ -328,6 +329,88 @@ function validateAuditLimit(req, res, next) {
   next();
 }
 
+// Audit log query string: page, page size, sort, direction, date range and filters.
+// Anything unrecognised is rejected rather than ignored, so a caller never receives a
+// silently different page from the one they asked for. Cleaned values land on
+// req.auditQuery, which is the only thing the service reads.
+const ALLOWED_AUDIT_KEYS = ["page", "size", "sort", "dir", "q", "source", "category", "actorType", "from", "to", "clientId", "taskId", "all"];
+
+function isIsoInstant(value) {
+  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+}
+
+function validateAuditQuery(req, res, next) {
+  const query = req.query || {};
+  const unknown = Object.keys(query).filter((key) => !ALLOWED_AUDIT_KEYS.includes(key));
+  if (unknown.length) {
+    return res.status(400).json({ error: `Unknown audit filter: ${unknown.join(", ")}` });
+  }
+  // Express parses a repeated key into an array; every filter here is single-valued.
+  for (const [key, value] of Object.entries(query)) {
+    if (typeof value !== "string") {
+      return res.status(400).json({ error: `Repeat the ${key} filter only once.` });
+    }
+  }
+
+  const page = query.page === undefined ? 1 : Number(query.page);
+  if (!Number.isInteger(page) || page < 1 || page > 100000) {
+    return res.status(400).json({ error: "Page must be a positive integer." });
+  }
+  const size = query.size === undefined ? AUDIT_PAGE.DEFAULT_PAGE_SIZE : Number(query.size);
+  if (!AUDIT_PAGE.PAGE_SIZES.includes(size)) {
+    return res.status(400).json({ error: `Page size must be one of ${AUDIT_PAGE.PAGE_SIZES.join(", ")}.` });
+  }
+  const sort = query.sort === undefined ? AUDIT_PAGE.DEFAULT_SORT : query.sort;
+  if (!Object.prototype.hasOwnProperty.call(AUDIT_PAGE.SORTABLE, sort)) {
+    return res.status(400).json({ error: `Sort must be one of ${Object.keys(AUDIT_PAGE.SORTABLE).join(", ")}.` });
+  }
+  const dir = query.dir === undefined ? AUDIT_PAGE.DEFAULT_DIRECTION : query.dir;
+  if (!["asc", "desc"].includes(dir)) {
+    return res.status(400).json({ error: "Direction must be asc or desc." });
+  }
+  if (query.source !== undefined && !AUDIT_PAGE.SOURCES.includes(query.source)) {
+    return res.status(400).json({ error: `Source must be one of ${AUDIT_PAGE.SOURCES.join(", ")}.` });
+  }
+  for (const key of ["from", "to"]) {
+    if (query[key] !== undefined && !isIsoInstant(query[key])) {
+      return res.status(400).json({ error: `The ${key} date must be an ISO date.` });
+    }
+  }
+  if (query.from && query.to && Date.parse(query.from) > Date.parse(query.to)) {
+    return res.status(400).json({ error: "The from date must not be after the to date." });
+  }
+  for (const key of ["clientId", "taskId"]) {
+    if (query[key] !== undefined && !UUID_PATTERN.test(query[key])) {
+      return res.status(400).json({ error: `The ${key} filter must be a uuid.` });
+    }
+  }
+  for (const key of ["q", "category", "actorType"]) {
+    if (query[key] !== undefined && query[key].length > 120) {
+      return res.status(400).json({ error: `The ${key} filter is too long.` });
+    }
+  }
+  if (query.all !== undefined && query.all !== "1") {
+    return res.status(400).json({ error: "Use all=1 to download every matching row." });
+  }
+
+  req.auditQuery = {
+    page,
+    pageSize: size,
+    sort,
+    direction: dir,
+    all: query.all === "1",
+    search: query.q || "",
+    source: query.source || "",
+    category: query.category || "",
+    actorType: query.actorType || "",
+    from: query.from || "",
+    to: query.to || "",
+    clientId: query.clientId || "",
+    taskId: query.taskId || "",
+  };
+  next();
+}
+
 function validateScreening(req, res, next) {
   const body = req.body;
   if (!isPlainObject(body) || Object.keys(body).some(k => !["screeningType", "simulateFlag"].includes(k)) ||
@@ -366,6 +449,7 @@ module.exports = {
   validateClientIdParam,
   validateComplianceIds,
   validateAuditLimit,
+  validateAuditQuery,
   validateScreening,
   validateCpdRecord,
   validateTaskIdParam,

@@ -69,9 +69,9 @@ test("consent signing audit failure is nonfatal, first signing and renewal are d
 test("summary pages through capped data, filters providers and counts clients not checks", async () => {
   const db = fakeDatabase({ users: [client, { ...client, id: "provider", role_id: 2 }],
     documents: DOCUMENT_TYPES.map((d, i) => ({ ...consent, id: `d${i}`, document_type: d.type })),
-    client_screenings: [{ id: "s1", client_id: "client", screening_type: "pep", result: "flagged", created_at: "2026-01-01" },
-      { id: "s2", client_id: "client", screening_type: "pep", result: "clear", created_at: "2026-02-01" },
-      { id: "s3", client_id: "client", screening_type: "terrorism_financing", result: "clear", created_at: "2026-02-01" }] });
+    client_screenings: [{ id: "s1", client_id: "client", simulated: false, provider: "Recorded screening source", screening_type: "pep", result: "flagged", created_at: "2026-01-01" },
+      { id: "s2", client_id: "client", simulated: false, provider: "Recorded screening source", screening_type: "pep", result: "clear", created_at: "2026-02-01" },
+      { id: "s3", client_id: "client", simulated: false, provider: "Recorded screening source", screening_type: "terrorism_financing", result: "clear", created_at: "2026-02-01" }] });
   db.pageCap = 2;
   const view = await service(db).getSummary();
   assert.equal(view.summary.clients, 1);
@@ -88,15 +88,11 @@ test("client audit is filtered before limit and remains newest first", async () 
   ] });
   assert.deepEqual((await service(db).getAudit({ clientId: "client", limit: 1 })).map(r => r.id), ["3"]);
 });
-test("screening uses declaration, mock metadata and a transactional RPC; production simulation rejected", async () => {
+test("screening actions never generate synthetic results or write to Supabase", async () => {
   const db = fakeDatabase({ users: [{ ...client, is_politically_exposed: true }] });
-  await service(db).runScreening("client", { screeningType: "pep" }, actor);
-  const call = db.calls.find(c => c.rpc);
-  assert.equal(call.rpc, "compliance_record_change");
-  assert.equal(call.args.p_values.result, "flagged");
-  assert.equal(call.args.p_audit.metadata.simulated, true);
-  assert.equal(call.args.p_actor, actor.id);
-  await assert.rejects(service(db, { environment: "production" }).runScreening("client", { screeningType: "pep", simulateFlag: true }, actor), /disabled/);
+  await assert.rejects(service(db).runScreening("client", { screeningType: "pep" }, actor), error => error.status === 503);
+  await assert.rejects(service(db).runScreening("client", { screeningType: "terrorism_financing", simulateFlag: true }, actor), error => error.status === 503);
+  assert.equal(db.calls.some(c => c.rpc || c.insert), false);
 });
 test("adviser identity, self-only writes, derived cycle status and mutation auditing", async () => {
   const db = fakeDatabase({ adviser_compliance: [{ adviser_id: actor.id, cpd_status: "up_to_date" }],

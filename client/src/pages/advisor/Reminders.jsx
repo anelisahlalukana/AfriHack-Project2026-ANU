@@ -79,7 +79,6 @@ export default function Reminders() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">REMINDERS</p>
         <h1>Reminders</h1>
         <p>Every reminder for your clients, and the notifications they trigger.</p>
       </div>

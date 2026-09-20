@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { complianceBadge, complianceLabel, complianceDate, cpdPercent, filterCompliance, southAfricaToday } from '../src/lib/complianceStatus.js'
+import { complianceBadge, complianceLabel, complianceDate, cpdPercent, southAfricaToday } from '../src/lib/complianceStatus.js'
 test('compliance labels and unknown states do not silently show green', () => {
   assert.equal(complianceLabel('not_screened'), 'Not screened')
   assert.equal(complianceBadge('clear'), 'badge status-signed')
@@ -19,10 +19,4 @@ test('date formatting uses South African dates and handles missing values', () =
   assert.match(complianceDate('2026-05-31T22:00:00Z'), /01 Jun 2026/)
   assert.equal(complianceDate(null), '—')
   assert.equal(complianceDate('bad'), '—')
-})
-test('search and status filters combine without mutating records', () => {
-  const clients = [{ name: 'Thandi Dube', status: 'attention' }, { name: 'Alex Dube', status: 'compliant' }]
-  assert.deepEqual(filterCompliance(clients, ' DUBE ', 'attention'), [clients[0]])
-  assert.equal(filterCompliance(clients).length, 2)
-  assert.equal(clients.length, 2)
 })

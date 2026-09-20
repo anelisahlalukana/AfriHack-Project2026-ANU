@@ -58,7 +58,7 @@ function renderDetail() {
 }
 
 describe('Client Pulse list', () => {
-  it('ranks clients with a risk badge and a chip for every reason', async () => {
+  it('ranks clients with a risk badge and their heaviest reason, noting how many more there are', async () => {
     api.getAtRiskClients.mockResolvedValue(ranking([thabo, ayesha]))
     renderList()
 
@@ -68,8 +68,12 @@ describe('Client Pulse list', () => {
     expect(within(rows[0]).getByText('High').className).toContain('status-flagged')
     expect(within(rows[0]).getByText('Score 14')).toBeTruthy()
     expect(within(rows[0]).getByText('Still in onboarding after 20 days')).toBeTruthy()
-    expect(within(rows[0]).getByText('Broker Appointment unsigned for 10 days')).toBeTruthy()
+    // Only the heaviest reason is listed; the rest are on the client's own page.
+    expect(within(rows[0]).queryByText('Broker Appointment unsigned for 10 days')).toBeNull()
+    expect(within(rows[0]).getByText('+1 more')).toBeTruthy()
     expect(within(rows[1]).getByText('Medium').className).toContain('status-sent')
+    expect(within(rows[1]).getByText('Client Consent unsigned for 8 days')).toBeTruthy()
+    expect(within(rows[1]).queryByText(/more$/)).toBeNull()
     expect(screen.getByText('High risk is a score above 5; medium is above 2.')).toBeTruthy()
   })
 
@@ -92,12 +96,13 @@ describe('Client Pulse list', () => {
     expect((await screen.findByText(/No clients need attention right now/)).className).toBe('empty')
   })
 
-  it('shows two identical reasons without a duplicate-key problem', async () => {
+  it('shows the first of two identical reasons and counts the other, with no console errors', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const twice = { ...thabo, reasons: ['Request open 9 days with no update', 'Request open 9 days with no update'] }
     api.getAtRiskClients.mockResolvedValue(ranking([twice]))
     renderList()
-    expect(await screen.findAllByText('Request open 9 days with no update')).toHaveLength(2)
+    expect(await screen.findAllByText('Request open 9 days with no update')).toHaveLength(1)
+    expect(screen.getByText('+1 more')).toBeTruthy()
     expect(error).not.toHaveBeenCalled()
     error.mockRestore()
   })

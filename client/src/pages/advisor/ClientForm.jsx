@@ -41,7 +41,7 @@ function Editor({ client }) {
       navigate(`/clients/${id}`, { replace: true })
     } catch (error) { setError(`Could not save the client. Your changes are still here. ${error.message}`) }
   }
-  return <><Link className="back" to={`/clients/${client.id}`}><ArrowLeft size={16} /> Back to profile</Link><header className="page-heading"><div><p className="eyebrow">FINANCIAL NEEDS ANALYSIS</p><h1>Edit client profile</h1><p>Capture the essentials, understand their needs, and set a direction. * Required fields.</p></div></header>
+  return <><Link className="back" to={`/clients/${client.id}`}><ArrowLeft size={16} /> Back to profile</Link><header className="page-heading"><div><h1>Edit client profile</h1><p>Capture the essentials, understand their needs, and set a direction. * Required fields.</p></div></header>
     <form onSubmit={handleSubmit(submit)}><fieldset disabled={isSubmitting} className="form-stack">
       <section className="card"><h2>Personal information</h2><div className="form-grid">
         {field({ name: 'first_name', label: 'First name', required: true })}{field({ name: 'second_name', label: 'Second name' })}{field({ name: 'surname', label: 'Surname', required: true })}

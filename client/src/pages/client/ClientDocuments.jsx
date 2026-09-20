@@ -7,7 +7,6 @@ export default function ClientDocuments() {
 
   return <>
     <header>
-      <p className="eyebrow">YOUR DOCUMENTS</p>
       <h1>Documents</h1>
     </header>
 

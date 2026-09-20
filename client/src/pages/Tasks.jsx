@@ -35,7 +35,7 @@ export default function Tasks() {
 
   return <>
     <header className="page-heading">
-      <div><p className="eyebrow">OPERATIONS</p><h1>Requests & claims</h1><p>Red outline means the client or insurer is waiting on us.</p></div>
+      <div><h1>Requests & claims</h1><p>Red outline means the client or insurer is waiting on us.</p></div>
       <Link className="button primary" to="/tasks/new"><Plus size={17} /> Log a request</Link>
     </header>
     <section className="card">

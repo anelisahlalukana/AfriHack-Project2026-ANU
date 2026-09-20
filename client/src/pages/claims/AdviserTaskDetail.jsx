@@ -129,8 +129,8 @@ export default function AdviserTaskDetail() {
     <Link className="back" to="/tasks"><ArrowLeft size={16} /> Requests & claims</Link>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">{task.reference}{task.providerReference ? ` · ${task.provider?.name} ${task.providerReference}` : ''}</p>
         <h1>{task.isClaim ? `${task.typeLabel} claim` : task.typeLabel}</h1>
+        <p>{task.reference}{task.providerReference ? ` · ${task.provider?.name} ${task.providerReference}` : ''}</p>
         <p><Link className="client-name" to={`/clients/${task.client.id}`}>{task.client.name}</Link> · submitted {formatDateTime(task.submittedAt)}</p>
         <p className="rs-chips"><StatusChip status={task.status} viewer="staff" /><WaitingChip task={task} />{task.claimsHandler && <span className="rs-chip">Handler: {task.claimsHandler}</span>}</p>
       </div>
