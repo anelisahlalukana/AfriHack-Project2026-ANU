@@ -17,6 +17,7 @@ const {
   adviserLabel, scopedTasks, periodsFor, declineReason, NET_WORTH_BUCKETS,
 } = require("./helpers");
 const { EXTRA_TEMPLATES } = require("./templates.extra");
+const { MONEY_TEMPLATES } = require("./templates.money");
 
 // ---------------------------------------------------------------- templates
 const TEMPLATES = [
@@ -485,7 +486,7 @@ const TEMPLATES = [
 ];
 
 // The first ten (above) plus the wider set in templates.extra.js.
-TEMPLATES.push(...EXTRA_TEMPLATES);
+TEMPLATES.push(...EXTRA_TEMPLATES, ...MONEY_TEMPLATES);
 
 const CATEGORIES = ["Claims & requests", "Clients", "Money & goals", "Compliance", "Reminders"];
 const TEMPLATE_BY_ID = new Map(TEMPLATES.map((t) => [t.id, t]));

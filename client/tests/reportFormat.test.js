@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { formatValue, showingLabel, isClosestMatch, preferHorizontalBars, withShares, hasData, periodLabel, printTitle } from '../src/lib/reportFormat.js'
 
 test('formatValue adds units and keeps one decimal', () => {
-  assert.equal(formatValue(4.56, 'days'), `${(4.6).toLocaleString('en-ZA')} days`)
+  assert.equal(formatValue(4.56, 'days'), '4.6 days')
   assert.equal(formatValue(12, 'hours'), '12 h')
   assert.equal(formatValue(3, 'claims'), '3')
   assert.equal(formatValue(undefined), '—')
@@ -55,4 +55,20 @@ test('query results are labelled by their title and stats count as data', async 
   assert.equal(showingLabel({ kind: 'query', template: { label: 'Declined motor claims' }, scope: 'all records' }), 'Showing: Declined motor claims')
   assert.equal(hasData({ chartType: 'stat', rows: [{ label: 'Number of claims', value: 0 }] }), true)
   assert.ok(TRY_ASKING.length >= 3)
+})
+
+test('the report story splits into paragraphs on blank lines', async () => {
+  const { storyParagraphs, formatValue } = await import('../src/lib/reportFormat.js')
+  assert.deepEqual(storyParagraphs('First part.\nstill first.\n\n  Second part. '), ['First part. still first.', 'Second part.'])
+  assert.deepEqual(storyParagraphs(''), [])
+  assert.deepEqual(storyParagraphs(null), [])
+  assert.equal(formatValue(12, 'years'), '12 yrs')
+  assert.equal(formatValue(12.5, 'days'), '12.5 days')
+})
+
+test('compact charts switch to horizontal bars sooner', () => {
+  const rows = ['Life', 'Commercial', 'Motor', 'Funeral', 'Personal'].map(label => ({ label }))
+  assert.equal(preferHorizontalBars(rows), false)
+  assert.equal(preferHorizontalBars(rows, true), true)
+  assert.equal(preferHorizontalBars(rows.slice(0, 3).map(() => ({ label: 'Motor' })), true), false)
 })

@@ -76,13 +76,13 @@ function seed() {
     return { updated_at: row.closed_at || row.created_at, ...row };
   };
   const tasks = [
-    task("T1", C1, { status: "completed", submitted_at: daysAgo(30), closed_at: daysAgo(20), created_at: daysAgo(31), client_rating: 4 }),
-    task("T2", C1, { status: "declined", closed_at: daysAgo(5), created_at: daysAgo(12) }),
-    task("T3", C2, { status: "awaiting_client", provider_id: P2, claim_category: "life" }),
+    task("T1", C1, { status: "completed", submitted_at: daysAgo(30), closed_at: daysAgo(20), created_at: daysAgo(31), client_rating: 4, claimed_amount: 50000, settled_amount: 45000 }),
+    task("T2", C1, { status: "declined", closed_at: daysAgo(5), created_at: daysAgo(12), claimed_amount: 30000, settled_amount: 0 }),
+    task("T3", C2, { status: "awaiting_client", provider_id: P2, claim_category: "life", claimed_amount: 400000 }),
     task("T4", C2, { task_type: "update_address", claim_category: null, provider_id: null, status: "completed", submitted_at: daysAgo(8), closed_at: daysAgo(6), created_at: daysAgo(8) }),
     task("T5", C2, { status: "draft", submitted_at: null }),
-    task("T6", C3, { status: "declined", closed_at: daysAgo(3), created_at: daysAgo(9) }),
-    task("T7", C3, { status: "completed", provider_id: P2, submitted_at: daysAgo(50), closed_at: daysAgo(10), created_at: daysAgo(50), client_rating: 2 }),
+    task("T6", C3, { status: "declined", closed_at: daysAgo(3), created_at: daysAgo(9), claimed_amount: 99999, settled_amount: 0 }),
+    task("T7", C3, { status: "completed", provider_id: P2, submitted_at: daysAgo(50), closed_at: daysAgo(10), created_at: daysAgo(50), client_rating: 2, claimed_amount: 88888, settled_amount: 80000 }),
     task("T8", C3, { status: "open", claim_category: "funeral", created_at: daysAgo(40), updated_at: daysAgo(30) }),
   ];
   const ev = (id, task_id, provider_id, direction, event_type, ago, note) => ({ id, task_id, provider_id, direction, event_type, payload: note ? { note } : {}, created_at: daysAgo(ago) });
@@ -125,6 +125,11 @@ function seed() {
     { id: "F1", client_id: C1, category: "asset", item_type: "property", amount: 2000000 },
     { id: "F2", client_id: C1, category: "liability", item_type: "home_loan", amount: 500000 },
     { id: "F3", client_id: C3, category: "asset", item_type: "investments", amount: 9000000 },
+    { id: "F4", client_id: C1, category: "income", item_type: "salary", amount: 40000, frequency: "monthly" },
+    { id: "F5", client_id: C1, category: "expense", item_type: "household", amount: 30000, frequency: "monthly" },
+    { id: "F6", client_id: C2, category: "income", item_type: "salary", amount: 240000, frequency: "annually" },
+    { id: "F7", client_id: C2, category: "expense", item_type: "household", amount: 25000, frequency: "monthly" },
+    { id: "F8", client_id: C3, category: "income", item_type: "salary", amount: 90000, frequency: "monthly" },
   ];
   const client_screenings = [
     { id: "S1", client_id: C1, screening_type: "pep", result: "clear", created_at: daysAgo(30) },
@@ -586,4 +591,109 @@ test("the local parser reads common question shapes", () => {
   assert.equal(p("how many clients have funeral claims").metric.op, "count_clients");
   assert.equal(p("which provider has the most declined claims").group_by, "provider");
   assert.equal(p("total assets and debts of clients").split_by, "category");
+});
+
+// ---------------------------------------------------------------- money reports and richer reports
+const { deriveHighlights } = require("../src/services/reports.service");
+
+test("claim money reports use claimed and paid-out amounts", async () => {
+  const s = service();
+  const avg = await s.run(adviser(A1), "claim_amounts_by_type", {});
+  assert.deepEqual(avg.rows.map((r) => [r.label, r.avg_claimed, r.avg_paid, r.claims]), [["Life", 400000, 0, 1], ["Motor", 40000, 45000, 2]]);
+  const report = await s.generate(adviser(A1), "claim_amounts_by_type", {});
+  assert.equal(report.highlights.find((h) => h.label === "Paid out on settled claims").value, "90%");
+  const trend = await s.run(adviser(A1), "claim_value_trend", { group_by: "week", date_range: { from: "2026-08-01", to: "2026-09-19" } });
+  assert.equal(trend.period, "week");
+  assert.equal(trend.rows.reduce((n, r) => n + r.claimed, 0), 480000);
+  assert.equal(trend.rows.reduce((n, r) => n + r.paid, 0), 45000);
+  const payout = await s.run(adviser(A1), "settlement_by_provider", {});
+  assert.deepEqual(payout.rows.map((r) => [r.label, r.claimed, r.paid, r.payout_rate]), [["Santam Mock", 80000, 45000, 56]]);
+});
+
+test("monthly cash flow converts frequencies and finds clients in deficit", async () => {
+  const r = await service().run(adviser(A1), "monthly_cash_flow", {});
+  // C1: 40 000 - 30 000 = +10 000; C2: 240 000/12 = 20 000 - 25 000 = -5 000
+  assert.deepEqual(r.rows.map((x) => x.value), [1, 0, 1, 0, 0]);
+  assert.match(r.headline, /1 client spends more than they earn/);
+});
+
+test("without the amounts migration, money reports explain what's missing instead of failing", async () => {
+  const data = seed();
+  const db = fakeDb(data);
+  const strict = { from: (table) => {
+    const b = db.from(table);
+    const select = b.select;
+    b.select = (cols) => {
+      if (table === "tasks" && /claimed_amount/.test(cols || "")) {
+        const err = { then: (res) => res({ data: null, error: { message: "column tasks.claimed_amount does not exist" } }) };
+        err.in = () => err; err.eq = () => err; err.order = () => err; err.range = () => err;
+        return err;
+      }
+      return select(cols);
+    };
+    return b;
+  } };
+  const s = createReportsService({ db: strict, llm: noLlm, now: () => NOW, adviserNames });
+  const r = await s.run(adviser(A1), "claim_amounts_by_type", {});
+  assert.match(r.notice, /202609200001_claim_amounts\.sql/);
+  const q = await s.ask(adviser(A1), "average claim amount per week");
+  assert.equal(q.kind, "query");
+  assert.match(q.notice, /aren't recorded yet/);
+  const other = await s.run(adviser(A1), "claims_by_type", {});
+  assert.ok(other.rows.length > 0, "other reports keep working");
+});
+
+test("generated reports come with key figures, a two-part story and related charts", async () => {
+  const r = await service().generate(adviser(A1), "claims_by_type", {});
+  assert.ok(r.highlights.length >= 2);
+  assert.ok(r.related.length >= 1 && r.related.length <= 2);
+  for (const view of r.related) {
+    assert.ok(view.title && view.caption && view.chartType);
+    assert.equal(view.llmRows, undefined);
+    assert.equal(view.insights, undefined);
+  }
+  assert.match(r.narrative, /\n\nAlongside this: /);
+  const q = await service().generate(adviser(A1), null, null, { dataset: "claims", filters: [{ field: "product_line", op: "eq", value: "Motor" }], metric: { op: "count" }, group_by: "status" });
+  assert.deepEqual(q.related.map((v) => v.readAs.at(-1)), ["per month", "by provider"]);
+});
+
+test("the story model sees the related charts, never client data", async () => {
+  const sent = [];
+  const llm = { enabled: true, generateJson: async (system, message) => (sent.push({ system, message }), { title: "Motor dominates", narrative: "One.\n\nTwo." }) };
+  const r = await service(seed(), llm).generate(ADMIN, "claims_by_type", {});
+  assert.equal(r.writtenBy, "ai");
+  const payload = JSON.parse(sent.at(-1).message);
+  assert.ok(payload.related.length >= 1);
+  assert.ok(payload.related.every((v) => v.title && v.headline && Array.isArray(v.rows)));
+  assert.match(sent.at(-1).system, /related charts/);
+  for (const secret of [...SECRET_NAMES, ...SECRET_IDS]) assert.ok(!sent.at(-1).message.includes(secret));
+});
+
+test("key figures are derived sensibly for each chart shape", () => {
+  const bars = deriveHighlights({ chartType: "bar", unit: "claims", rows: [{ label: "Motor", value: 6 }, { label: "Life", value: 2 }], series: [{ key: "value" }] });
+  assert.deepEqual(bars, [{ label: "Total", value: "8" }, { label: "Largest", value: "Motor: 6 (75%)" }, { label: "Groups", value: "2" }]);
+  const line = deriveHighlights({ chartType: "line", unit: "tasks", period: "month", rows: [{ label: "2026-08", a: 2, b: 1 }, { label: "2026-09", a: 4, b: 3 }], series: [{ key: "a" }, { key: "b" }] });
+  assert.deepEqual(line.map((h) => h.value), ["10", "September 2026 (7)", "5"]);
+  const avg = deriveHighlights({ chartType: "bar", unit: "days", rows: [{ label: "A", value: 9 }, { label: "B", value: 3 }], series: [{ key: "value" }] });
+  assert.deepEqual(avg, [{ label: "Largest", value: "A: 9 days" }, { label: "Lowest", value: "B: 3 days" }]);
+  assert.deepEqual(deriveHighlights({ chartType: "bar", highlights: [{ label: "x", value: "1" }], rows: [] }), [{ label: "x", value: "1" }]);
+});
+
+test("money questions reach the money reports or a money query", async () => {
+  const s = service();
+  assert.equal((await s.ask(adviser(A1), "What's the average claim amount per product line?")).template.id, "claim_amounts_by_type");
+  assert.equal((await s.ask(adviser(A1), "total claims per week")).template?.id, "claim_value_trend");
+  const avgWeek = await s.ask(adviser(A1), "average claim amount per week");
+  assert.equal(avgWeek.kind, "query");
+  assert.deepEqual(avgWeek.query.metric, { op: "avg", field: "claimed_amount" });
+  assert.equal(avgWeek.query.time_bucket, "week");
+  // Weekly means weekly (Monday keys), even when the claims span many months.
+  assert.ok(avgWeek.rows.length > 0 && avgWeek.rows.every((r) => /^\d{4}-\d{2}-\d{2}$/.test(r.label)), JSON.stringify(avgWeek.rows));
+  assert.ok(avgWeek.rows.every((r) => new Date(`${r.label}T12:00:00Z`).getUTCDay() === 1));
+  // Averages aren't added up in the key figures or the story.
+  const avgReport = await s.generate(adviser(A1), null, {}, avgWeek.query);
+  assert.ok(avgReport.highlights.every((h) => !/^Total/.test(h.label)), JSON.stringify(avgReport.highlights));
+  assert.doesNotMatch(avgReport.narrative, /undefined|NaN/);
+  const big = await s.ask(adviser(A1), "list motor claims over R40k");
+  assert.deepEqual(big.rows.map((r) => r.reference), ["RSF-T1"]);
 });

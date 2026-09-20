@@ -67,10 +67,11 @@ function scopedTasks(ctx, clients, refine) {
 }
 
 // Weekly buckets for ranges up to ~4 months, monthly beyond that.
-function periodsFor(range) {
+// Weekly buckets for ranges up to ~4 months, monthly beyond that, unless `bucket` says otherwise.
+function periodsFor(range, bucket) {
   const start = Date.parse(`${range.from}T00:00:00Z`);
   const end = Date.parse(`${range.to}T00:00:00Z`);
-  const weekly = (end - start) / DAY_MS <= 120;
+  const weekly = bucket === "week" ? true : bucket === "month" ? false : (end - start) / DAY_MS <= 120;
   const keyOf = (value) => {
     const day = dateKey(new Date(value));
     if (!weekly) return day.slice(0, 7);
@@ -106,6 +107,45 @@ const NET_WORTH_BUCKETS = [
   ["R5m+", 5000000, Infinity],
 ];
 
+// Claim amounts live in two optional columns (migration 202609200001_claim_amounts.sql).
+// Until that migration is applied, reports say so instead of failing.
+const AMOUNTS_MIGRATION = "supabase/migrations/202609200001_claim_amounts.sql";
+const AMOUNTS_NOTICE = `Claim amounts aren't recorded yet. Apply ${AMOUNTS_MIGRATION} and record the claimed and paid-out amounts on claims to see this.`;
+
+async function claimAmounts(ctx, taskIds) {
+  if (ctx.amountsAvailable === false) return null;
+  if (!taskIds.length) return new Map();
+  try {
+    const rows = await forClients(ctx.db, "tasks", "id, claimed_amount, settled_amount", taskIds, (q) => q, "id");
+    ctx.amountsAvailable = true;
+    const num = (v) => (v == null || v === "" || !Number.isFinite(Number(v)) ? null : Number(v));
+    return new Map(rows.map((r) => [r.id, { claimed: num(r.claimed_amount), settled: num(r.settled_amount) }]));
+  } catch (error) {
+    if (/claimed_amount|settled_amount|does not exist|schema cache/i.test(error.message)) {
+      ctx.amountsAvailable = false;
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Monthly equivalent of an FNA income/expense line.
+const PER_MONTH = { monthly: 1, weekly: 52 / 12, quarterly: 1 / 3, annually: 1 / 12, annual: 1 / 12, yearly: 1 / 12 };
+function monthlyAmount(item) {
+  const factor = PER_MONTH[String(item.frequency || "").toLowerCase()];
+  return factor ? (Number(item.amount) || 0) * factor : 0;
+}
+
+// "2026-04" -> "April 2026"; "2026-04-13" (a week's Monday) -> "the week of 13 Apr".
+function periodName(key) {
+  if (/^\d{4}-\d{2}$/.test(key)) return new Date(`${key}-01T12:00:00Z`).toLocaleDateString("en-ZA", { month: "long", year: "numeric", timeZone: "UTC" });
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    const d = new Date(`${key}T12:00:00Z`);
+    return `the week of ${d.getUTCDate()} ${d.toLocaleDateString("en-ZA", { month: "short", timeZone: "UTC" })}`;
+  }
+  return key;
+}
+
 const pct = (part, whole) => (whole ? Math.round((part / whole) * 100) : 0);
 const plural = (n, word, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 const daysSince = (value, now) => Math.max(0, Math.floor((now.getTime() - Date.parse(value)) / DAY_MS));
@@ -115,4 +155,5 @@ module.exports = {
   OPEN_REMINDER_STATUSES, CLAIM_STATUS_LABELS, AUTOMATIC_PROVIDER_REPLIES, DONE_DOCUMENT_STATUSES,
   round1, avg, pct, plural, daysSince, humanise, taskTypeLabel, rangeBounds, inRange, countRows, increment,
   adviserLabel, scopedTasks, periodsFor, DECLINE_BUCKETS, declineReason, NET_WORTH_BUCKETS, TASK_COLUMNS,
+  claimAmounts, AMOUNTS_NOTICE, AMOUNTS_MIGRATION, monthlyAmount, periodName,
 };

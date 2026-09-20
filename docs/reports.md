@@ -8,7 +8,7 @@ the browser's print dialog, "Save as PDF").
 
 | Piece | File |
 |---|---|
-| Templates (10 fixed reports, each a scoped query builder) | `server/src/reports/templates.js` |
+| Templates (30 fixed reports, each a scoped query builder) | `server/src/reports/templates.js`, `templates.extra.js`, `templates.money.js` |
 | Scope: who the caller is and which clients they may see | `server/src/reports/scope.js` |
 | Parameter schema and validation | `server/src/reports/params.js` |
 | Keyword fallback + relative-date parsing | `server/src/reports/keywords.js` |
@@ -23,7 +23,11 @@ Endpoints (all `requireAuth` + `requireRole(["advisor","admin"])`, mounted at `/
 - `GET /templates` – the list behind the chips and "Browse all reports".
 - `POST /ask { question }` – intent model picks a template (falls back to keyword match), runs it.
 - `POST /run { template_id, parameters }` – runs a template directly. No model; chips always work.
-- `POST /generate { template_id, parameters }` – re-runs the query server-side, then writes the narrative.
+- `POST /generate { template_id, parameters }` (or `{ query }`) – re-runs the query server-side, then builds
+  the written report: up to three key figures, a short two-paragraph story (what happened, then what the
+  related charts add and what to do), the main chart, and one or two related charts
+  (`server/src/reports/related.js`). The model sees only aggregated rows of the main and related charts;
+  without it the story is written from the figures.
 
 ## Configuration (`server/.env`)
 
@@ -68,7 +72,7 @@ Optional migration (not applied; only needed for exact goal start dates):
 ALTER TABLE public.client_goals ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ```
 
-## All reports (26)
+## All reports (30)
 
 Suggested-question chips show the featured ones (★); "Browse all reports" lists every report by area.
 
@@ -89,7 +93,11 @@ Suggested-question chips show the featured ones (★); "Browse all reports" list
 | Clients | clients_by_status | Onboarding / active / inactive |
 | | risk_profile_mix | Risk profile categories, including not assessed |
 | | new_clients_trend | New clients per week or month |
-| Money & goals | ★ goal_progress | Goals on track vs behind |
+| Money & goals | ★ claim_amounts_by_type | Average claimed and paid per product line * |
+| | ★ claim_value_trend | Rand claimed and paid out per week or month * |
+| | settlement_by_provider | Claimed vs paid, payout rate and declined value per insurer * |
+| | monthly_cash_flow | Monthly surplus bands from FNA income and expenses |
+| | ★ goal_progress | Goals on track vs behind |
 | | goals_by_type | % of target saved per goal type |
 | | financial_breakdown | Assets and liabilities by item type (rand totals) |
 | | net_worth_distribution | Clients in net-worth bands |
@@ -100,6 +108,22 @@ Suggested-question chips show the featured ones (★); "Browse all reports" list
 | | cpd_progress | CPD hours this cycle against the 18 required |
 | Reminders | ★ overdue_reminders | Past-due reminders not completed |
 | | upcoming_reminders | Reminders due in the next N days |
+
+\* Needs the claim-amount migration below. Until it is applied these reports show a notice
+and everything else keeps working.
+
+### Claim amounts (migration `supabase/migrations/202609200001_claim_amounts.sql`)
+
+The schema had no money on claims, so claim-value reports need two nullable columns:
+
+```sql
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS claimed_amount numeric;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS settled_amount numeric;
+```
+
+Apply it in the Supabase SQL editor (it is idempotent). Nothing in the app captures these
+amounts yet; `npm run seed:demo` fills them for demo claims. Custom queries can also use them:
+"average claim amount per week", "total claimed per provider", "list motor claims over R40k".
 
 ## Free-form questions (custom queries)
 

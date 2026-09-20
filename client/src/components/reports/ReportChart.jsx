@@ -4,27 +4,20 @@ import {
 } from 'recharts'
 import { formatAxisValue, formatValue, hasData, periodLabel, preferHorizontalBars, withShares } from '../../lib/reportFormat'
 
-// Colours live in Reports.css as CSS variables (--rpt-c1 … --rpt-c6, --rpt-good, --rpt-bad),
-// scoped to .rpt-page so nothing outside the Reports page changes. Fallbacks keep charts
-// readable if the stylesheet hasn't loaded.
-const PALETTE = ['#a30b14', '#8a7b72', '#c79a7e', '#4f6b5a', '#b58a2a', '#5b4a41']
+// Colours live in Reports.css as CSS variables (--rpt-c1 … --rpt-c6 in a fixed order, plus
+// status colours), scoped to .rpt-page with separate light and dark steps. The fallbacks here
+// are the light steps, in case the stylesheet hasn't loaded.
+const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300']
 const color = i => `var(--rpt-c${(i % PALETTE.length) + 1}, ${PALETTE[i % PALETTE.length]})`
+const GOOD = 'var(--rpt-good, #12996b)'
+const BAD = 'var(--rpt-bad, #d92d20)'
+const NEUTRAL = 'var(--rpt-neutral, #7d8eac)'
+// Series whose colour means something (good/bad/none) keep it wherever they appear.
 const SEMANTIC = {
-  on_track: 'var(--rpt-good, #3c7650)',
-  signed: 'var(--rpt-good, #3c7650)',
-  behind: 'var(--rpt-bad, #a30b14)',
-  missing: 'var(--rpt-bad, #a30b14)',
-  clear: 'var(--rpt-good, #3c7650)',
-  flagged: 'var(--rpt-bad, #a30b14)',
-  not_screened: 'var(--rpt-c2, #8a7b72)',
-  completed: 'var(--rpt-good, #3c7650)',
-  declined: 'var(--rpt-bad, #a30b14)',
-  open: 'var(--rpt-c5, #b58a2a)',
-  cancelled: 'var(--rpt-c6, #5b4a41)',
-  waiting_on_us: 'var(--rpt-bad, #a30b14)',
-  waiting_on_client: 'var(--rpt-c3, #c79a7e)',
-  assets: 'var(--rpt-good, #3c7650)',
-  liabilities: 'var(--rpt-bad, #a30b14)',
+  on_track: GOOD, signed: GOOD, clear: GOOD, completed: GOOD, assets: GOOD,
+  behind: BAD, missing: BAD, flagged: BAD, declined: BAD, liabilities: BAD,
+  cancelled: NEUTRAL, not_screened: NEUTRAL, no_provider: NEUTRAL, not_recorded: NEUTRAL,
+  open: color(0), waiting_on_us: color(1), waiting_on_client: color(2), claimed: color(0), paid: color(2),
 }
 // Meaningful colours by key ("declined") or, for custom queries, by label ("Waiting on client").
 const semanticFor = key => SEMANTIC[String(key).toLowerCase().replace(/[^a-z]+/g, '_').replace(/^_|_$/g, '')]
@@ -32,22 +25,23 @@ const seriesColor = (series, i) => semanticFor(series.key) || semanticFor(series
 // Keep legend items in series order (Recharts sorts them alphabetically by default).
 const legendOrder = series => item => series.findIndex(s => s.key === item.dataKey)
 
-const AXIS = { fontSize: 12, fill: 'var(--rpt-axis, #7a6c62)' }
-const GRID = 'var(--rpt-grid, #eee6e0)'
+const AXIS = { fontSize: 12, fill: 'var(--rpt-axis, #667085)' }
+const GRID = 'var(--rpt-grid, #e3e9f1)'
 const TOOLTIP = {
-  contentStyle: { background: '#fffdfa', border: '1px solid #dfd6cf', borderRadius: 10, boxShadow: '0 6px 20px rgba(41,35,31,.12)', fontSize: 13, padding: '8px 12px' },
-  labelStyle: { color: '#29231f', fontWeight: 600, marginBottom: 4 },
-  cursor: { fill: 'var(--rpt-hover, #f4eee9)' },
+  contentStyle: { background: 'var(--card, #fff)', border: '1px solid var(--border, #e3e9f1)', borderRadius: 10, boxShadow: 'var(--shadow)', fontSize: 13, padding: '8px 12px', color: 'var(--text-2, #344054)' },
+  labelStyle: { color: 'var(--text, #101828)', fontWeight: 600, marginBottom: 4 },
+  itemStyle: { color: 'var(--text-2, #344054)' },
+  cursor: { fill: 'var(--rpt-hover, #f4f7fb)' },
 }
 
-function BarReport({ result }) {
+function BarReport({ result, compact, animate }) {
   const { rows, series, unit, stacked } = result
-  const horizontal = preferHorizontalBars(rows)
-  const height = horizontal ? Math.max(220, rows.length * 44 + 60) : 300
+  const horizontal = preferHorizontalBars(rows, compact)
+  const height = horizontal ? Math.max(compact ? 180 : 220, rows.length * (compact ? 34 : 44) + 60) : compact ? 230 : 300
   const last = series.length - 1
   const radius = i => {
     if (stacked && i !== last) return 0
-    return horizontal ? [0, 6, 6, 0] : [6, 6, 0, 0]
+    return horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]
   }
   return <ResponsiveContainer width="100%" height={height}>
     <BarChart data={rows} layout={horizontal ? 'vertical' : 'horizontal'} margin={{ top: 8, right: 16, bottom: 4, left: horizontal ? 8 : 0 }} barCategoryGap="28%">
@@ -55,7 +49,7 @@ function BarReport({ result }) {
       {horizontal
         ? <>
           <XAxis type="number" tick={AXIS} axisLine={false} tickLine={false} allowDecimals={unit === 'rating'} tickFormatter={v => formatAxisValue(v, unit)} domain={unit === 'rating' ? [0, 5] : unit === '%' ? [0, 100] : undefined} />
-          <YAxis type="category" dataKey="label" tick={AXIS} axisLine={false} tickLine={false} width={150} />
+          <YAxis type="category" dataKey="label" tick={AXIS} axisLine={false} tickLine={false} width={compact ? 120 : 150} />
         </>
         : <>
           <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} interval={0} />
@@ -63,33 +57,34 @@ function BarReport({ result }) {
         </>}
       <Tooltip {...TOOLTIP} formatter={(value, name) => [formatValue(value, unit), name]} />
       {series.length > 1 && <Legend iconType="circle" iconSize={9} itemSorter={legendOrder(series)} wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />}
-      {series.map((s, i) => <Bar key={s.key} dataKey={s.key} name={s.label} fill={seriesColor(s, i)} stackId={stacked ? 'stack' : undefined} radius={radius(i)} maxBarSize={52} />)}
+      {series.map((s, i) => <Bar key={s.key} isAnimationActive={animate} dataKey={s.key} name={s.label} fill={seriesColor(s, i)} stackId={stacked ? 'stack' : undefined} radius={radius(i)} maxBarSize={52}
+        stroke={stacked ? 'var(--rpt-surface, #fff)' : undefined} strokeWidth={stacked ? 1.5 : 0} />)}
     </BarChart>
   </ResponsiveContainer>
 }
 
-function LineReport({ result }) {
+function LineReport({ result, compact, animate }) {
   const { rows, series, unit } = result
-  return <ResponsiveContainer width="100%" height={300}>
+  return <ResponsiveContainer width="100%" height={compact ? 230 : 300}>
     <LineChart data={rows} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
       <CartesianGrid stroke={GRID} vertical={false} />
       <XAxis dataKey="label" tick={AXIS} axisLine={false} tickLine={false} tickFormatter={periodLabel} minTickGap={16} />
-      <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={false} width={40} />
-      <Tooltip {...TOOLTIP} cursor={{ stroke: '#d9cdc3' }} labelFormatter={periodLabel} formatter={(value, name) => [formatValue(value, unit), name]} />
+      <YAxis tick={AXIS} axisLine={false} tickLine={false} allowDecimals={unit === 'rating'} width={unit === 'rand' ? 60 : 40} tickFormatter={v => formatAxisValue(v, unit)} />
+      <Tooltip {...TOOLTIP} cursor={{ stroke: 'var(--border-strong, #cfd9e6)' }} labelFormatter={periodLabel} formatter={(value, name) => [formatValue(value, unit), name]} />
       {series.length > 1 && <Legend iconType="circle" iconSize={9} itemSorter={legendOrder(series)} wrapperStyle={{ fontSize: 12, paddingTop: 6 }} />}
-      {series.map((s, i) => <Line key={s.key} type="monotone" dataKey={s.key} name={s.label} stroke={seriesColor(s, i)} strokeWidth={2.25} dot={{ r: 2.5 }} activeDot={{ r: 5 }} />)}
+      {series.map((s, i) => <Line key={s.key} isAnimationActive={animate} type="monotone" dataKey={s.key} name={s.label} stroke={seriesColor(s, i)} strokeWidth={2} dot={{ r: 3, strokeWidth: 0, fill: seriesColor(s, i) }} activeDot={{ r: 5, stroke: 'var(--rpt-surface, #fff)', strokeWidth: 2 }} />)}
     </LineChart>
   </ResponsiveContainer>
 }
 
-function DonutReport({ result }) {
+function DonutReport({ result, compact, animate }) {
   const rows = withShares(result.rows.filter(r => Number(r.value) > 0))
   const total = rows.reduce((sum, r) => sum + r.value, 0)
   return <div className="rpt-donut">
     <div className="rpt-donut-chart">
-      <ResponsiveContainer width="100%" height={240}>
+      <ResponsiveContainer width="100%" height={compact ? 200 : 240}>
         <PieChart>
-          <Pie data={rows} dataKey="value" nameKey="label" innerRadius="60%" outerRadius="88%" paddingAngle={2} cornerRadius={4} stroke="none">
+          <Pie isAnimationActive={animate} data={rows} dataKey="value" nameKey="label" innerRadius="60%" outerRadius="88%" paddingAngle={2} cornerRadius={4} stroke="var(--rpt-surface, #fff)" strokeWidth={2}>
             {rows.map((row, i) => <Cell key={row.label} fill={semanticFor(row.label) || color(i)} />)}
           </Pie>
           <Tooltip {...TOOLTIP} formatter={(value, name) => [formatValue(value, result.unit), name]} />
@@ -148,14 +143,36 @@ function StatReport({ result }) {
   </div>
 }
 
-export default function ReportChart({ result, linkClients = false }) {
-  if (!hasData(result)) return <div className="empty rpt-empty"><p>No data for this report yet.</p></div>
-  const label = `${result.template?.label || 'Report'} chart`
+// The numbers behind a chart, for anyone who can't rely on colour (or wants the exact values).
+function DataTable({ result }) {
+  const keys = result.series?.length ? result.series : [{ key: 'value', label: 'Value' }]
+  return <details className="rpt-data rpt-no-print">
+    <summary>View the data</summary>
+    <div className="table-scroll">
+      <table>
+        <thead><tr><th>{result.period ? `${result.period[0].toUpperCase()}${result.period.slice(1)}` : 'Group'}</th>{keys.map(s => <th key={s.key} className="num">{s.label}</th>)}</tr></thead>
+        <tbody>{result.rows.map(row => <tr key={row.label}><td>{periodLabel(row.label)}</td>{keys.map(s => <td key={s.key} className="num">{formatValue(row[s.key], result.unit)}</td>)}</tr>)}</tbody>
+      </table>
+    </div>
+  </details>
+}
+
+// animate={false} for the written report: printing re-lays out the charts, and an animation
+// restarting at that moment would print empty bars.
+export default function ReportChart({ result, linkClients = false, compact = false, showData = false, animate = true }) {
+  if (!hasData(result)) {
+    return <div className="empty rpt-empty">
+      {result?.notice ? <p className="rpt-notice">{result.notice}</p> : <p>No data for this report yet.</p>}
+    </div>
+  }
+  const label = `${result.template?.label || result.title || 'Report'} chart`
+  const plotted = ['bar', 'line', 'donut'].includes(result.chartType)
   return <figure className="rpt-chart" aria-label={label}>
     {result.chartType === 'stat' && <StatReport result={result} />}
     {result.chartType === 'table' && <TableReport result={result} linkClients={linkClients} />}
-    {result.chartType === 'line' && <LineReport result={result} />}
-    {result.chartType === 'donut' && <DonutReport result={result} />}
-    {result.chartType === 'bar' && <BarReport result={result} />}
+    {result.chartType === 'line' && <LineReport result={result} compact={compact} animate={animate} />}
+    {result.chartType === 'donut' && <DonutReport result={result} compact={compact} animate={animate} />}
+    {result.chartType === 'bar' && <BarReport result={result} compact={compact} animate={animate} />}
+    {showData && plotted && <DataTable result={result} />}
   </figure>
 }

@@ -10,7 +10,7 @@ const { CPD_REQUIRED_HOURS } = require("../constants/compliance");
 const {
   scopedClients, forClients, providerNames, DAY_MS, dateKey,
   round1, avg, pct, plural, daysSince, humanise, taskTypeLabel, rangeBounds, inRange, countRows, increment,
-  adviserLabel, scopedTasks, periodsFor,
+  adviserLabel, scopedTasks, periodsFor, periodName,
 } = require("./helpers");
 
 const OPEN_STATUSES = ["open", "awaiting_client"];
@@ -438,7 +438,7 @@ const EXTRA_TEMPLATES = [
         period: periods.weekly ? "week" : "month",
         headline: `${plural(clients.length, "new client")} in this period`,
         llmRows: rows.map((r) => ({ period: r.label, new_clients: r.value })),
-        insights: best?.value ? [`The best ${periods.weekly ? "week" : "month"} was ${best.label} with ${best.value}.`] : [],
+        insights: best?.value ? [`The best ${periods.weekly ? "week" : "month"} was ${periodName(best.label)}, with ${best.value}.`] : [],
       };
     },
   },
@@ -647,7 +647,7 @@ const EXTRA_TEMPLATES = [
         rows,
         series: [{ key: "value", label: "CPD hours this cycle" }],
         unit: "hours",
-        headline: `${done} of ${plural(rows.length, "adviser")} ${done === 1 ? "has" : "have"} logged all ${CPD_REQUIRED_HOURS} hours${cycleEnd ? ` (cycle ends ${cycleEnd})` : ""}`,
+        headline: `${done} of ${plural(rows.length, "adviser")} ${done === 1 ? "has" : "have"} logged all ${CPD_REQUIRED_HOURS} hours${cycleEnd ? ` (cycle ends ${new Date(`${cycleEnd}T12:00:00Z`).toLocaleDateString("en-ZA", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })})` : ""}`,
         llmRows: rows.map((r) => ({ label: r.label, hours: r.value, remaining: r.remaining })),
         insights: rows[0]?.remaining ? [`${rows[0].label} needs ${rows[0].remaining} more hours before the cycle ends.`] : [],
       };

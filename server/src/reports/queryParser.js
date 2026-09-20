@@ -30,7 +30,7 @@ const VALUE_ALIASES = {
   asset: ["asset", "assets"],
   "Waiting on client": ["waiting on the client", "waiting on client", "awaiting client", "with the client"],
   Declined: ["declined", "decline", "declines", "rejected", "reject", "repudiated", "turned down"],
-  Completed: ["completed", "closed", "paid out", "settled", "finished"],
+  Completed: ["completed", "closed", "finished"],
   Open: ["open", "outstanding", "in progress", "pending claims"],
   Flagged: ["flagged", "hit", "match"],
   Signed: ["signed"],
@@ -237,7 +237,7 @@ function parseQuestion(question, { now = new Date(), providers = [], clientIds =
   const daysField = Object.entries(dataset.fields).find(([k, fl]) => fl.type === "number" && /days/.test(k))?.[0];
   if (speed && daysField) metric = { op: "avg", field: daysField };
   else if (/\b(average|avg|mean|typical)\b/.test(q) && numberField) metric = { op: "avg", field: numberField };
-  else if (/\b(total|sum|how much|combined|worth)\b/.test(q) && numberField && dataset.fields[numberField].unit === "rand") metric = { op: "sum", field: numberField };
+  else if (/\b(total|sum|how much|combined|worth|value)\b/.test(q) && !/\b(how many|number of|count)\b/.test(q) && numberField && dataset.fields[numberField].unit === "rand") metric = { op: "sum", field: numberField };
   else if (/\b(highest|largest|biggest|maximum|max|longest|oldest)\b/.test(q) && !groupBy && numberField && !/\bmost\b/.test(q)) metric = { op: "max", field: numberField };
   else if (/\b(lowest|smallest|minimum|min|shortest|youngest)\b/.test(q) && !groupBy && numberField) metric = { op: "min", field: numberField };
   else if (datasetId !== "clients" && /\bhow many (clients|customers|people)\b/.test(q)) metric = { op: "count_clients" };
