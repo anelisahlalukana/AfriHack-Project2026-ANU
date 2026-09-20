@@ -1,25 +1,26 @@
 import { Link } from 'react-router-dom'
-import { AlarmClock, Bell, CalendarClock, ClipboardList, FileSignature, Hourglass, Inbox, Plus, ShieldCheck, Target, Users, Wallet } from 'lucide-react'
+import { Bell, FileSignature, Plus, ShieldCheck, Target, TriangleAlert, Users, Wallet } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDashboard } from '../../hooks/useDashboard'
 import { money } from '../../lib/financials'
 import { plural, relativeTime, share } from '../../lib/dashboardFormat'
+import { attentionRows, riskRows } from '../../lib/dashboardCharts'
+import AttentionChart from '../../components/dashboard/AttentionChart'
+import RiskMixChart from '../../components/dashboard/RiskMixChart'
+import WorkTrend from '../../components/dashboard/WorkTrend'
 
 const QUALIFICATION_BADGE = { qualified: 'status-signed', pending: 'status-sent', suspended: 'status-flagged' }
 const CPD_BADGE = { up_to_date: 'status-signed', in_progress: 'status-sent', not_started: 'status-sent', overdue: 'status-flagged' }
 const label = value => String(value).replaceAll('_', ' ')
 
-// One number that links to where it gets dealt with. Red outline when it needs action now.
-function Metric({ to, icon: Icon, title, value, hint, urgent }) {
-  return <Link to={to} className={`card metric${urgent ? ' rs-needs' : ''}`}><Icon /><span>{title}</span><strong>{value}</strong><small>{hint}</small></Link>
+// `tone` ('positive' / 'negative') colours money in and money out; otherwise the bar is the default blue.
+function Bar({ title, value, whole, display, assetBar, tone }) {
+  return <div className="chart-row"><div><span>{title}</span><b>{display ?? value}</b></div><div className="track"><span style={{ width: `${share(value, whole)}%` }} className={tone ? `tone-${tone}` : assetBar ? 'asset-bar' : ''} /></div></div>
 }
 
-function Bar({ title, value, whole, display, assetBar }) {
-  return <div className="chart-row"><div><span>{title}</span><b>{display ?? value}</b></div><div className="track"><span style={{ width: `${share(value, whole)}%` }} className={assetBar ? 'asset-bar' : ''} /></div></div>
-}
-
-// The practice at a glance, kept live by useDashboard: what needs attention now, where the
-// onboarding pipeline stands, money under advice, goals, compliance and the latest activity.
+// The practice at a glance, kept live by useDashboard: charts of what needs attention now and how
+// much work has come in over time, then the client book, money under advice, the onboarding pipeline,
+// compliance and the latest activity.
 export default function Dashboard() {
   const { session } = useAuth()
   const { data, error, refresh } = useDashboard()
@@ -28,14 +29,12 @@ export default function Dashboard() {
     ? <div className="card" role="alert"><p className="error">{error}</p><button onClick={refresh}>Try again</button></div>
     : <p role="status">Loading dashboard…</p>
 
-  const { clients, portfolio, goals, documents, onboarding, work, reminders, activity, compliance } = data
+  const { clients, portfolio, goals, documents, onboarding, activity, compliance } = data
   const updated = new Date(data.generatedAt).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  const renewals = documents.consentsExpired + documents.consentsExpiringSoon
 
-  return <>
+  return <div className="dash-page">
     <header className="page-heading">
       <div>
-        <p className="eyebrow">PRACTICE OVERVIEW</p>
         <h1>Dashboard</h1>
         <p>Everything that needs you, in one place.{' '}
           <span className={`live${error ? ' live-stale' : ''}`} role="status"><i aria-hidden="true" />{error ? 'Reconnecting, showing the last update' : 'Live'} · updated {updated}</span>
@@ -44,15 +43,13 @@ export default function Dashboard() {
       <Link className="button primary" to="/clients?add=1"><Plus size={17} /> Add client</Link>
     </header>
 
-    <div className="stats rs-stats">
-      <Metric to="/tasks" icon={Inbox} title="Open requests & claims" value={work.open} hint={`${plural(work.waitingOnClients, 'item')} waiting on clients`} />
-      <Metric to="/tasks" icon={Hourglass} title="Waiting on us" value={work.waitingOnUs} urgent={work.overdue > 0} hint={work.overdue ? `${work.overdue} overdue (48h+)` : 'Nothing overdue'} />
-      <Metric to="/clients" icon={FileSignature} title="Documents awaiting signature" value={documents.awaitingSignature} hint={documents.awaitingSignature ? `Longest wait: ${plural(documents.oldestWaitingDays, 'day')}` : 'Nothing waiting on clients'} />
-      <Metric to="/clients?status=onboarding" icon={AlarmClock} title="Stalled onboarding" value={onboarding.stalled} urgent={onboarding.stalled > 0} hint={`Onboarding for ${onboarding.stalledAfterDays}+ days`} />
-      <Metric to="/clients" icon={ShieldCheck} title="Consents to renew" value={renewals} urgent={documents.consentsExpired > 0} hint={`${documents.consentsExpired} expired · ${documents.consentsExpiringSoon} expiring within ${documents.consentWarningDays} days`} />
-      <Metric to="/reminders" icon={CalendarClock} title="Reminders overdue" value={reminders.overdue} urgent={reminders.overdue > 0} hint={`${reminders.dueSoon} due in the next ${reminders.dueSoonDays} days`} />
-      <Metric to="/clients" icon={ClipboardList} title="Needs financial analysis" value={clients.noFinancialAnalysis} hint="No financial items recorded yet" />
-      <Metric to="/reminders" icon={Bell} title="Unread notifications" value={activity.unread} hint="Registrations, signatures and more" />
+    <div className="dash-charts">
+      <section className="card">
+        <header className="section-heading"><div><h2><TriangleAlert size={20} /> Needs attention</h2><p>Red means overdue or expired. Select a bar to open it.</p></div></header>
+        <AttentionChart rows={attentionRows(data)} />
+      </section>
+
+      <WorkTrend />
     </div>
 
     <div className="two-columns">
@@ -66,8 +63,8 @@ export default function Dashboard() {
         <header className="section-heading"><div><h2><Wallet size={20} /> Money under advice</h2><p>Recorded assets and liabilities across all clients.</p></div></header>
         <p style={{ margin: 0, fontFamily: 'Georgia, serif', fontSize: 30 }}>{money(portfolio.netWorth)}</p>
         <small>Combined net worth</small>
-        <Bar title="Assets" value={portfolio.assets} whole={Math.max(portfolio.assets, portfolio.liabilities)} display={money(portfolio.assets)} assetBar />
-        <Bar title="Liabilities" value={portfolio.liabilities} whole={Math.max(portfolio.assets, portfolio.liabilities)} display={money(portfolio.liabilities)} />
+        <Bar title="Assets" value={portfolio.assets} whole={Math.max(portfolio.assets, portfolio.liabilities)} display={money(portfolio.assets)} tone="positive" />
+        <Bar title="Liabilities" value={portfolio.liabilities} whole={Math.max(portfolio.assets, portfolio.liabilities)} display={money(portfolio.liabilities)} tone="negative" />
         <div className="detail-row"><span><Target size={16} /> Goals in progress<small>{goals.pastTargetDate ? `${goals.pastTargetDate} past their target date` : 'None past their target date'}</small></span><b>{goals.inProgress}</b></div>
         {goals.fundedPercent !== null && <Bar title="Goals funded so far" value={goals.totalProgress} whole={goals.totalTarget} display={`${goals.fundedPercent}%`} assetBar />}
       </section>
@@ -105,7 +102,8 @@ export default function Dashboard() {
           </>
           : <p className="empty">Your compliance record hasn't been set up yet.</p>}
         <div className="detail-row"><span>Politically exposed clients<small>Need enhanced due diligence</small></span><b>{clients.politicallyExposed}</b></div>
-        <div className="detail-row"><span>Risk profile not assessed<small>Clients without a risk category</small></span><b>{clients.riskMix.not_assessed || 0}</b></div>
+        <h3 className="dash-subheading">Clients by risk profile</h3>
+        <RiskMixChart rows={riskRows(clients.riskMix)} />
       </section>
 
       <section className="card">
@@ -117,5 +115,5 @@ export default function Dashboard() {
         </div>)}
       </section>
     </div>
-  </>
+  </div>
 }

@@ -7,6 +7,6 @@ export default function ClientClaimsArea() {
   const { client } = context
 
   if (client === undefined) return <p role="status">Loading your account…</p>
-  if (!client) return <section className="card"><p className="eyebrow">ALMOST THERE</p><h1>We couldn't find your client profile</h1><p>Please contact your Royal Square adviser so they can check your account.</p></section>
+  if (!client) return <section className="card"><h1>We couldn't find your client profile</h1><p>Please contact your Royal Square adviser so they can check your account.</p></section>
   return <Outlet context={context} />
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { Inbox, LogOut } from 'lucide-react'
+import { Inbox, LogOut, ScrollText } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useProviderMe } from '../../hooks/useProvider'
 import { initialsOf } from '../../lib/initials'
@@ -24,7 +24,7 @@ export default function ProviderLayout() {
 
   let body
   if (me.loading) body = <p role="status">Loading your portal…</p>
-  else if (me.error) body = <section className="card" role="alert"><p className="eyebrow">PROVIDER PORTAL</p><h1>We couldn't open your portal</h1><p className="error">{me.error}</p><button onClick={me.retry}>Try again</button></section>
+  else if (me.error) body = <section className="card" role="alert"><h1>We couldn't open your portal</h1><p className="error">{me.error}</p><button onClick={me.retry}>Try again</button></section>
   else body = <Outlet context={{ me: me.data }} />
 
   return <div className="app-shell">
@@ -34,6 +34,7 @@ export default function ProviderLayout() {
       <hr className="side-divider" />
       <nav>
         <NavLink to="/provider" end><Inbox size={18} /> Claims & requests</NavLink>
+        <NavLink to="/provider/audit-log"><ScrollText size={18} /> Audit log</NavLink>
       </nav>
       <div className="advisor">
         <div className="advisor-row">
@@ -47,9 +48,6 @@ export default function ProviderLayout() {
         {error && <p role="alert" className="error">{error}</p>}
       </div>
     </aside>
-    <main key={session.user.id}>
-      <div className="workspace-label">ROYAL SQUARE FINANCIAL <span>Provider portal{me.data ? ` · ${me.data.provider.name}` : ''}</span></div>
-      {body}
-    </main>
+    <main key={session.user.id}>{body}</main>
   </div>
 }

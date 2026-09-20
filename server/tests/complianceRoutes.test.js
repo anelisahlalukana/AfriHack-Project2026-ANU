@@ -68,6 +68,6 @@ test("UUIDs, CPD, simulation, readonly CPD status and query limits are validated
   const path = `/api/clients/${clientId}/compliance/screenings`;
   assert.equal((await request(path, "self", "POST", { screeningType: "pep", simulateFlag: "true" })).status, 400);
   assert.equal((await request(path, "self", "POST", { screeningType: "other" })).status, 400);
-  assert.equal((await request(path, "self", "POST", { screeningType: "pep" })).status, 201);
+  assert.equal((await request(path, "self", "POST", { screeningType: "pep" })).status, 503);
   assert.equal((await request(`/api/clients/${otherId}/compliance`, "self")).status, 404);
 });

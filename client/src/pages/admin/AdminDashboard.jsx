@@ -2,7 +2,6 @@ export default function AdminDashboard() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">ADMIN</p>
         <h1>Admin dashboard</h1>
         <p>Admin accounts manage staff logins. Use User management to add advisers and admins.</p>
       </div>

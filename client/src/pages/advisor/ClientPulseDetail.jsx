@@ -22,7 +22,7 @@ function Signal({ signal, clientId }) {
       {['document', 'onboarding'].includes(signal.kind) && <Link to={`/clients/${clientId}`} state={{ from: `/client-pulse/${clientId}` }}>Open documents</Link>}
       {signal.kind === 'reminder' && <Link to="/reminders">Open reminders</Link>}
     </span>
-    {signal.days !== null && <span className={`badge${signal.kind === 'document' ? ' status-sent' : ''}`}>{plural(signal.days, 'day')}</span>}
+    {signal.days !== null && <span className="signal-days">{plural(signal.days, 'day')}</span>}
   </div>
 }
 
@@ -55,7 +55,6 @@ export default function ClientPulseDetail() {
     {back}
     <header className="page-heading">
       <div>
-        <p className="eyebrow">CLIENT PULSE</p>
         <h1>{data.client.name}</h1>
         <p><span className="badge">{data.client.status}</span> <span className={badge.className}>{badge.phrase} · score {data.score}</span>{' '}
           <span className={`live${error ? ' live-stale' : ''}`} role="status"><i aria-hidden="true" />{error ? 'Reconnecting, showing the last update' : 'Live'} · updated {updated}</span>

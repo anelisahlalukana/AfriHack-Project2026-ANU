@@ -83,7 +83,6 @@ export default function AdminUsers() {
   return <>
     <header className="page-heading">
       <div>
-        <p className="eyebrow">USER MANAGEMENT</p>
         <h1>Staff and provider accounts</h1>
         <p>Create logins for advisers, admins and insurers — they don't self-register.</p>
       </div>
