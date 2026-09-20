@@ -128,6 +128,18 @@ Every 30 s the server tick (REMINDERS_TICK_MS)
   7. sw.js receives the push and shows the notification; a tap opens the right page
 ```
 
+**Two things start a push.** Reminders, above, go out on the scheduler's tick. Separately, when the
+server creates an in-app notification for a client (a document sent to them, all five onboarding
+documents complete, or an adviser's Client Pulse check-in), `notifyClient` in
+`server/src/services/notifications.service.js` pushes to that client's devices straight away and
+emails them. It looks the client up in `public.users`, takes their `auth_user_id` (the Supabase login;
+`push_subscriptions.user_id` is that id, not the client's own id) and sends to every subscription found.
+The message is the same generic text, with `url: "/account"` and the notification's id as its `tag`.
+This runs in the background after the notification is saved, and every failure (no login, no device, an
+expired endpoint, a mail error) is logged and swallowed, so it can never fail the action that caused it.
+A device the push service reports as gone (404 or 410) is removed. Claims and requests use
+`taskNotifications.service.js`, which does not push or email, and adviser notifications stay in-app.
+
 Each device subscribes for itself. Advisers and clients get the same alerts for their own
 reminders: advisers on `/reminders`, clients on `/account/reminders`. `PushControl` is on both pages
 and explains what is wrong when push cannot work (not set up on the server, unsupported browser or
@@ -169,6 +181,9 @@ subscription useless, and people have to turn push off and on again.
 - **The message is always generic**: the title is "Royal Square Financial" and the body is "You have
   a new update. Open Royal Square to view it.", so nothing about a client appears on a lock screen.
   It carries a `tag` (so the same notification never shows twice) and a `url` to open.
+- **Who builds the sender:** `createPushSender()` in `server/src/utils/pushSender.js` reads the three
+  VAPID variables and returns the send function (or `null` when push is off). `server.js` builds one
+  for the reminders module and `notifications.service.js` builds one for direct client pushes.
 - **Delivery:** the server sends with a 24-hour TTL and a 10-second timeout. A failed send is
   retried on later ticks up to three attempts in total, then marked failed. A device that already
   received a notification is remembered, so a retry never alerts it twice. A push service that

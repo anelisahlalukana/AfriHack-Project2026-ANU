@@ -34,7 +34,10 @@ advisers get demo clients), `--demo-advisers=0..5`, `--seed=7` (the same seed gi
 
 ## How it stays safe
 
-- Everything is fictional; emails use the reserved `.test` domain, so nothing is delivered.
+- Everything is fictional; emails use the reserved `.test` domain, so nothing is delivered. This now
+  matters more than it did: notifications sent to a client (a document sent, a Client Pulse check-in) are
+  emailed to the address on their record whenever Brevo is configured. Do not give demo clients
+  real-looking addresses, or a demo will email whoever owns them.
 - It reads the stage lists, claim categories, request types, reminder rules and insurers from
   the database, so it follows your project's configuration. It only creates insurers if there
   are none, and names them "… (demo)".
